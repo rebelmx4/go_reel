@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>完美适配播放器：旋转补黑+原始截图</title>
+    <style>
+        body { font-family: "Segoe UI", sans-serif; background: #1a1a1a; color: #ddd; text-align: center; margin: 0; padding: 20px; user-select: none; }
+        
+        /* 1. 播放器容器：黑底，固定尺寸 (或自适应) */
+        .player-wrap {
+            position: relative;
+            width: 800px;
+            height: 450px;
+            background: #000; /* 关键：黑色填充 */
+            margin: 0 auto 10px;
+            border: 1px solid #333;
+            
+            /* 关键：使用 Flex 居中，确保旋转后视频依然悬浮在正中间 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 2. 视频标签 */
+        video {
+            /* 关键：让视频初始状态最大化适应容器，但不强制拉伸 */
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 关键：保证0度时也是紧贴边缘+补黑 */
+            
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: center center; /* 围绕中心旋转 */
+        }
+
+        /* 进度条与控制栏样式 (保持不变) */
+        .progress-container { width: 800px; height: 10px; background: #444; margin: 0 auto 20px; position: relative; cursor: pointer; border-radius: 5px; transition: height 0.1s; }
+        .progress-container:hover { height: 15px; }
+        .progress-filled { height: 100%; background: #ff0000; width: 0%; border-radius: 5px; pointer-events: none; }
+        
+        .thumbnail-popup { position: absolute; bottom: 25px; left: 0; width: 160px; height: 90px; background: #000; border: 2px solid #fff; border-radius: 4px; display: none; pointer-events: none; z-index: 100; transform: translateX(-50%); }
+        .thumbnail-popup canvas { width: 100%; height: 100%; object-fit: contain; background: #000;}
+        .time-tooltip { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); color: #fff; font-size: 12px; }
+
+        .controls { width: 800px; margin: 10px auto; background: #2a2a2a; padding: 15px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+        .file-upload { position: relative; overflow: hidden; display: inline-block; }
+        .file-upload input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%;}
+        
+        button, .btn { padding: 8px 12px; cursor: pointer; background: #444; color: #fff; border: 1px solid #555; border-radius: 4px; }
+        button:hover { background: #555; }
+        .btn-primary { background: #007bff; border-color: #007bff; }
+        
+        /* 框选样式 */
+        .crop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; cursor: crosshair; display: none; }
+        .selection-box { border: 2px dashed #00ff00; background: rgba(0, 255, 0, 0.2); position: absolute; display: none; pointer-events: none; }
+
+        #previewArea { margin-top: 20px; border-top: 1px solid #444; padding-top: 10px; text-align: left; width: 800px; margin: 20px auto;}
+        img.preview { border: 1px solid #fff; max-width: 150px; margin: 5px; vertical-align: top; background: #000; }
+    </style>
+</head>
+<body>
+
+<div class="player-wrap" id="playerContainer">
+    <video id="myVideo"></video>
+    <!-- 框选遮罩 -->
+    <div class="crop-overlay" id="cropOverlay">
+        <div class="selection-box" id="selectionBox"></div>
+    </div>
+</div>
+
+<!-- 进度条 -->
+<div class="progress-container" id="progressWrap">
+    <div class="progress-filled" id="progressFill"></div>
+    <div class="thumbnail-popup" id="thumbPopup">
+        <canvas id="thumbCanvas" width="160" height="90"></canvas>
+        <div class="time-tooltip" id="thumbTime">00:00</div>
+    </div>
+</div>
+
+<!-- 按钮区 -->
+<div class="controls">
+    <div class="group">
+        <div class="file-upload btn btn-primary">
+            <span>📂 选择本地视频</span>
+            <input type="file" id="fileInput" accept="video/*">
+        </div>
+    </div>
+
+    <div class="group">
+        <button onclick="playPause()">⏯ 播放/停</button>
+        <button onclick="rotateVideo()">🔄 旋转 90°(适应容器)</button>
+    </div>
+    
+    <div class="group">
+        <button onclick="stepFrame(-1)">⏮ -1帧</button>
+        <button onclick="stepFrame(1)">+1帧 ⏭</button>
+    </div>
+
+    <div class="group">
+        <button onclick="takeRawSnapshot()" style="background:#28a745; border-color:#28a745">📷 原始截图</button>
+        <button onclick="toggleCropMode()" id="cropBtn">✂️ 框选(所见即所得)</button>
+    </div>
+</div>
+
+<div id="previewArea">
+    <p style="color:#888; font-size:12px; margin:0 0 10px 0;">截图结果:</p>
+</div>
+
+<script>
+    const video = document.getElementById('myVideo');
+    const container = document.getElementById('playerContainer');
+    const ghostVideo = document.createElement('video'); // 用于预览图
+    const fileInput = document.getElementById('fileInput');
+    
+    // UI 元素
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const thumbPopup = document.getElementById('thumbPopup');
+    const thumbCtx = document.getElementById('thumbCanvas').getContext('2d');
+    const thumbTime = document.getElementById('thumbTime');
+    const cropOverlay = document.getElementById('cropOverlay');
+    const selectionBox = document.getElementById('selectionBox');
+    const cropBtn = document.getElementById('cropBtn');
+    
+    let currentDeg = 0;
+    let isCropMode = false;
+    let currentScale = 1; // 记录当前的缩放比例，供框选计算用
+    let startX, startY, isDragging = false;
+    let ghostSeeking = false;
+
+    // --- 1. 加载视频 ---
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        video.src = url; video.load();
+        ghostVideo.src = url; ghostVideo.muted = true;
+        
+        // 重置状态
+        currentDeg = 0;
+        currentScale = 1;
+        video.style.transform = 'rotate(0deg) scale(1)';
+    });
+
+    // --- 2. 核心：旋转并强制适应容器 (Tight Fit) ---
+    function rotateVideo() {
+        if (!video.currentSrc) return;
+        currentDeg = (currentDeg + 90) % 360;
+
+        const cw = container.offsetWidth;
+        const ch = container.offsetHeight;
+        
+        // 关键算法：
+        // 如果是 0 或 180 度，宽高比正常，scale = 1 (CSS object-fit 会处理)
+        // 如果是 90 或 270 度，视频的宽高在视觉上互换了。
+        // 我们需要把"竖着"的视频塞进"横着"的容器里，且必须全部显示。
+        
+        if (currentDeg % 180 !== 0) {
+            // 计算缩放比例：取 (容器宽/容器高) 和 (容器高/容器宽) 较小的一个
+            // 这样能确保无论容器是扁的还是高的，旋转后的视频都能完全缩放进去
+            currentScale = Math.min(cw / ch, ch / cw);
+        } else {
+            currentScale = 1;
+        }
+
+        video.style.transform = `rotate(${currentDeg}deg) scale(${currentScale})`; 
+    }
+
+    // --- 3. 原始截图 (不受旋转影响) ---
+    function takeRawSnapshot() {
+        if (!video.currentSrc) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        saveImage(canvas.toDataURL('image/png'), 'raw');
+    }
+
+    // --- 4. 框选截图 (所见即所得) ---
+    function toggleCropMode() {
+        if (!video.currentSrc) return;
+        isCropMode = !isCropMode;
+        if (isCropMode) {
+            cropOverlay.style.display = 'block'; video.pause();
+            cropBtn.innerText = "❌ 取消"; cropBtn.style.background = "#d9534f";
+        } else {
+            cropOverlay.style.display = 'none'; selectionBox.style.display = 'none';
+            cropBtn.innerText = "✂️ 框选"; cropBtn.style.background = "#444";
+        }
+    }
+    
+    // 鼠标拖拽逻辑
+    cropOverlay.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        const rect = cropOverlay.getBoundingClientRect();
+        startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+        selectionBox.style.display = 'block'; selectionBox.style.width = '0'; selectionBox.style.height = '0';
+        selectionBox.style.left = startX + 'px'; selectionBox.style.top = startY + 'px';
+    });
+    
+    cropOverlay.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = cropOverlay.getBoundingClientRect();
+        const curX = e.clientX - rect.left, curY = e.clientY - rect.top;
+        selectionBox.style.width = Math.abs(curX - startX) + 'px';
+        selectionBox.style.height = Math.abs(curY - startY) + 'px';
+        selectionBox.style.left = Math.min(curX, startX) + 'px';
+        selectionBox.style.top = Math.min(curY, startY) + 'px';
+    });
+
+    cropOverlay.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const box = selectionBox.getBoundingClientRect();
+        if (box.width < 5) return;
+
+        // 生成视觉 Canvas (带旋转和缩放)
+        // 这一步是为了确保我们截取的内容和用户在屏幕上框选的内容一致
+        const vCanvas = document.createElement('canvas');
+        const vCtx = vCanvas.getContext('2d');
+        const vw = video.videoWidth, vh = video.videoHeight;
+
+        // 设置画布尺寸适应旋转
+        if (currentDeg % 180 !== 0) { vCanvas.width = vh; vCanvas.height = vw; } 
+        else { vCanvas.width = vw; vCanvas.height = vh; }
+
+        vCtx.save();
+        vCtx.translate(vCanvas.width / 2, vCanvas.height / 2);
+        vCtx.rotate(currentDeg * Math.PI / 180);
+        vCtx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
+        vCtx.restore();
+
+        // 计算框选坐标
+        // 难点：视频现在被 scale 缩放了，而且 object-fit: contain 可能在内部产生了偏移
+        // 但我们在 rotateVideo 里是操作的整个 Video 元素，配合 container 的 flex 居中
+        // 所以，我们只需要计算 视频真实显示尺寸 vs 原始分辨率 的比例
+        
+        // 1. 获取视频元素在屏幕上的实际大小 (应用了 transform 之后的)
+        const videoRect = video.getBoundingClientRect();
+        
+        // 2. 计算缩放比 (Canvas分辨率 / 屏幕显示大小)
+        const scaleX = vCanvas.width / videoRect.width;
+        const scaleY = vCanvas.height / videoRect.height;
+        
+        // 3. 计算偏移
+        const offX = box.left - videoRect.left;
+        const offY = box.top - videoRect.top;
+
+        // 4. 绘图
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = box.width * scaleX;
+        cropCanvas.height = box.height * scaleY;
+        
+        cropCanvas.getContext('2d').drawImage(
+            vCanvas,
+            offX * scaleX, offY * scaleY, cropCanvas.width, cropCanvas.height,
+            0, 0, cropCanvas.width, cropCanvas.height
+        );
+        
+        saveImage(cropCanvas.toDataURL(), 'crop');
+        toggleCropMode();
+    });
+
+    // --- 5. 辅助功能 ---
+    function playPause() { if(video.currentSrc) video.paused ? video.play() : video.pause(); }
+    function stepFrame(n) { if(video.currentSrc) video.currentTime += (n * 0.042); }
+    function saveImage(dataUrl, prefix) {
+        const img = document.createElement('img');
+        img.src = dataUrl; img.className = 'preview';
+        img.onclick = () => {
+            const a = document.createElement('a'); a.href = dataUrl;
+            a.download = prefix + '_' + Date.now() + '.png'; a.click();
+        };
+        document.getElementById('previewArea').prepend(img);
+    }
+    
+    // 进度条逻辑 (略作简化，保持功能)
+    video.addEventListener('timeupdate', () => { if (video.duration) progressFill.style.width = (video.currentTime / video.duration) * 100 + '%'; });
+    progressWrap.addEventListener('click', (e) => { if (video.duration) video.currentTime = ((e.clientX - progressWrap.getBoundingClientRect().left) / progressWrap.offsetWidth) * video.duration; });
+    progressWrap.addEventListener('mousemove', (e) => {
+        if (!video.duration) return;
+        const x = e.clientX - progressWrap.getBoundingClientRect().left;
+        const time = (x / progressWrap.offsetWidth) * video.duration;
+        thumbPopup.style.display = 'block'; thumbPopup.style.left = x + 'px';
+        thumbTime.innerText = Math.floor(time/60) + ':' + (Math.floor(time%60)<10?'0':'') + Math.floor(time%60);
+        if (!ghostSeeking && Math.abs(ghostVideo.currentTime - time) > 1) { ghostSeeking = true; ghostVideo.currentTime = time; }
+    });
+    progressWrap.addEventListener('mouseleave', () => thumbPopup.style.display = 'none');
+    ghostVideo.addEventListener('seeked', () => { thumbCtx.drawImage(ghostVideo, 0, 0, 160, 90); ghostSeeking = false; });
+
+</script>
+</body>
+</html>
