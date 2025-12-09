@@ -66,7 +66,7 @@ export function ProgressBarWithThumbnail({
         // Seek ghost video if not already seeking and time difference is significant
         if (!isSeeking && ghostVideoRef.current && Math.abs(ghostVideoRef.current.currentTime - time) > 1) {
             setIsSeeking(true);
-            ghostVideoRef.current.currentTime = time;
+            // ghostVideoRef.current.currentTime = time;
             setTimeout(() => setIsSeeking(false), 100);
         }
     };

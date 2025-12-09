@@ -48,9 +48,24 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
     };
 
     const handleSeek = (value: number) => {
-        if (videoRef.current) {
-            videoRef.current.currentTime = value;
-        }
+        const v = videoRef.current;
+        if (!v) return;
+
+        console.log('seek start', {
+            value,
+            readyState: v.readyState,
+            duration: v.duration,
+            currentTime: v.currentTime
+        });
+
+        v.currentTime = value;
+
+        // 1 秒后看看浏览器有没有把值弹回
+        setTimeout(() => {
+            console.log('seek end', v.currentTime);
+        }, 1000);
+
+        console.log(value)
     };
 
     const handleRotationClick = () => {
@@ -306,7 +321,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
             `}</style>
 
             {/* Clip Track */}
-            <ClipTrack />
+            {/* <ClipTrack /> */}
 
             {/* Progress Bar with Thumbnail Preview */}
             <Group gap="xs" style={{ width: '100%' }}>

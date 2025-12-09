@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
-import { useNavigationStore, usePlayerStore, useRefreshStore } from './stores';
+import { useNavigationStore, usePlayerStore, useRefreshStore, usePlaylistStore } from './stores';
 import { MainLayout, ToastContainer, PathConfigurationScreen, VideoPlayer } from './components';
 import { TagSearchPage } from './pages/TagSearchPage';
 import { RecentPage } from './pages/RecentPage';
@@ -20,6 +20,9 @@ function App() {
   const setVolume = usePlayerStore((state) => state.setVolume);
   const setSkipFrameConfig = usePlayerStore((state) => state.setSkipFrameConfig);
   const setSkipDuration = usePlayerStore((state) => state.setSkipDuration);
+  const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
+  const setPlaylistMode = usePlaylistStore((state) => state.setMode);
+  const setCurrentVideoId = usePlaylistStore((state) => state.setCurrentVideo);
 
   // Load startup result on mount
   useEffect(() => {
@@ -33,6 +36,10 @@ function App() {
           // Load initial video
           if (result.initialVideo) {
             setCurrentVideo(result.initialVideo.path);
+            if (result.playlists && result.playlists.all) {
+              setPlaylistMode('random');
+              setPlaylist(result.playlists.all);
+            }
           }
 
           // Restore volume
@@ -64,7 +71,7 @@ function App() {
     };
 
     loadStartup();
-  }, [setView, setCurrentVideo, setVolume, setSkipFrameConfig, setSkipDuration]);
+  }, [setView, setCurrentVideo, setVolume, setSkipFrameConfig, setSkipDuration, setPlaylist, setPlaylistMode, setCurrentVideoId]);
 
   // Initialize keyboard shortcuts
   useEffect(() => {

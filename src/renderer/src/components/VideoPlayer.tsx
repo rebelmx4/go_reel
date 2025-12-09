@@ -5,6 +5,7 @@ import { VideoContext } from '../contexts';
 import { captureRawScreenshot, captureRotatedScreenshot } from '../utils';
 import { AssignTagDialog } from './Dialog/AssignTagDialog';
 import { CreateTagDialog } from './Dialog/CreateTagDialog';
+import { PlayerControls } from './PlayerControls';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
@@ -16,6 +17,33 @@ interface CropArea {
     width: number;
     height: number;
 }
+
+(function () {
+    const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime');
+    const origSet = desc!.set!;
+
+    Object.defineProperty(HTMLMediaElement.prototype, 'currentTime', {
+        ...desc,
+        set(val) {
+            console.trace('[currentTime hooked] 被设成', val);
+            return origSet.call(this, val);
+        },
+    });
+
+    const t = setInterval(() => {
+        const vid = document.querySelector('video');
+        if (!vid) return;
+        clearInterval(t);
+
+        new MutationObserver(() =>
+            console.warn('[src changed] ->', vid.currentSrc)
+        ).observe(vid, { attributeFilter: ['src'] });
+
+        vid.addEventListener('loadstart', () =>
+            console.warn('[loadstart fired]')
+        );
+    }, 10000);
+})();
 
 /**
  * Video Player Component
@@ -107,16 +135,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
             // Convert E:\path or E:/path to E:/path format
             normalizedPath = normalizedPath.replace(/^([a-zA-Z]):\\/, '$1:/');
 
-            videoRef.current.src = `media://${normalizedPath}`;
+            videoRef.current.src = `file://${normalizedPath}`;
             videoRef.current.load();
-
-            // videoRef.current.src = `file://${normalizedPath}`;
-
-            // 关键优化：为了防止和 ffprobe 冲突，稍微延迟一点点加载
-            setTimeout(() => {
-                videoRef.current?.load();
-            }, 100);
-
 
             // Fetch video metadata including framerate
             if (window.api?.getVideoMetadata) {
@@ -560,6 +580,33 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         )}
                     </Box>
                 )}
+
+                <Box
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        width: '100%',
+                        zIndex: 30, // 确保层级高于视频和裁剪层(20)
+                        transition: 'opacity 0.3s', // 可选：添加淡入淡出效果
+                    }}
+                // 可选：鼠标移出播放器区域时隐藏控制器
+                // onMouseEnter={() => setShowControls(true)}
+                // onMouseLeave={() => isPlaying && setShowControls(false)}
+                >
+                    <PlayerControls
+                        videoRef={videoRef}
+                        onScreenshot={() => {
+                            // 复用 'e' 键的逻辑：如果是裁剪模式则退出，否则截图
+                            if (isCropMode) {
+                                setCropMode(false);
+                            } else {
+                                takeRawScreenshot();
+                            }
+                        }}
+                        onNext={playNextVideo}
+                    />
+                </Box>
 
                 {/* Tag Assignment Dialog */}
                 <AssignTagDialog
