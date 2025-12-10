@@ -297,7 +297,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         if (!currentVideoPath) return;
 
         const initializeScreenshots = async () => {
-            // ▼▼▼ 使用新的 IPC 调用 ▼▼▼
             const videoHash = await window.api.calculateVideoHash(currentVideoPath);
             if (!videoHash) {
                 console.error("Could not generate hash, aborting screenshot initialization.");
