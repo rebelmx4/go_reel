@@ -20,9 +20,10 @@ interface PlayerControlsProps {
     videoRef: RefObject<HTMLVideoElement | null>;
     onScreenshot: () => void;
     onNext: () => void;
+    onRotate: () => void;
 }
 
-export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControlsProps) {
+export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: PlayerControlsProps) {
     const currentTime = usePlayerStore((state) => state.currentTime);
     const duration = usePlayerStore((state) => state.duration);
     const volume = usePlayerStore((state) => state.volume);
@@ -37,35 +38,26 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
     const setSkipFrameMode = usePlayerStore((state) => state.setSkipFrameMode);
 
     const screenshots = useScreenshotStore((state) => state.screenshots);
+    const setScreenshots = useScreenshotStore((state) => state.setScreenshots);
     const isCropMode = useScreenshotStore((state) => state.isCropMode);
     const setCropMode = useScreenshotStore((state) => state.setCropMode);
 
     // Format time as MM:SS
-    const formatTime = (time: number) => {
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60);
+    const formatTime = (timeInSeconds: number) => {
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
+
+    const formatMSTime = (timeInMS: number) => {
+        return formatTime(timeInMS / 1000);
+    }
 
     const handleSeek = (value: number) => {
         const v = videoRef.current;
         if (!v) return;
 
-        console.log('seek start', {
-            value,
-            readyState: v.readyState,
-            duration: v.duration,
-            currentTime: v.currentTime
-        });
-
         v.currentTime = value;
-
-        // 1 秒后看看浏览器有没有把值弹回
-        setTimeout(() => {
-            console.log('seek end', v.currentTime);
-        }, 1000);
-
-        console.log(value)
     };
 
     const handleRotationClick = () => {
@@ -97,9 +89,9 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
         }
     }, [volume]);
 
-    const handleScreenshotClick = (timestamp: number) => {
+    const handleScreenshotClick = (timestampInMS: number) => {
         if (videoRef.current) {
-            videoRef.current.currentTime = timestamp;
+            videoRef.current.currentTime = timestampInMS / 1000; // 转换为秒
         }
     };
 
@@ -109,63 +101,24 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
     const scrollTimeoutRef = useRef<number>(0);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; screenshot: any } | null>(null);
 
-    useEffect(() => {
-        if (screenshots.length === 0 && duration > 0 && videoRef.current) {
-            // Auto-generate 9 evenly spaced screenshots
-            const generateScreenshots = async () => {
-                const video = videoRef.current;
-                if (!video) return;
-
-                const interval = duration / 10; // 10 segments, 9 screenshots
-                const addScreenshot = useScreenshotStore.getState().addScreenshot;
-
-                for (let i = 1; i <= 9; i++) {
-                    const timestamp = interval * i;
-                    video.currentTime = timestamp;
-
-                    await new Promise(resolve => {
-                        video.onseeked = () => {
-                            try {
-                                const dataUrl = captureRawScreenshot(video);
-                                addScreenshot({
-                                    id: `screenshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                                    timestamp,
-                                    dataUrl,
-                                    width: video.videoWidth,
-                                    height: video.videoHeight,
-                                    createdAt: Date.now()
-                                });
-                            } catch (error) {
-                                console.error('Failed to generate screenshot:', error);
-                            }
-                            resolve(null);
-                        };
-                    });
-                }
-            };
-
-            generateScreenshots();
-        }
-    }, [duration, screenshots.length, videoRef]);
-
     // Auto-scroll to active screenshot with debounce
-    useEffect(() => {
-        if (!trackRef.current || screenshots.length === 0 || isUserScrolling) return;
+    // useEffect(() => {
+    //     if (!trackRef.current || screenshots.length === 0 || isUserScrolling) return;
 
-        const activeScreenshot = screenshots.reduce((closest, s) => {
-            const currentDiff = Math.abs(s.timestamp - currentTime);
-            const closestDiff = Math.abs(closest.timestamp - currentTime);
-            return currentDiff < closestDiff ? s : closest;
-        });
+    //     const activeScreenshot = screenshots.reduce((closest, s) => {
+    //         const currentDiff = Math.abs(s.timestamp - currentTime);
+    //         const closestDiff = Math.abs(closest.timestamp - currentTime);
+    //         return currentDiff < closestDiff ? s : closest;
+    //     });
 
-        const activeElement = document.getElementById(`screenshot-${activeScreenshot.id}`);
-        if (activeElement && trackRef.current) {
-            const trackRect = trackRef.current.getBoundingClientRect();
-            const elementRect = activeElement.getBoundingClientRect();
-            const scrollLeft = activeElement.offsetLeft - (trackRect.width / 2) + (elementRect.width / 2);
-            trackRef.current.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-        }
-    }, [currentTime, screenshots, isUserScrolling]);
+    //     const activeElement = document.getElementById(`screenshot-${activeScreenshot.id}`);
+    //     if (activeElement && trackRef.current) {
+    //         const trackRect = trackRef.current.getBoundingClientRect();
+    //         const elementRect = activeElement.getBoundingClientRect();
+    //         const scrollLeft = activeElement.offsetLeft - (trackRect.width / 2) + (elementRect.width / 2);
+    //         trackRef.current.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    //     }
+    // }, [currentTime, screenshots, isUserScrolling]);
 
     // Handle user scrolling with 3-second debounce
     const handleTrackScroll = () => {
@@ -193,10 +146,21 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
         }
     };
 
-    const handleDeleteScreenshot = () => {
-        if (contextMenu) {
-            useScreenshotStore.getState().removeScreenshot(contextMenu.screenshot.id);
-            setContextMenu(null);
+    const handleDeleteScreenshot = async (e: React.MouseEvent, filename: string) => {
+        e.stopPropagation(); // 防止触发跳转
+        if (!currentVideoPath) return;
+
+        try {
+            const videoHash = await window.api.calculateVideoHash(currentVideoPath);
+            if (!videoHash) throw new Error("Failed to get video hash for deletion.");
+
+            await window.api.deleteScreenshot(videoHash, filename);
+
+            // 操作成功后，从主进程重新加载列表以同步UI
+            const updatedScreenshots = await window.api.loadScreenshots(videoHash);
+            setScreenshots(updatedScreenshots);
+        } catch (error) {
+            console.error("Failed to delete screenshot:", error);
         }
     };
 
@@ -228,11 +192,12 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
                 {screenshots.length === 0 ? (
                     <Text size="xs" c="dimmed" style={{ margin: '0 auto' }}>截图轨道 (按 E 键截图)</Text>
                 ) : (
+                    // 【修改5】重构截图列表的渲染逻辑
                     <Box style={{ display: 'flex', gap: 8, overflowX: 'auto', width: '100%', padding: '4px 0' }}>
                         {screenshots.map((screenshot) => (
                             <Tooltip
-                                key={screenshot.id}
-                                label={`${Math.floor(screenshot.timestamp / 60)}:${Math.floor(screenshot.timestamp % 60).toString().padStart(2, '0')}`}
+                                key={screenshot.filename} // 使用 filename 作为唯一 key
+                                label={formatMSTime(screenshot.timestamp)}
                                 position="top"
                             >
                                 <Box
@@ -258,10 +223,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
                                 >
                                     {/* Delete button */}
                                     <Box
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            useScreenshotStore.getState().removeScreenshot(screenshot.id);
-                                        }}
+                                        onClick={(e) => handleDeleteScreenshot(e, screenshot.filename)}
                                         style={{
                                             position: 'absolute',
                                             top: 2,
@@ -294,7 +256,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
                                     </Box>
 
                                     <img
-                                        src={screenshot.dataUrl}
+                                        src={screenshot.path} // 使用 path 替代 dataUrl
                                         alt="Screenshot"
                                         style={{
                                             height: 60,
@@ -308,7 +270,6 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
                     </Box>
                 )}
             </Box>
-
             {/* Add CSS for hover effect */}
             <style>{`
                 .screenshot-delete {
@@ -370,10 +331,10 @@ export function PlayerControls({ videoRef, onScreenshot, onNext }: PlayerControl
                             variant="subtle"
                             color="gray"
                             size="xs"
-                            onClick={handleRotationClick}
+                            onClick={onRotate}
                             style={{ width: 40, padding: 0 }}
                         >
-                            {rotation}°
+                            {rotation % 360}°
                         </Button>
                     </Tooltip>
 

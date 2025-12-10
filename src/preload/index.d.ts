@@ -29,11 +29,15 @@ declare global {
       getScreenSize: () => Promise<{ width: number; height: number }>
       
       // Screenshot Management
-      saveScreenshots: (
+      saveManualScreenshot: (
         videoHash: string,
-        screenshots: Array<{ timestamp: number; dataUrl: string }>,
-        type: 'manual' | 'auto'
-      ) => Promise<void>
+        videoPath: string, 
+        timestamp: number
+      ) => Promise<boolean> // 返回一个布尔值表示成功与否
+      generateAutoScreenshots: (
+        videoHash: string,
+        videoPath: string,
+      ) => Promise<boolean> // 返回一个布尔值表示成功与否
       loadScreenshots: (videoHash: string) => Promise<Screenshot[]>
       deleteScreenshot: (videoHash: string, filename: string) => Promise<void>
       
@@ -51,6 +55,7 @@ declare global {
       ) => Promise<void>
       
       // Video Metadata
+      calculateVideoHash: (filePath: string) => Promise<string | null>
       getVideoMetadata: (videoPath: string) => Promise<{
         duration: number
         width: number

@@ -20,20 +20,31 @@ export abstract class BaseAssetManager {
   }
 
   /**
-   * Get hash-based nested path for screenshots
+   * 【新增】Get the hash-based nested directory path.
+   * Ensures the directory exists before returning the path.
+   * @param hash - Full hash string
+   * @returns Full path to the hash-specific directory like: baseDir/a1/a1b2c3d4e5
+   */
+  protected getHashBasedDir(hash: string): string {
+    const prefix = hash.substring(0, 2);
+    const hashDir = path.join(this.baseDir, prefix, hash);
+    try {
+      // Ensure the nested directory exists every time it's requested
+      fs.ensureDirSync(hashDir);
+    } catch (error) {
+      log.error(`Failed to create hash-based directory ${hashDir}:`, error);
+    }
+    return hashDir;
+  }
+
+  /**
+   * Get hash-based nested path for a specific file.
    * @param hash - Full hash string
    * @param filename - Filename to append
    * @returns Full path like: baseDir/a1/a1b2c3d4e5/filename
    */
   protected getHashBasedPath(hash: string, filename: string): string {
-    const prefix = hash.substring(0, 2);
-    const hashDir = path.join(this.baseDir, prefix, hash);
-    // Ensure the nested directory exists
-    try {
-      fs.ensureDirSync(hashDir);
-    } catch (error) {
-      log.error(`Failed to create hash-based directory ${hashDir}:`, error);
-    }
+    const hashDir = this.getHashBasedDir(hash);
     return path.join(hashDir, filename);
   }
 

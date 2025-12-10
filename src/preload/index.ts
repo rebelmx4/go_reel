@@ -23,8 +23,10 @@ const api = {
   getScreenSize: () => ipcRenderer.invoke('get-screen-size'),
   
   // Screenshot Management
-  saveScreenshots: (videoHash: string, screenshots: any[], type: 'manual' | 'auto') =>
-    ipcRenderer.invoke('save-screenshots', videoHash, screenshots, type),
+  saveManualScreenshot: (videoHash: string, videoPath: string, timestamp: number) =>
+    ipcRenderer.invoke('save-manual-screenshot', videoHash, videoPath, timestamp),
+  generateAutoScreenshots: (videoHash: string, videoPath: string) =>
+    ipcRenderer.invoke('generate-auto-screenshots', videoHash, videoPath),
   loadScreenshots: (videoHash: string) =>
     ipcRenderer.invoke('load-screenshots', videoHash),
   deleteScreenshot: (videoHash: string, filename: string) =>
@@ -45,6 +47,8 @@ const api = {
     ipcRenderer.invoke('export-screenshots', videoHash, rotation, exportPath),
   
   // Video Metadata
+   calculateVideoHash: (filePath: string) => 
+    ipcRenderer.invoke('calculate-video-hash', filePath),
   getVideoMetadata: (videoPath: string) =>
     ipcRenderer.invoke('get-video-metadata', videoPath),
   saveVideoRotation: (videoPath: string, rotation: number) =>

@@ -13,6 +13,7 @@ import { registerSettingsHandlers } from './ipc/settingsHandlers';
 import { registerMetadataPersistenceHandlers } from './ipc/metadataPersistenceHandlers';
 import { registerTagHandlers } from './ipc/tagHandlers';
 import { registerTagCoverHandlers } from './ipc/tagCoverHandlers';
+import { calculateFastHash } from './utils/hash'
 
 // Global startup result
 let startupResult: any = null;
@@ -105,6 +106,16 @@ app.whenReady().then(async () => {
   setupIpcHandlers();
 
   createWindow();
+
+   ipcMain.handle('calculate-video-hash', async (_, filePath: string) => {
+    try {
+      const hash = await calculateFastHash(filePath)
+      return hash
+    } catch (error) {
+      console.error(`[IPC:calculate-video-hash] Failed for path: ${filePath}`, error)
+      return null // 在出错时返回 null
+    }
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

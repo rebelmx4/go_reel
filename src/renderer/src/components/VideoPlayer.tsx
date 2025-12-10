@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import { Box } from '@mantine/core';
-import { usePlayerStore, useScreenshotStore, usePlaylistStore, useVideoStore, useNavigationStore, useRecordingStore, useToastStore } from '../stores';
+import { usePlayerStore, useScreenshotStore, usePlaylistStore, useVideoStore, useNavigationStore, useToastStore } from '../stores';
 import { VideoContext } from '../contexts';
 import { captureRawScreenshot, captureRotatedScreenshot } from '../utils';
 import { AssignTagDialog } from './Dialog/AssignTagDialog';
@@ -9,13 +9,6 @@ import { PlayerControls } from './PlayerControls';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
-}
-
-interface CropArea {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
 }
 
 (function () {
@@ -57,18 +50,16 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const currentVideoPath = usePlayerStore((state) => state.currentVideoPath);
     const isPlaying = usePlayerStore((state) => state.isPlaying);
     const volume = usePlayerStore((state) => state.volume);
+
     const rotation = usePlayerStore((state) => state.rotation);
+    const [visualRotation, setVisualRotation] = useState<number>(rotation);
+    const prevRotationRef = useRef(rotation);
+
     const stepMode = usePlayerStore((state) => state.stepMode);
     const skipFrameMode = usePlayerStore((state) => state.skipFrameMode);
     const currentTime = usePlayerStore((state) => state.currentTime);
     const duration = usePlayerStore((state) => state.duration);
     const framerate = usePlayerStore((state) => state.framerate);
-
-    const isRecording = useRecordingStore((state) => state.isRecording);
-    const startRecording = useRecordingStore((state) => state.startRecording);
-    const stopRecording = useRecordingStore((state) => state.stopRecording);
-    const cancelRecording = useRecordingStore((state) => state.cancelRecording);
-    const savedPlayerState = useRecordingStore((state) => state.savedPlayerState);
 
     const showToast = useToastStore((state) => state.showToast);
 
@@ -81,6 +72,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const isCropMode = useScreenshotStore((state) => state.isCropMode);
     const setCropMode = useScreenshotStore((state) => state.setCropMode);
     const addScreenshot = useScreenshotStore((state) => state.addScreenshot);
+    const setScreenshots = useScreenshotStore((state) => state.setScreenshots);
 
     // Crop selection state
     const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
@@ -96,49 +88,84 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const [tagCoverImage, setTagCoverImage] = useState('');
     const [isTagCreateMode, setIsTagCreateMode] = useState(false);
 
+    // 【新增】状态1: 存储视频的原始宽高 (videoWidth, videoHeight)
+    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+    // 【新增】状态2: 存储视频容器的当前宽高
+    const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+
     // Expose video element to parent
     useImperativeHandle(ref, () => ({
         videoElement: videoRef.current
     }));
 
-    // Calculate scale for rotation to fit container (from reference HTML)
+    // 【新增】效果1: 使用 ResizeObserver 监听容器尺寸变化，并更新状态
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            setContainerDimensions({
+                width: container.offsetWidth,
+                height: container.offsetHeight,
+            });
+        });
+
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    // 【核心修正】彻底重写 calculateScale 函数
     const calculateScale = useCallback(() => {
-        if (!containerRef.current || !videoRef.current) return 1;
+        const cw = containerDimensions.width;
+        const ch = containerDimensions.height;
+        const vw = videoDimensions.width;
+        const vh = videoDimensions.height;
 
-        const cw = containerRef.current.offsetWidth;
-        const ch = containerRef.current.offsetHeight;
-
-        // When rotated 90 or 270 degrees, swap dimensions
-        if (rotation % 180 !== 0) {
-            // Scale to fit the swapped dimensions
-            return Math.min(cw / ch, ch / cw);
+        if (!cw || !ch || !vw || !vh) {
+            return 1;
         }
-        return 1;
-    }, [rotation]);
 
-    // Apply rotation transform
+        if (rotation % 180 === 0) {
+            return 1;
+        }
+
+        const videoAspectRatio = vw / vh;
+        const containerAspectRatio = cw / ch;
+
+        let renderedVideoWidth, renderedVideoHeight;
+
+        if (videoAspectRatio > containerAspectRatio) {
+            renderedVideoWidth = cw;
+            renderedVideoHeight = cw / videoAspectRatio;
+        } else {
+            renderedVideoHeight = ch;
+            renderedVideoWidth = ch * videoAspectRatio;
+        }
+
+        const scale = Math.min(
+            cw / renderedVideoHeight,
+            ch / renderedVideoWidth
+        );
+
+        return scale;
+    }, [rotation, videoDimensions, containerDimensions]);
+
+    // 【修正】让 transform 效果依赖于所有相关尺寸的变化
     useEffect(() => {
         if (videoRef.current) {
             const scale = calculateScale();
             videoRef.current.style.transform = `rotate(${rotation}deg) scale(${scale})`;
         }
-    }, [rotation, calculateScale]);
+    }, [rotation, calculateScale, videoDimensions, containerDimensions]);
 
     // Update video source when path changes
     useEffect(() => {
         if (videoRef.current && currentVideoPath) {
-            // Use custom media protocol to bypass security restrictions
-            // Ensure path is properly formatted for the media protocol
             let normalizedPath = currentVideoPath.replace(/\\/g, '/');
-
-            // Ensure Windows drive letters are properly formatted
-            // Convert E:\path or E:/path to E:/path format
             normalizedPath = normalizedPath.replace(/^([a-zA-Z]):\\/, '$1:/');
-
             videoRef.current.src = `file://${normalizedPath}`;
             videoRef.current.load();
 
-            // Fetch video metadata including framerate
             if (window.api?.getVideoMetadata) {
                 window.api.getVideoMetadata(currentVideoPath).then(metadata => {
                     setFramerate(metadata.framerate);
@@ -146,11 +173,16 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                 });
             }
 
-            // Load saved rotation angle
             if (window.api?.loadVideoRotation) {
                 window.api.loadVideoRotation(currentVideoPath).then(savedRotation => {
-                    setRotation(savedRotation as 0 | 90 | 180 | 270);
-                    console.log(`Loaded rotation: ${savedRotation}°`);
+                    const rot = savedRotation as 0 | 90 | 180 | 270;
+
+                    // 核心修复：同时更新数据状态、视觉状态和用于比较的ref
+                    setRotation(rot);
+                    setVisualRotation(rot);
+                    prevRotationRef.current = rot;
+
+                    console.log(`Loaded rotation: ${rot}°`);
                 });
             }
         }
@@ -187,17 +219,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     }, [volume]);
 
     // Handle video events
-    const handlePlay = () => {
-        setPlaying(true);
-    };
-
-    const handlePause = () => {
-        setPlaying(false);
-    };
-
-    const handleEnded = () => {
-        setPlaying(false);
-    };
+    const handlePlay = () => setPlaying(true);
+    const handlePause = () => setPlaying(false);
 
     const handleTimeUpdate = () => {
         if (videoRef.current) {
@@ -205,92 +228,24 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         }
     };
 
+    // 【修正】在视频元数据加载后，更新视频的原始尺寸状态
     const handleLoadedMetadata = () => {
         if (videoRef.current) {
             setDuration(videoRef.current.duration);
+            setVideoDimensions({
+                width: videoRef.current.videoWidth,
+                height: videoRef.current.videoHeight,
+            });
         }
     };
-
-    const skipFrameConfig = usePlayerStore((state) => state.skipFrameConfig);
-    const skipDuration = usePlayerStore((state) => state.skipDuration);
-
-    // Skip frame playback logic
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video || !skipFrameMode || !duration) return;
-
-        // Calculate segments using config from store
-        const { getSkipFrameSegments } = require('../utils/viewport');
-        const numSegments = getSkipFrameSegments(duration, skipFrameConfig);
-
-        if (!numSegments || numSegments === 0) return; // No skip frame for this duration
-
-        // Calculate time points
-        const interval = duration / numSegments;
-        const segments: number[] = [];
-        for (let i = 0; i < numSegments; i++) {
-            segments.push(i * interval);
-        }
-
-        let currentSegmentIndex = 0;
-        let pauseTimeout: NodeJS.Timeout | null = null;
-
-        const handleTimeUpdate = () => {
-            if (!video) return;
-
-            const currentTime = video.currentTime;
-
-            // Find current segment
-            const segmentIndex = segments.findIndex((segmentTime, index) => {
-                const nextSegmentTime = segments[index + 1] || duration;
-                return currentTime >= segmentTime && currentTime < nextSegmentTime;
-            });
-
-            if (segmentIndex === -1) return;
-
-            // If we've moved to a new segment
-            if (segmentIndex !== currentSegmentIndex) {
-                currentSegmentIndex = segmentIndex;
-
-                // Seek to segment start
-                video.currentTime = segments[segmentIndex];
-                video.pause();
-
-                // Clear any existing timeout
-                if (pauseTimeout) {
-                    clearTimeout(pauseTimeout);
-                }
-
-                // Resume after skip duration (from store)
-                pauseTimeout = setTimeout(() => {
-                    if (segmentIndex < segments.length - 1) {
-                        video.currentTime = segments[segmentIndex + 1];
-                        video.play();
-                    }
-                }, skipDuration * 1000);
-            }
-        };
-
-        video.addEventListener('timeupdate', handleTimeUpdate);
-
-        return () => {
-            video.removeEventListener('timeupdate', handleTimeUpdate);
-            if (pauseTimeout) {
-                clearTimeout(pauseTimeout);
-            }
-        };
-    }, [skipFrameMode, duration, skipFrameConfig, skipDuration]);
 
     // Frame stepping function
     const stepFrame = useCallback((direction: number) => {
         if (!videoRef.current) return;
-
-        if (stepMode === 'frame') {
-            // Use actual framerate from video metadata (fetched via IPC)
-            const frameDuration = 1 / framerate;
+        const frameDuration = 1 / framerate;
+        if (stepMode === 'frame' && framerate > 0) {
             videoRef.current.currentTime += direction * frameDuration;
         } else {
-            // Step by 1 second
             videoRef.current.currentTime += direction * 1;
         }
     }, [stepMode, framerate]);
@@ -300,45 +255,79 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         const newRotation = ((rotation + 90) % 360) as 0 | 90 | 180 | 270;
         setRotation(newRotation);
 
-        // Save rotation to persistence
         if (window.api?.saveVideoRotation && currentVideoPath) {
             window.api.saveVideoRotation(currentVideoPath, newRotation);
         }
     }, [rotation, setRotation, currentVideoPath]);
 
     // Toggle play/pause
-    const togglePlayPause = useCallback(() => {
-        setPlaying(!isPlaying);
-    }, [isPlaying, setPlaying]);
+    const togglePlayPause = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
 
-    // Take raw screenshot (original video frame)
-    const takeRawScreenshot = useCallback(() => {
-        if (!videoRef.current) return;
+    const takeRawScreenshot = useCallback(async () => {
+        if (!videoRef.current || !currentVideoPath) return;
 
         try {
-            const dataUrl = captureRawScreenshot(videoRef.current);
-            const timestamp = Math.floor(currentTime * 1000);
-            addScreenshot({
-                id: `screenshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                timestamp,
-                dataUrl,
-                width: videoRef.current.videoWidth,
-                height: videoRef.current.videoHeight,
-                createdAt: Date.now()
-            });
+            const video = videoRef.current;
+            const currentTime = video.currentTime; // 获取当前时间（秒）
+
+            const videoHash = await window.api.calculateVideoHash(currentVideoPath);
+            if (!videoHash) throw new Error("Failed to calculate video hash");
+
+            // 调用主进程在指定时间点截图
+            const success = await window.api.saveManualScreenshot(videoHash, currentVideoPath, currentTime);
+
+            if (success) {
+                // 成功后，重新加载列表以更新UI
+                const updatedScreenshots = await window.api.loadScreenshots(videoHash);
+                setScreenshots(updatedScreenshots);
+                showToast({ message: '截图成功', type: 'success' });
+            } else {
+                throw new Error("Main process failed to capture screenshot.");
+            }
+
         } catch (error) {
             console.error('Failed to capture screenshot:', error);
+            showToast({ message: '截图失败', type: 'error' });
         }
-    }, [currentTime, addScreenshot]);
+    }, [currentVideoPath, setScreenshots, showToast]);
+
+
+    // 【修改】视频加载时的逻辑
+    useEffect(() => {
+        if (!currentVideoPath) return;
+
+        const initializeScreenshots = async () => {
+            // ▼▼▼ 使用新的 IPC 调用 ▼▼▼
+            const videoHash = await window.api.calculateVideoHash(currentVideoPath);
+            if (!videoHash) {
+                console.error("Could not generate hash, aborting screenshot initialization.");
+                return;
+            }
+
+            let existingScreenshots = await window.api.loadScreenshots(videoHash);
+
+            if (existingScreenshots.length === 0) {
+                showToast({ message: '正在生成预览截图...', type: 'info' });
+                const success = await window.api.generateAutoScreenshots(videoHash, currentVideoPath);
+
+                if (success) {
+                    existingScreenshots = await window.api.loadScreenshots(videoHash);
+                }
+            }
+
+            setScreenshots(existingScreenshots);
+        };
+
+        initializeScreenshots();
+
+    }, [currentVideoPath, duration, setScreenshots, showToast]);
 
     // Handle crop mode mouse events
     const handleCropMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (!isCropMode || !cropOverlayRef.current) return;
-
         const rect = cropOverlayRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-
         setCropStart({ x, y });
         setCropEnd({ x, y });
         setIsDragging(true);
@@ -346,11 +335,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
 
     const handleCropMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (!isDragging || !cropOverlayRef.current) return;
-
         const rect = cropOverlayRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-
         setCropEnd({ x, y });
     }, [isDragging]);
 
@@ -359,41 +346,30 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
             setIsDragging(false);
             return;
         }
-
         const width = Math.abs(cropEnd.x - cropStart.x);
         const height = Math.abs(cropEnd.y - cropStart.y);
-
-        // Minimum crop size
         if (width < 10 || height < 10) {
             setIsDragging(false);
             setCropStart(null);
             setCropEnd(null);
             return;
         }
-
         try {
-            // Capture screenshot
             const dataUrl = captureRotatedScreenshot(videoRef.current, rotation);
-
             if (isTagCreateMode) {
-                // Tag creation mode: open CreateTagDialog with screenshot
                 setTagCoverImage(dataUrl);
                 setShowCreateTagDialog(true);
                 setIsTagCreateMode(false);
                 setCropMode(false);
             } else {
-                // Normal screenshot mode: add to screenshot store
-                const timestamp = Math.floor(currentTime * 1000);
                 addScreenshot({
                     id: `screenshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    timestamp,
+                    timestamp: videoRef.current.currentTime,
                     dataUrl,
                     width: videoRef.current.videoWidth,
                     height: videoRef.current.videoHeight,
                     createdAt: Date.now()
                 });
-
-                // Exit crop mode
                 setCropMode(false);
             }
         } catch (error) {
@@ -403,7 +379,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
             setCropStart(null);
             setCropEnd(null);
         }
-    }, [isDragging, cropStart, cropEnd, rotation, currentTime, addScreenshot, setCropMode, isTagCreateMode]);
+    }, [isDragging, cropStart, cropEnd, rotation, addScreenshot, setCropMode, isTagCreateMode]);
 
     // Play next video function
     const playNextVideo = useCallback(() => {
@@ -411,7 +387,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         const setCurrentVideo = usePlayerStore.getState().setCurrentVideo;
         const updateLastPlayed = useVideoStore.getState().updateLastPlayed;
         const setView = useNavigationStore.getState().setView;
-
         const nextVideo = getNextVideo();
         if (nextVideo) {
             setCurrentVideo(nextVideo.path);
@@ -424,69 +399,75 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if typing in input fields
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
                 return;
             }
-
             switch (e.key.toLowerCase()) {
-                case ' ':
-                    e.preventDefault();
-                    togglePlayPause();
-                    break;
-                case 'r':
-                    // Alt+R for rotation (as per requirements)
-                    if (e.altKey) {
-                        e.preventDefault();
-                        rotateVideo();
-                    }
-                    break;
-                case 'a':
-                    e.preventDefault();
-                    stepFrame(-1);
-                    break;
-                case 'd':
-                    e.preventDefault();
-                    stepFrame(1);
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    if (isCropMode) {
-                        setCropMode(false);
-                    } else {
-                        takeRawScreenshot();
-                    }
-                    break;
-                case 'g':
-                case 'G':
-                    // Shift+G: Open tag assignment dialog
-                    if (e.shiftKey) {
-                        e.preventDefault();
-                        setShowTagDialog(true);
-                    }
-                    break;
-                case 'pagedown':
-                    e.preventDefault();
-                    playNextVideo();
-                    break;
+                case ' ': e.preventDefault(); togglePlayPause(); break;
+                case 'r': e.preventDefault(); rotateVideo(); break;
+                case 'a': e.preventDefault(); stepFrame(-1); break;
+                case 'd': e.preventDefault(); stepFrame(1); break;
+                case 'e': e.preventDefault(); isCropMode ? setCropMode(false) : takeRawScreenshot(); break;
+                case 'g': if (e.shiftKey) { e.preventDefault(); setShowTagDialog(true); } break;
+                case 'pagedown': e.preventDefault(); playNextVideo(); break;
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [togglePlayPause, rotateVideo, stepFrame, isCropMode, setCropMode, takeRawScreenshot, playNextVideo]);
+
+    // VideoPlayer.tsx
+
+    // ... (在其他 useEffect 附近添加)
+
+    // ▼▼▼ 新增下面这个完整的 useEffect ▼▼▼
+    // Sync visual rotation with the global rotation state for smooth animations
+    useEffect(() => {
+        const prevRotation = prevRotationRef.current;
+
+        // Case 1: Standard rotation (e.g., 0 -> 90, 90 -> 180)
+        if (rotation === prevRotation + 90) {
+            setVisualRotation(visualRotation + 90);
+        }
+        // Case 2: The special case, 270 -> 0. We want to animate to 360.
+        else if (rotation === 0 && prevRotation === 270) {
+            setVisualRotation(visualRotation + 90);
+        }
+        // Case 3: Handle reverse rotation (e.g., 90 -> 0)
+        else if (rotation === prevRotation - 90) {
+            setVisualRotation(visualRotation - 90);
+        }
+        // Case 4: The special reverse case, 0 -> 270.
+        else if (rotation === 270 && prevRotation === 0) {
+            setVisualRotation(visualRotation - 90);
+        }
+        // Case 5: Fallback - if the rotation is set directly (e.g., loading a video)
+        else {
+            setVisualRotation(rotation);
+        }
+
+        // Update the ref for the next render
+        prevRotationRef.current = rotation;
+
+    }, [rotation]); // This effect ONLY runs when the global `rotation` changes
+
+    useEffect(() => {
+        if (videoRef.current) {
+            const scale = calculateScale();
+            // ▼▼▼ 把这里的 `rotation` ▼▼▼
+            // videoRef.current.style.transform = `rotate(${rotation}deg) scale(${scale})`;
+
+            // ▼▼▼ 修改为 `visualRotation` ▼▼▼
+            videoRef.current.style.transform = `rotate(${visualRotation}deg) scale(${scale})`;
+        }
+    }, [visualRotation, calculateScale, videoDimensions, containerDimensions]);
 
     // Auto play next video when current video ends
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
-
-        const handleEnded = () => {
-            playNextVideo();
-        };
-
-        video.addEventListener('ended', handleEnded);
-        return () => video.removeEventListener('ended', handleEnded);
+        video.addEventListener('ended', playNextVideo);
+        return () => video.removeEventListener('ended', playNextVideo);
     }, [playNextVideo]);
 
     if (!currentVideoPath) {
@@ -510,94 +491,92 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     return (
         <VideoContext.Provider value={{ videoRef }}>
             <Box
-                ref={containerRef}
                 style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    width: '100%',
                     height: '100%',
                     backgroundColor: '#000',
-                    overflow: 'hidden',
-                    position: 'relative',
                 }}
             >
-                <video
-                    ref={videoRef}
+                <Box
+                    ref={containerRef}
                     style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                        transformOrigin: 'center center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        flex: 1,
                     }}
-                    onPlay={handlePlay}
-                    onPause={handlePause}
-                    onEnded={handleEnded}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onError={(e) => {
-                        console.error('视频播放错误:', e);
-                        const videoElement = e.target as HTMLVideoElement;
-                        if (videoElement.error) {
-                            // MediaError 对象包含更多信息
-                            console.error(`错误代码: ${videoElement.error.code}`);
-                            console.error(`错误信息: ${videoElement.error.message}`);
-                        }
-                    }}
-                />
-
-                {/* Crop overlay */}
-                {isCropMode && (
-                    <Box
-                        ref={cropOverlayRef}
-                        onMouseDown={handleCropMouseDown}
-                        onMouseMove={handleCropMouseMove}
-                        onMouseUp={handleCropMouseUp}
+                >
+                    <video
+                        ref={videoRef}
                         style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
                             width: '100%',
                             height: '100%',
-                            cursor: 'crosshair',
-                            zIndex: 20,
+                            objectFit: 'contain',
+                            transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                            transformOrigin: 'center center',
                         }}
-                    >
-                        {/* Selection box */}
-                        {cropStart && cropEnd && (
-                            <Box
-                                style={{
-                                    position: 'absolute',
-                                    left: Math.min(cropStart.x, cropEnd.x),
-                                    top: Math.min(cropStart.y, cropEnd.y),
-                                    width: Math.abs(cropEnd.x - cropStart.x),
-                                    height: Math.abs(cropEnd.y - cropStart.y),
-                                    border: '2px dashed #00ff00',
-                                    backgroundColor: 'rgba(0, 255, 0, 0.2)',
-                                    pointerEvents: 'none',
-                                }}
-                            />
-                        )}
-                    </Box>
-                )}
+                        onPlay={handlePlay}
+                        onPause={handlePause}
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onError={(e) => {
+                            console.error('视频播放错误:', e);
+                            const videoElement = e.target as HTMLVideoElement;
+                            if (videoElement.error) {
+                                console.error(`错误代码: ${videoElement.error.code}`);
+                                console.error(`错误信息: ${videoElement.error.message}`);
+                            }
+                        }}
+                    />
+
+                    {isCropMode && (
+                        <Box
+                            ref={cropOverlayRef}
+                            onMouseDown={handleCropMouseDown}
+                            onMouseMove={handleCropMouseMove}
+                            onMouseUp={handleCropMouseUp}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                cursor: 'crosshair',
+                                zIndex: 20,
+                            }}
+                        >
+                            {cropStart && cropEnd && (
+                                <Box
+                                    style={{
+                                        position: 'absolute',
+                                        left: Math.min(cropStart.x, cropEnd.x),
+                                        top: Math.min(cropStart.y, cropEnd.y),
+                                        width: Math.abs(cropEnd.x - cropStart.x),
+                                        height: Math.abs(cropEnd.y - cropStart.y),
+                                        border: '2px dashed #00ff00',
+                                        backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                                        pointerEvents: 'none',
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    )}
+                </Box>
 
                 <Box
                     style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
                         width: '100%',
-                        zIndex: 30, // 确保层级高于视频和裁剪层(20)
-                        transition: 'opacity 0.3s', // 可选：添加淡入淡出效果
+                        zIndex: 30,
+                        flexShrink: 0,
                     }}
-                // 可选：鼠标移出播放器区域时隐藏控制器
-                // onMouseEnter={() => setShowControls(true)}
-                // onMouseLeave={() => isPlaying && setShowControls(false)}
                 >
                     <PlayerControls
                         videoRef={videoRef}
                         onScreenshot={() => {
-                            // 复用 'e' 键的逻辑：如果是裁剪模式则退出，否则截图
                             if (isCropMode) {
                                 setCropMode(false);
                             } else {
@@ -605,16 +584,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                             }
                         }}
                         onNext={playNextVideo}
+                        onRotate={rotateVideo}
                     />
                 </Box>
 
-                {/* Tag Assignment Dialog */}
                 <AssignTagDialog
                     opened={showTagDialog}
                     onClose={() => setShowTagDialog(false)}
                     assignedTagIds={currentVideoTags}
                     onAssign={async (tagIds) => {
-                        // Save video tags
                         if (window.api?.saveVideoTags && currentVideoPath) {
                             await window.api.saveVideoTags(currentVideoPath, tagIds);
                             setCurrentVideoTags(tagIds);
@@ -622,7 +600,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                     }}
                 />
 
-                {/* Tag Creation Dialog */}
                 <CreateTagDialog
                     opened={showCreateTagDialog}
                     onClose={() => {
@@ -632,7 +609,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                     coverImage={tagCoverImage}
                     assignedTagIds={currentVideoTags}
                     onCreated={async (newTag) => {
-                        // Auto-assign to current video
                         if (window.api?.saveVideoTags && currentVideoPath) {
                             await window.api.saveVideoTags(currentVideoPath, [...currentVideoTags, newTag.id]);
                             setCurrentVideoTags([...currentVideoTags, newTag.id]);

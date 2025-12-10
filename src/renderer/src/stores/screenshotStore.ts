@@ -1,20 +1,17 @@
 import { create } from 'zustand';
 
 export interface Screenshot {
-  id: string;
-  timestamp: number; // Video time in seconds
-  dataUrl: string;
-  width: number;
-  height: number;
-  createdAt: number; // Unix timestamp
+  filename: string;
+  timestamp: number; 
+  path: string;      
+  type: 'manual' | 'auto';
 }
 
 interface ScreenshotState {
   screenshots: Screenshot[];
   isCropMode: boolean;
   
-  addScreenshot: (screenshot: Screenshot) => void;
-  removeScreenshot: (id: string) => void;
+  setScreenshots: (screenshots: Screenshot[]) => void;
   clearScreenshots: () => void;
   setCropMode: (enabled: boolean) => void;
 }
@@ -22,14 +19,8 @@ interface ScreenshotState {
 export const useScreenshotStore = create<ScreenshotState>((set) => ({
   screenshots: [],
   isCropMode: false,
-
-  addScreenshot: (screenshot) => set((state) => ({
-    screenshots: [...state.screenshots, screenshot]
-  })),
-
-  removeScreenshot: (id) => set((state) => ({
-    screenshots: state.screenshots.filter(s => s.id !== id)
-  })),
+  
+  setScreenshots: (screenshots) => set({ screenshots }),
 
   clearScreenshots: () => set({ screenshots: [] }),
 
