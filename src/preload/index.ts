@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { Annotation } from '../main/data/json/index';
 
 // Custom APIs for renderer
 const api = {
@@ -43,18 +44,37 @@ const api = {
     ipcRenderer.invoke('save-cover', videoHash, dataUrl, isDefault),
   
   // Export
-  exportScreenshots: (videoHash: string, rotation: number, exportPath: string) =>
-    ipcRenderer.invoke('export-screenshots', videoHash, rotation, exportPath),
+  exportScreenshots: (videoHash: string, rotation: number) =>
+    ipcRenderer.invoke('export-screenshots', videoHash, rotation),
   
   // Video Metadata
-   calculateVideoHash: (filePath: string) => 
+  calculateVideoHash: (filePath: string) => 
     ipcRenderer.invoke('calculate-video-hash', filePath),
   getVideoMetadata: (videoPath: string) =>
     ipcRenderer.invoke('get-video-metadata', videoPath),
-  saveVideoRotation: (videoPath: string, rotation: number) =>
-    ipcRenderer.invoke('save-video-rotation', videoPath, rotation),
-  loadVideoRotation: (videoPath: string) =>
-    ipcRenderer.invoke('load-video-rotation', videoPath),
+  
+
+  // Annotation
+  addAnnotation: (videoHash: string, annotation: Annotation) =>
+    ipcRenderer.invoke('add-annotation', videoHash, annotation),
+
+  getAnnotation: (videoHash: string) =>
+    ipcRenderer.invoke('get-annotation', videoHash),
+
+  updateAnnotation: (videoHash: string, updates: Partial<Annotation>) =>
+    ipcRenderer.invoke('update-annotation', videoHash, updates),
+
+  getAllAnnotations: () => 
+    ipcRenderer.invoke('get-all-annotations'),
+
+  getFavoriteAnnotations: () => 
+    ipcRenderer.invoke('get-favorite-annotations'),
+
+  getAnnotationsByLikeCount: (threshold: number) =>
+    ipcRenderer.invoke('get-annotations-by-like-count', threshold),
+    
+  getAnnotationsByTag: (tagId: number) =>
+    ipcRenderer.invoke('get-annotations-by-tag', tagId),
   
   // Settings
   saveVolume: (volume: number) =>

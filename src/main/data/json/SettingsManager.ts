@@ -205,3 +205,6 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     return this.data.key_bindings.dialog_assign_tag;
   }
 }
+
+
+export const settingsManager = new SettingsManager();

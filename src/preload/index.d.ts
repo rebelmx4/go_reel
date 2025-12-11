@@ -1,11 +1,7 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import { Annotation } from '../main/data/json/AnnotationManager'
+import { Screenshot } from '../main/data/assets/ScreenshotManager'
 
-export interface Screenshot {
-  filename: string
-  timestamp: number
-  path: string
-  type: 'manual' | 'auto'
-}
 
 declare global {
   interface Window {
@@ -50,8 +46,7 @@ declare global {
       // Export
       exportScreenshots: (
         videoHash: string,
-        rotation: number,
-        exportPath: string
+        rotation: number
       ) => Promise<void>
       
       // Video Metadata
@@ -62,9 +57,15 @@ declare global {
         height: number
         framerate: number
       }>
-      saveVideoRotation: (videoPath: string, rotation: number) => Promise<void>
-      loadVideoRotation: (videoPath: string) => Promise<number>
-      
+
+      // annotation
+    getAnnotation: (videoHash: string) => Promise<Annotation | null>;
+    updateAnnotation: (videoHash: string, updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>;
+    getAllAnnotations: () => Promise<Array<[string, Annotation]>>;
+    getFavoriteAnnotations: () => Promise<Array<[string, Annotation]>>;
+    getAnnotationsByLikeCount: (threshold: number) => Promise<Array<[string, Annotation]>>;
+    getAnnotationsByTag: (tagId: number) => Promise<Array<[string, Annotation]>>;
+          
       // Settings
       saveVolume: (volume: number) => Promise<void>
       loadVolume: () => Promise<number>

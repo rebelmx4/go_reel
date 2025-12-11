@@ -3,7 +3,7 @@ import { BaseJsonManager } from './BaseJsonManager';
 /**
  * Video metadata according to documentation
  */
-export interface VideoMetadata {
+export interface Annotation {
   paths: string[]; // Array of relative paths (relative to video_source)
   like_count: number; // Like/heat score
   is_favorite: boolean; // Whether in elite/favorite list
@@ -15,13 +15,13 @@ export interface VideoMetadata {
 /**
  * Metadata store - keyed by video hash
  */
-export interface MetadataStore {
-  [hash: string]: VideoMetadata;
+export interface AnnotaionList {
+  [hash: string]: Annotation;
 }
 
-export class MetadataManager extends BaseJsonManager<MetadataStore> {
+export class AnnotationManager extends BaseJsonManager<AnnotaionList> {
   constructor() {
-    super('files.json', {});
+    super('annotations.json', {});
   }
 
   /**
@@ -29,7 +29,7 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * @param hash - Video hash
    * @returns Video metadata or undefined
    */
-  public getFile(hash: string): VideoMetadata | undefined {
+  public getAnnotation(hash: string): Annotation | undefined {
     return this.data[hash];
   }
 
@@ -38,7 +38,7 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * @param hash - Video hash
    * @param metadata - Video metadata
    */
-  public addFile(hash: string, metadata: VideoMetadata): void {
+  public addAnnotation(hash: string, metadata: Annotation): void {
     this.set({ [hash]: metadata });
   }
 
@@ -47,7 +47,7 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * @param hash - Video hash
    * @param updates - Partial metadata to update
    */
-  public updateFile(hash: string, updates: Partial<VideoMetadata>): void {
+  public updateAnnotation(hash: string, updates: Partial<Annotation>): void {
     const file = this.data[hash];
     if (file) {
       this.set({ [hash]: { ...file, ...updates } });
@@ -58,7 +58,7 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * Remove a video's metadata
    * @param hash - Video hash
    */
-  public removeFile(hash: string): void {
+  public removeAnnotation(hash: string): void {
     const newData = { ...this.data };
     delete newData[hash];
     this.data = newData;
@@ -69,7 +69,7 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * Get all video metadata
    * @returns Array of [hash, metadata] tuples
    */
-  public getAllFiles(): Array<[string, VideoMetadata]> {
+  public getAllAnnotations(): Array<[string, Annotation]> {
     return Object.entries(this.data);
   }
 
@@ -77,8 +77,8 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * Get all favorite videos
    * @returns Array of [hash, metadata] tuples for favorites
    */
-  public getFavorites(): Array<[string, VideoMetadata]> {
-    return this.getAllFiles().filter(([_, metadata]) => metadata.is_favorite);
+  public getFavorites(): Array<[string, Annotation]> {
+    return this.getAllAnnotations().filter(([_, metadata]) => metadata.is_favorite);
   }
 
   /**
@@ -86,8 +86,8 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * @param threshold - Minimum like count
    * @returns Array of [hash, metadata] tuples
    */
-  public getByLikeCount(threshold: number): Array<[string, VideoMetadata]> {
-    return this.getAllFiles().filter(([_, metadata]) => metadata.like_count >= threshold);
+  public getByLikeCount(threshold: number): Array<[string, Annotation]> {
+    return this.getAllAnnotations().filter(([_, metadata]) => metadata.like_count >= threshold);
   }
 
   /**
@@ -95,7 +95,9 @@ export class MetadataManager extends BaseJsonManager<MetadataStore> {
    * @param tagId - Tag ID to filter by
    * @returns Array of [hash, metadata] tuples
    */
-  public getByTag(tagId: number): Array<[string, VideoMetadata]> {
-    return this.getAllFiles().filter(([_, metadata]) => metadata.tags.includes(tagId));
+  public getByTag(tagId: number): Array<[string, Annotation]> {
+    return this.getAllAnnotations().filter(([_, metadata]) => metadata.tags.includes(tagId));
   }
 }
+
+export const annotationManager = new AnnotationManager();

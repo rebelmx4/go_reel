@@ -3,6 +3,7 @@ import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
 import { BaseAssetManager } from './BaseAssetManager';
+import { settingsManager }  from '../json/SettingsManager';
 
 // 定义了 'load-screenshots' 返回的截图对象结构
 export interface Screenshot {
@@ -39,6 +40,9 @@ export class ScreenshotManager extends BaseAssetManager {
         .frames(1)
         .outputOptions('-vcodec', 'webp', '-lossless', '1', '-q:v', '75', '-an')
         .output(outputPath)
+        .on('start', function(commandLine) {
+          console.log('Spawining Ffmpeg with command: ' + commandLine);
+        })
         .on('end', () => resolve(true))
         .on('error', (err) => {
           console.error(`[Manual Screenshot Manager] Failed for ${hash}:`, err);
@@ -157,7 +161,9 @@ export class ScreenshotManager extends BaseAssetManager {
    * @param rotation - 顺时针旋转角度。支持的值为 90、180、270。
    * @param exportPath - 导出的目标目录路径
    */
-  public async exportScreenshots(hash: string, rotation: number, exportPath: string): Promise<void> {
+  public async exportScreenshots(hash: string, rotation: number): Promise<void> {
+    const exportPath = settingsManager.getScreenshotExportPath();
+
     const targetDir = path.join(exportPath, hash);
     await fs.mkdir(targetDir, { recursive: true });
     
@@ -202,3 +208,6 @@ export class ScreenshotManager extends BaseAssetManager {
     }
   }
 }
+
+
+export const screenshotManager = new ScreenshotManager();

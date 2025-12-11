@@ -1,5 +1,5 @@
 import { SettingsManager } from '../data/json/SettingsManager';
-import { MetadataManager } from '../data/json/MetadataManager';
+import { AnnotationManager } from '../data/json/AnnotationManager';
 import { scanVideoFiles, ScanResult } from '../utils/fileScanner';
 import { calculateFastHash } from '../utils/hash';
 import log from 'electron-log';
@@ -43,7 +43,7 @@ export class RefreshService {
 
   constructor(
     private settingsManager: SettingsManager,
-    private metadataManager: MetadataManager
+    private metadataManager: AnnotationManager
   ) {}
 
   setMainWindow(window: BrowserWindow) {
@@ -204,7 +204,7 @@ export class RefreshService {
           log.debug(`File missing but has valuable data: ${hash}`);
         } else {
           // Remove from metadata
-          this.metadataManager.removeFile(hash);
+          this.metadataManager.removeAnnotation(hash);
           deletedFiles++;
           log.debug(`Deleted file: ${hash}`);
         }

@@ -2,10 +2,12 @@ import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useSta
 import { Box } from '@mantine/core';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useVideoStore, useNavigationStore, useToastStore } from '../stores';
 import { VideoContext } from '../contexts';
-import { captureRawScreenshot, captureRotatedScreenshot } from '../utils';
+import { captureRotatedScreenshot } from '../utils';
 import { AssignTagDialog } from './Dialog/AssignTagDialog';
 import { CreateTagDialog } from './Dialog/CreateTagDialog';
 import { PlayerControls } from './PlayerControls';
+import { useScreenshotExport } from '../hooks/useScreenshotExport'; // 引入 Hook
+import { ExportScreenshotDialog } from './Dialog/ExportScreenshotDialog';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
@@ -73,6 +75,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const setCropMode = useScreenshotStore((state) => state.setCropMode);
     const addScreenshot = useScreenshotStore((state) => state.addScreenshot);
     const setScreenshots = useScreenshotStore((state) => state.setScreenshots);
+    const {
+        showExportDialog,
+        setShowExportDialog,
+        exportRotationMetadata,
+        currentHash
+    } = useScreenshotExport(currentVideoPath, isCropMode, setCropMode);
 
     // Crop selection state
     const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
@@ -162,29 +170,30 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     useEffect(() => {
         if (videoRef.current && currentVideoPath) {
             let normalizedPath = currentVideoPath.replace(/\\/g, '/');
-            normalizedPath = normalizedPath.replace(/^([a-zA-Z]):\\/, '$1:/');
             videoRef.current.src = `file://${normalizedPath}`;
             videoRef.current.load();
 
-            if (window.api?.getVideoMetadata) {
-                window.api.getVideoMetadata(currentVideoPath).then(metadata => {
+            const loadMetadata = async () => {
+                try {
+                    const metadata = await window.api.getVideoMetadata(currentVideoPath);
                     setFramerate(metadata.framerate);
                     console.log(`Video framerate: ${metadata.framerate} fps`);
-                });
-            }
 
-            if (window.api?.loadVideoRotation) {
-                window.api.loadVideoRotation(currentVideoPath).then(savedRotation => {
-                    const rot = savedRotation as 0 | 90 | 180 | 270;
-
-                    // 核心修复：同时更新数据状态、视觉状态和用于比较的ref
-                    setRotation(rot);
-                    setVisualRotation(rot);
-                    prevRotationRef.current = rot;
-
-                    console.log(`Loaded rotation: ${rot}°`);
-                });
-            }
+                    const hash = await window.api.calculateVideoHash(currentVideoPath);
+                    if (hash) {
+                        const annotation = await window.api.getAnnotation(hash);
+                        const savedRotation = annotation?.rotation ?? 0;
+                        const rot = savedRotation as 0 | 90 | 180 | 270;
+                        setRotation(rot);
+                        setVisualRotation(rot);
+                        prevRotationRef.current = rot;
+                        console.log(`Loaded rotation from annotation: ${rot}°`);
+                    }
+                } catch (error) {
+                    console.error("Failed to load video metadata:", error)
+                }
+            };
+            loadMetadata();
         }
     }, [currentVideoPath, setFramerate, setRotation]);
 
@@ -251,12 +260,19 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     }, [stepMode, framerate]);
 
     // Rotate video by 90 degrees
-    const rotateVideo = useCallback(() => {
+    const rotateVideo = useCallback(async () => {
         const newRotation = ((rotation + 90) % 360) as 0 | 90 | 180 | 270;
         setRotation(newRotation);
 
-        if (window.api?.saveVideoRotation && currentVideoPath) {
-            window.api.saveVideoRotation(currentVideoPath, newRotation);
+        if (currentVideoPath) {
+            try {
+                const hash = await window.api.calculateVideoHash(currentVideoPath);
+                if (hash) {
+                    await window.api.updateAnnotation(hash, { rotation: newRotation });
+                }
+            } catch (error) {
+                console.error("Failed to save video rotation:", error);
+            }
         }
     }, [rotation, setRotation, currentVideoPath]);
 
@@ -297,6 +313,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         if (!currentVideoPath) return;
 
         const initializeScreenshots = async () => {
+            // ▼▼▼ 使用新的 IPC 调用 ▼▼▼
             const videoHash = await window.api.calculateVideoHash(currentVideoPath);
             if (!videoHash) {
                 console.error("Could not generate hash, aborting screenshot initialization.");
@@ -532,7 +549,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         }}
                     />
 
-                    {isCropMode && (
+                    {/* {isCropMode && (
                         <Box
                             ref={cropOverlayRef}
                             onMouseDown={handleCropMouseDown}
@@ -563,7 +580,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                                 />
                             )}
                         </Box>
-                    )}
+                    )} */}
                 </Box>
 
                 <Box
@@ -586,6 +603,16 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         onRotate={rotateVideo}
                     />
                 </Box>
+
+
+                {/* 弹窗组件只需要传递最少的数据 */}
+                <ExportScreenshotDialog
+                    opened={showExportDialog}
+                    onClose={() => setShowExportDialog(false)}
+                    screenshots={useScreenshotStore.getState().screenshots}
+                    videoHash={currentHash}
+                    initialRotation={exportRotationMetadata}
+                />
 
                 <AssignTagDialog
                     opened={showTagDialog}

@@ -4,13 +4,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
 import { StartupService, RefreshService, VideoExportService } from './services';
-import { SettingsManager, MetadataManager, HistoryManager } from './data';
+import { SettingsManager, annotationManager, HistoryManager } from './data';
 import { registerWindowHandlers } from './ipc/windowHandlers';
-import { registerVideoMetadataHandler } from './ipc/videoMetadataHandler';
+import { registerMetadataHandler } from './ipc/MetadataHandler';
 import { registerScreenshotHandlers } from './ipc/screenshotHandlers';
 import { registerCoverHandlers } from './ipc/coverHandlers';
 import { registerSettingsHandlers } from './ipc/settingsHandlers';
-import { registerMetadataPersistenceHandlers } from './ipc/metadataPersistenceHandlers';
+import { registerAnnotationHandlers } from './ipc/AnnotationHandlers';
 import { registerTagHandlers } from './ipc/tagHandlers';
 import { registerTagCoverHandlers } from './ipc/tagCoverHandlers';
 import { calculateFastHash } from './utils/hash'
@@ -24,26 +24,25 @@ let videoExportService: VideoExportService | null = null;
 log.info('Initializing startup service...');
 
 const settingsManager = new SettingsManager();
-const metadataManager = new MetadataManager();
 const historyManager = new HistoryManager();
 
 // Create startup service
 const startupService = new StartupService(
   settingsManager,
-  metadataManager,
+  annotationManager,
   historyManager
 );
 
 // Create refresh service
 refreshService = new RefreshService(
   settingsManager,
-  metadataManager
+  annotationManager
 );
 
 // Create video export service
 videoExportService = new VideoExportService(
   settingsManager,
-  metadataManager
+  annotationManager
   );
 
 log.info('Startup service initialized');
@@ -139,12 +138,11 @@ app.on('window-all-closed', () => {
  */
 function setupIpcHandlers() {
   // Register all IPC handler modules
-  // Register all IPC handler modules
-  registerVideoMetadataHandler();
+  registerMetadataHandler();
   registerScreenshotHandlers();
   registerCoverHandlers();
   registerSettingsHandlers();
-  registerMetadataPersistenceHandlers(metadataManager);
+  registerAnnotationHandlers();
   registerTagHandlers();
   registerTagCoverHandlers();
   

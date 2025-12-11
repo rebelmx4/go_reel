@@ -79,7 +79,7 @@ function getVideoMetadata(videoPath: string): Promise<VideoMetadata> {
 /**
  * Register video metadata IPC handler
  */
-export function registerVideoMetadataHandler() {
+export function registerMetadataHandler() {
   ipcMain.handle('get-video-metadata', async (_, videoPath: string) => {
     return await getVideoMetadata(videoPath);
   });

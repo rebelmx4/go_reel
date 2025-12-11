@@ -1,11 +1,8 @@
 import { SettingsManager } from '../data/json/SettingsManager';
-import { MetadataManager } from '../data/json/MetadataManager';
+import { Annotation, AnnotationManager } from '../data/json/AnnotationManager';
 import { HistoryManager } from '../data/json/HistoryManager';
 import { scanVideoFiles, getNewestVideos, ScanResult } from '../utils/fileScanner';
 import log from 'electron-log';
-import * as fs from 'fs-extra';
-import path from 'path';
-import { app } from 'electron';
 
 /**
  * Startup result returned by the startup service
@@ -30,14 +27,14 @@ export interface StartupResult {
 export class StartupService {
   constructor(
     private settingsManager: SettingsManager,
-    private metadataManager: MetadataManager,
+    private annotationManager: AnnotationManager,
     private historyManager: HistoryManager
   ) {}
 
   
   async firstStartup(): Promise<StartupResult> {
       await this.settingsManager.load()
-      await this.metadataManager.load()
+      await this.annotationManager.load()
       await this.historyManager.load()
 
       return this.startup()
@@ -68,8 +65,8 @@ export class StartupService {
           all: [],
           newest: [],
           recent: [],
-          favorites: [],
-          liked: [],
+          favorites: Array<[string, Annotation]>,
+          liked: Array<[string, Annotation]>,
         },
       };
     }
@@ -158,8 +155,8 @@ export class StartupService {
     all: ScanResult[];
     newest: ScanResult[];
     recent: string[];
-    favorites: string[];
-    liked: string[];
+    favorites: Array<[string, Annotation]>;
+    liked: Array<[string, Annotation]>;
   }> {
     log.info('Phase 3: Data loading and list building');
 
@@ -175,15 +172,9 @@ export class StartupService {
     const recent = recentHistory.filter((path) => videoPathSet.has(path));
 
     // Build favorites playlist (from metadata)
-    const allMetadata = this.metadataManager.getAllFiles();
-    const favorites = allMetadata
-      .filter(([_, metadata]) => metadata.is_favorite)
-      .map(([hash]) => hash);
+    const favorites = this.annotationManager.getFavorites();
+    const liked = this.annotationManager.getByLikeCount(0);
 
-    // Build liked playlist (like_count > 0)
-    const liked = allMetadata
-      .filter(([_, metadata]) => metadata.like_count > 0)
-      .map(([hash]) => hash);
 
     return {
       all,

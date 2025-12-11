@@ -6,6 +6,9 @@
 import { ipcMain } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { SettingsManager } from '../data/json/SettingsManager'; 
+
+const settingsManager = new SettingsManager();
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
@@ -56,5 +59,10 @@ export function registerSettingsHandlers() {
   // Load all settings
   ipcMain.handle('load-settings', async () => {
     return await loadSettings();
+  });
+
+  ipcMain.handle('get-screenshot-export-path', async () => {
+    await settingsManager.waitForReady();
+    return settingsManager.getScreenshotExportPath();
   });
 }

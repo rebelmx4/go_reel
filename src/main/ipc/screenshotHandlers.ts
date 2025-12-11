@@ -5,10 +5,10 @@
  */
 
 import { ipcMain } from 'electron';
-import { ScreenshotManager } from '../data/assets/ScreenshotManager'; // 假设 manager 文件位于 managers 目录
+import { screenshotManager } from '../data/assets/ScreenshotManager'; 
+import { metadataManager } from '../data/json/AnnotationManager';
 
-// 创建一个单例的 ScreenshotManager
-const screenshotManager = new ScreenshotManager();
+
 
 /**
  * 注册所有与截图相关的 IPC handlers
@@ -36,7 +36,20 @@ export function registerScreenshotHandlers() {
   });
   
   // 导出视频的所有截图
-  ipcMain.handle('export-screenshots', async (_, videoHash: string, rotation: number, exportPath: string) => {
-    await screenshotManager.exportScreenshots(videoHash, rotation, exportPath);
+  ipcMain.handle('export-screenshots', async (_, videoHash: string, rotation: number) => {
+    await screenshotManager.exportScreenshots(videoHash, rotation);
+  });
+
+
+  ipcMain.handle('get-screenshot-export-metadata', async (_, videoHash: string) => {
+    const metadata = metadataManager.getAnnotation(videoHash);
+    // 如果 metadata 存在，则返回其 screenshot_rotation，否则返回 null
+    return metadata?.screenshot_rotation ?? null;
+  });
+  
+  // 【新增】保存视频的截图导出旋转角度
+  ipcMain.handle('save-screenshot-export-metadata', async (_, videoHash: string, rotation: number) => {
+    // updateFile 会自动处理保存逻辑
+    await metadataManager.updateFile(videoHash,  {screenshot_rotation: rotation });
   });
 }

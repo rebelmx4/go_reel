@@ -1,5 +1,5 @@
 import { SettingsManager } from '../data/json/SettingsManager';
-import { MetadataManager } from '../data/json/MetadataManager';
+import { AnnotationManager } from '../data/json/AnnotationManager';
 import { calculateFastHash } from '../utils/hash';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -30,7 +30,7 @@ export class VideoExportService {
 
   constructor(
     private settingsManager: SettingsManager,
-    private metadataManager: MetadataManager
+    private metadataManager: AnnotationManager
   ) {}
 
   setMainWindow(window: BrowserWindow) {
@@ -175,10 +175,10 @@ export class VideoExportService {
     const userDataPath = app.getPath('userData');
 
     // 1. Migrate files.json metadata
-    const oldMetadata = this.metadataManager.getFile(oldHash);
+    const oldMetadata = this.metadataManager.getAnnotation(oldHash);
     if (oldMetadata) {
-      this.metadataManager.addFile(newHash, oldMetadata);
-      this.metadataManager.removeFile(oldHash);
+      this.metadataManager.addAnnotation(newHash, oldMetadata);
+      this.metadataManager.removeAnnotation(oldHash);
       await this.metadataManager.save();
       log.info('Metadata migrated');
     }
