@@ -19,17 +19,17 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
     const trackRef = useRef<HTMLDivElement>(null);
     const interactionTimeoutRef = useRef<number | null>(null);
 
-    // 【需求2】拖拽滚动所需的状态
+    // 【修改1】优化拖拽状态，增加 moved 标志位以区分点击和拖拽
     const dragInfo = useRef({
         isDragging: false,
         startX: 0,
         scrollLeftStart: 0,
+        moved: false, // 新增标志位
     });
 
     const [isUserInteracting, setIsUserInteracting] = useState(false);
     const [coverFilename, setCoverFilename] = useState<string | null>(null);
 
-    // activeScreenshot 和 fetchCoverStatus 逻辑保持不变...
     const activeScreenshot = useMemo(() => {
         if (screenshots.length === 0) return null;
         return screenshots.reduce((closest, s) => {
@@ -44,7 +44,6 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
         fetchCoverStatus();
     }, [currentVideoPath, screenshots]);
 
-    // 自动滚动逻辑保持不变...
     useEffect(() => {
         if (isUserInteracting || dragInfo.current.isDragging || !trackRef.current || !activeScreenshot) return;
         const activeElement = document.getElementById(`screenshot-${activeScreenshot.filename}`);
@@ -55,60 +54,72 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
         }
     }, [activeScreenshot, isUserInteracting]);
 
-    // 【需求2】实现拖拽滚动的事件处理器
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!trackRef.current) return;
-        // 阻止默认的文本选择等行为
-        e.preventDefault();
         dragInfo.current = {
             isDragging: true,
             startX: e.pageX - trackRef.current.offsetLeft,
             scrollLeftStart: trackRef.current.scrollLeft,
+            moved: false,
         };
         trackRef.current.style.cursor = 'grabbing';
-        // 标记用户正在交互，暂停自动滚动
         setIsUserInteracting(true);
         if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!dragInfo.current.isDragging || !trackRef.current) return;
-        e.preventDefault();
         const x = e.pageX - trackRef.current.offsetLeft;
-        const walk = (x - dragInfo.current.startX) * 1.5; // *1.5 加快滚动速度
-        trackRef.current.scrollLeft = dragInfo.current.scrollLeftStart - walk;
+        const walk = x - dragInfo.current.startX;
+        if (Math.abs(walk) > 5) {
+            dragInfo.current.moved = true;
+            e.preventDefault();
+            trackRef.current.scrollLeft = dragInfo.current.scrollLeftStart - walk * 1.5;
+        }
     };
 
-    const handleMouseUpOrLeave = () => {
+    // 【修改2】重构 handleMouseUpOrLeave 以处理点击
+    const handleMouseUpOrLeave = (e: React.MouseEvent) => {
         if (!dragInfo.current.isDragging) return;
+
+        // 如果鼠标没有移动，则判定为点击
+        if (!dragInfo.current.moved) {
+            // 查找被点击的卡片元素
+            let target = e.target as HTMLElement;
+            const cardElement = target.closest('.screenshot-card-container');
+
+            // 确保点击的不是按钮
+            const buttonElement = target.closest('button');
+
+            if (cardElement && !buttonElement) {
+                const filename = cardElement.id.replace('screenshot-', '');
+                const clickedScreenshot = screenshots.find(s => s.filename === filename);
+                if (clickedScreenshot) {
+                    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+                    setIsUserInteracting(false);
+                    onScreenshotClick(clickedScreenshot.timestamp);
+                }
+            }
+        }
+
+        // 重置拖拽状态
         dragInfo.current.isDragging = false;
         if (trackRef.current) trackRef.current.style.cursor = 'grab';
-        // 启动3秒计时器，之后恢复自动滚动
         interactionTimeoutRef.current = window.setTimeout(() => setIsUserInteracting(false), 3000);
     };
 
-    // 点击卡片，立即恢复自动滚动
-    const handleCardClick = (timestamp: number) => {
-        if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
-        setIsUserInteracting(false);
-        onScreenshotClick(timestamp);
-    };
-
-    // 【需求3】为悬停按钮提供回调逻辑
-    const handleSetCover = async (screenshot: Screenshot) => { /* ...逻辑不变，只是现在由 ScreenshotCard 调用... */ };
-    const handleDelete = async (screenshot: Screenshot) => { /* ...逻辑不变，只是现在由 ScreenshotCard 调用... */ };
+    const handleSetCover = async (screenshot: Screenshot) => { /* ...逻辑不变... */ };
+    const handleDelete = async (screenshot: Screenshot) => { /* ...逻辑不变... */ };
 
     return (
         <>
             <Box
                 ref={trackRef}
-                // 【需求2】绑定拖拽事件
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUpOrLeave}
                 onMouseLeave={handleMouseUpOrLeave}
                 style={{
-                    // 【需求5】增加轨道整体高度
                     height: 120,
                     backgroundColor: '#1a1a1a',
                     borderRadius: 8,
@@ -118,7 +129,7 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                     border: '1px solid #333',
                     overflowX: 'auto',
                     userSelect: 'none',
-                    cursor: 'grab', // 初始光标样式
+                    cursor: 'grab',
                 }}
             >
                 {screenshots.length === 0 ? (
@@ -132,8 +143,6 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                                 isActive={activeScreenshot?.filename === s.filename}
                                 isCover={coverFilename === s.filename}
                                 rotation={rotation}
-                                onClick={handleCardClick}
-                                // 【需求3】传递新的回调函数
                                 onSetCover={handleSetCover}
                                 onDelete={handleDelete}
                             />
@@ -142,26 +151,31 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                 )}
             </Box>
 
-            {/* 【需求3 & 4】全局样式，用于悬停效果和美化滚动条 */}
+            {/* 【修改4】补全并优化全局样式 */}
             <style>{`
         .screenshot-card-container:hover .screenshot-card-overlay {
           opacity: 1;
         }
 
+        /* 补全的样式：悬停时模糊和变暗图片，让按钮更突出 */
+        .screenshot-card-container:hover .screenshot-card-image {
+          filter: blur(4px) brightness(0.7);
+        }
+
         /* Webkit 浏览器 (Chrome, Safari, Edge, Electron) */
         ::-webkit-scrollbar {
-          height: 5px; /* 【需求4】滚动条高度 */
+          height: 5px;
         }
         ::-webkit-scrollbar-track {
-          background: #2c2e33; /* 轨道颜色 */
+          background: #2c2e33;
           border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb {
-          background: #5c5f66; /* 滑块颜色 */
+          background: #5c5f66;
           border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: #868e96; /* 悬停时滑块颜色 */
+          background: #868e96;
         }
       `}</style>
         </>

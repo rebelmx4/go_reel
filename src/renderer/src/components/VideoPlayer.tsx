@@ -539,6 +539,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         onPause={handlePause}
                         onTimeUpdate={handleTimeUpdate}
                         onLoadedMetadata={handleLoadedMetadata}
+                        onDoubleClick={togglePlayPause}
                         onError={(e) => {
                             console.error('视频播放错误:', e);
                             const videoElement = e.target as HTMLVideoElement;

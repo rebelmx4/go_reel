@@ -1,19 +1,19 @@
-import { Box, Tooltip, Button } from '@mantine/core'; // 【修改1】引入 Button
+import { Box, ActionIcon } from '@mantine/core'; // 注意：将 Button 替换为 ActionIcon
 import { IconPhoto, IconTrash, IconCheck } from '@tabler/icons-react';
 import { Screenshot } from '../stores/screenshotStore';
+import { useState } from 'react';
 
 interface ScreenshotCardProps {
     screenshot: Screenshot;
     isActive: boolean;
     isCover: boolean;
     rotation: number;
-    onClick: (timestamp: number) => void;
     onSetCover: (screenshot: Screenshot) => void;
     onDelete: (screenshot: Screenshot) => void;
 }
 
+// 格式化毫秒时间为 "分钟:秒" 或 "小时:分钟:秒"
 const formatMSTime = (ms: number) => {
-    // ... (此函数保持不变)
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -31,15 +31,18 @@ export function ScreenshotCard({
     isActive,
     isCover,
     rotation,
-    onClick,
     onSetCover,
     onDelete,
 }: ScreenshotCardProps) {
+    // 使用 state 来追踪鼠标是否悬停在卡片上
+    const [isHovered, setIsHovered] = useState(false);
+
     return (
         <Box
             id={`screenshot-${screenshot.filename}`}
-            onClick={() => onClick(screenshot.timestamp)}
             className="screenshot-card-container"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             style={{
                 position: 'relative',
                 cursor: 'pointer',
@@ -64,59 +67,51 @@ export function ScreenshotCard({
                     width: '100%', height: '100%',
                     objectFit: 'cover',
                     transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease, filter 0.2s ease-in-out', // 【修改2】添加 filter 过渡效果
+                    transition: 'transform 0.3s ease, filter 0.2s ease-in-out',
                 }}
-                className="screenshot-card-image" // 添加类名用于 CSS 控制
+                className="screenshot-card-image"
             />
 
-            {/* 【修改3】悬停时显示的按钮容器，将 ActionIcon 替换为 Button */}
-            <Box className="screenshot-card-overlay"
-                style={{
-                    position: 'absolute', top: 0, left: 0,
-                    width: '100%', height: '100%',
-                    // 背景色移除，改为通过模糊图片实现
-                    display: 'flex',
-                    flexDirection: 'column', // 改为纵向排列
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8, // 调整按钮间距
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease-in-out',
-                    pointerEvents: 'none', // 默认情况下遮罩层不响应鼠标事件
-                }}
-            >
-                <Button
-                    leftSection={isCover ? <IconCheck size={16} /> : <IconPhoto size={16} />}
-                    color={isCover ? "green" : "blue"}
-                    size="compact-sm"
-                    onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
-                    style={{ pointerEvents: 'auto' }} // 让按钮可以被点击
-                >
-                    {isCover ? "当前封面" : "设为封面"}
-                </Button>
-
-                <Button
-                    leftSection={<IconTrash size={16} />}
-                    color="red"
-                    size="compact-sm"
-                    onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
-                    style={{ pointerEvents: 'auto' }} // 让按钮可以被点击
-                >
-                    删除
-                </Button>
-            </Box>
-
-            {/* 底部时间戳 */}
+            {/* 【修改】改造底部栏，使其成为一个 flex 容器 */}
             <Box style={{
                 position: 'absolute', bottom: 0, left: 0,
+                boxSizing: 'border-box', // 确保 padding 不会影响宽度计算
                 width: '100%',
                 backgroundColor: 'rgba(0,0,0,0.6)',
                 color: 'white',
                 fontSize: '12px',
-                textAlign: 'center',
-                padding: '2px 0',
+                padding: '4px 8px', // 调整内边距
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between', // 核心：将子元素推向两端
             }}>
-                {formatMSTime(screenshot.timestamp)}
+                {/* 时间戳（左对齐） */}
+                <span>{formatMSTime(screenshot.timestamp)}</span>
+
+                {/* 仅在悬停时显示的图标按钮容器（右对齐） */}
+                {isHovered && (
+                    <Box style={{ display: 'flex', gap: '4px' }}>
+                        <ActionIcon
+                            variant="filled"
+                            size="sm"
+                            color={isCover ? "green" : "blue"}
+                            onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
+                            title={isCover ? "当前封面" : "设为封面"} // 添加 tooltip 提示
+                        >
+                            {isCover ? <IconCheck size={16} /> : <IconPhoto size={16} />}
+                        </ActionIcon>
+
+                        <ActionIcon
+                            variant="filled"
+                            size="sm"
+                            color="red"
+                            onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
+                            title="删除" // 添加 tooltip 提示
+                        >
+                            <IconTrash size={16} />
+                        </ActionIcon>
+                    </Box>
+                )}
             </Box>
         </Box>
     );

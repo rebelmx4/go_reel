@@ -115,7 +115,7 @@ export function ExportScreenshotDialog({
                                 <Box style={{
                                     width: '100%',
                                     aspectRatio: '16/9',
-                                    backgroundColor: '#000',
+                                    // backgroundColor: '#000', // <--- 修改点 1：移除这里的黑底
                                     borderRadius: 4,
                                     overflow: 'hidden',
                                     display: 'flex',
@@ -127,8 +127,8 @@ export function ExportScreenshotDialog({
                                             src={firstScreenshot.path}
                                             alt={`${rot}°`}
                                             style={{
-                                                maxWidth: '80%',
-                                                maxHeight: '80%',
+                                                maxWidth: '100%', // 稍微放大一点以更好地填充空间
+                                                maxHeight: '100%',
                                                 // 仅仅在视觉上旋转预览，不改变原图
                                                 transform: `rotate(${rot}deg)`,
                                                 transition: 'transform 0.3s ease'
@@ -159,7 +159,7 @@ export function ExportScreenshotDialog({
                                     <Box
                                         key={s.filename}
                                         style={{
-                                            backgroundColor: '#000',
+                                            // backgroundColor: '#000', // <--- 修改点 2：移除这里的黑底
                                             borderRadius: 4,
                                             overflow: 'hidden',
                                             padding: 4,

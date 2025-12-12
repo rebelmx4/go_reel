@@ -1,13 +1,42 @@
-import { Group, Text, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/core';
+import { Group, Text, ActionIcon, Tooltip, Box, Button, Slider } from '@mantine/core';
 import {
     IconVolume, IconVolume2, IconVolume3,
     IconPlayerSkipForward, IconCamera, IconArrowRight,
-    IconColumns3, IconScissors
+    IconColumns3, IconScissors, IconRotateClockwise
 } from '@tabler/icons-react';
 import { usePlayerStore, useScreenshotStore } from '../stores';
-import { RefObject, useEffect } from 'react';
+import { RefObject, useEffect, useState, useRef } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
-import { ScreenshotTrack } from './ScreenshotTrack'; // 【修改1】引入新的组件
+import { ScreenshotTrack } from './ScreenshotTrack';
+import { keyBindingManager } from '../utils/keyBindingManager';
+
+/**
+ * 自定义 Hook：实现防抖效果的 useEffect。
+ * 只有当依赖项停止变化超过指定延迟时间后，回调函数才会执行。
+ * @param callback 要执行的回调函数。
+ * @param delay 延迟时间 (毫秒)。
+ * @param deps useEffect 的依赖数组。
+ */
+function useDebouncedEffect(callback: () => void, delay: number, deps: React.DependencyList) {
+    const timeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = window.setTimeout(() => {
+            callback();
+        }, delay);
+
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+}
+
 
 interface PlayerControlsProps {
     videoRef: RefObject<HTMLVideoElement | null>;
@@ -17,23 +46,68 @@ interface PlayerControlsProps {
 }
 
 export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: PlayerControlsProps) {
-    const currentTime = usePlayerStore((state) => state.currentTime);
-    const duration = usePlayerStore((state) => state.duration);
-    const volume = usePlayerStore((state) => state.volume);
-    const rotation = usePlayerStore((state) => state.rotation);
-    const stepMode = usePlayerStore((state) => state.stepMode);
-    const skipFrameMode = usePlayerStore((state) => state.skipFrameMode);
-    const currentVideoPath = usePlayerStore((state) => state.currentVideoPath);
+    // --- 状态与 Store ---
+    const {
+        currentTime, duration, volume, rotation, stepMode, skipFrameMode, currentVideoPath,
+        setVolume, setRotation, setStepMode, setSkipFrameMode, stepForward, stepBackward, togglePlay
+    } = usePlayerStore();
 
-    const setVolume = usePlayerStore((state) => state.setVolume);
-    const setRotation = usePlayerStore((state) => state.setRotation);
-    const setStepMode = usePlayerStore((state) => state.setStepMode);
-    const setSkipFrameMode = usePlayerStore((state) => state.setSkipFrameMode);
+    const { isCropMode, setCropMode } = useScreenshotStore();
+    const [keyMap, setKeyMap] = useState<Record<string, string>>({});
 
-    // 截图相关的状态依然需要，因为截图按钮在这里
-    const isCropMode = useScreenshotStore((state) => state.isCropMode);
-    const setCropMode = useScreenshotStore((state) => state.setCropMode);
+    // 组件挂载时，从管理器获取快捷键映射，用于 UI 显示
+    useEffect(() => {
+        const bindings = keyBindingManager.getBindings();
+        if (bindings) {
+            const map: Record<string, string> = {};
+            // 将嵌套的快捷键对象扁平化为一个 action -> key 的映射
+            Object.values(bindings.global).forEach(group => {
+                Object.entries(group).forEach(([action, key]) => {
+                    map[action] = key;
+                });
+            });
+            setKeyMap(map);
+        }
+    }, []);
 
+    // 注册和注销播放器相关的快捷键处理器
+    useEffect(() => {
+        // 定义快捷键对应的具体操作
+        const handleVolumeUp = () => setVolume(v => v + 5);
+        const handleVolumeDown = () => setVolume(v => v - 5);
+        const handleRotate = () => onRotate();
+
+        // 注册处理器
+        keyBindingManager.registerHandler('toggle_play', togglePlay);
+        keyBindingManager.registerHandler('step_forward', stepForward);
+        keyBindingManager.registerHandler('step_backward', stepBackward);
+        keyBindingManager.registerHandler('volume_up', handleVolumeUp);
+        keyBindingManager.registerHandler('volume_down', handleVolumeDown);
+        keyBindingManager.registerHandler('rotate_video', handleRotate);
+        keyBindingManager.registerHandler('screenshot', onScreenshot);
+        // 假设 'play_next' 是下一个视频的动作名 (需要在 settings 中定义)
+        // keyBindingManager.registerHandler('play_next', onNext); 
+
+        // 组件卸载时，清理注册的处理器
+        return () => {
+            keyBindingManager.unregisterHandler('toggle_play');
+            keyBindingManager.unregisterHandler('step_forward');
+            keyBindingManager.unregisterHandler('step_backward');
+            keyBindingManager.unregisterHandler('volume_up');
+            keyBindingManager.unregisterHandler('volume_down');
+            keyBindingManager.unregisterHandler('rotate_video');
+            keyBindingManager.unregisterHandler('screenshot');
+            // keyBindingManager.unregisterHandler('play_next');
+        };
+    }, [onScreenshot, onNext, onRotate, setVolume, stepForward, stepBackward, togglePlay]);
+
+    // 创建一个辅助函数来生成带快捷键的 Tooltip 标签
+    const getTooltipLabel = (baseLabel: string, action: string) => {
+        const key = keyMap[action];
+        return key ? `${baseLabel} (${key})` : baseLabel;
+    };
+
+    // --- 渲染相关的函数 ---
     const formatTime = (timeInSeconds: number) => {
         const minutes = Math.floor(timeInSeconds / 60);
         const seconds = Math.floor(timeInSeconds % 60);
@@ -46,25 +120,23 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
         v.currentTime = value;
     };
 
-    // 【修改2】定义一个专门用于处理截图点击跳转的函数
     const handleScreenshotSeek = (timestampInMS: number) => {
         if (videoRef.current) {
-            videoRef.current.currentTime = timestampInMS / 1000; // 转换为秒
+            videoRef.current.currentTime = timestampInMS / 1000;
         }
     };
 
-    // ... (其他 handle 函数保持不变)
-    const handleStepModeClick = () => setStepMode(stepMode === 'frame' ? 'second' : 'frame');
-    const handleSkipFrameClick = () => setSkipFrameMode(!skipFrameMode);
-    const handleCropModeClick = () => setCropMode(!isCropMode);
-
-    useEffect(() => {
-        if (window.api?.saveVolume) {
-            window.api.saveVolume(volume);
+    // 使用新的通用 API 和防抖 Hook 来持久化音量
+    useDebouncedEffect(() => {
+        if (window.api?.updateSettings) {
+            // 我们只更新 playback 对象下的 global_volume 字段
+            window.api.updateSettings({
+                playback: {
+                    global_volume: volume
+                }
+            });
         }
-    }, [volume]);
-
-    // 【修改3】所有与截图轨道相关的 useEffect, useState, useRef 和 handle 函数都已被移除
+    }, 1000, [volume]); // 仅当音量停止变化 1 秒后才保存
 
     return (
         <Box
@@ -77,10 +149,8 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                 gap: 10
             }}
         >
-            {/* 【修改4】使用新的 ScreenshotTrack 组件，并传入跳转回调 */}
             <ScreenshotTrack onScreenshotClick={handleScreenshotSeek} />
 
-            {/* 进度条 */}
             <Group gap="xs" style={{ width: '100%' }}>
                 <Text size="xs" c="dimmed" style={{ minWidth: 40 }}>{formatTime(currentTime)}</Text>
                 <Box style={{ flex: 1 }}>
@@ -94,43 +164,41 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                 <Text size="xs" c="dimmed" style={{ minWidth: 40 }}>{formatTime(duration)}</Text>
             </Group>
 
-            {/* 控制按钮行 */}
             <Group justify="space-between">
                 <Group>
-                    {/* ... (所有左侧按钮保持不变) ... */}
-                    <Tooltip label={skipFrameMode ? "退出跳帧模式" : "进入跳帧模式"}>
-                        <ActionIcon variant={skipFrameMode ? "filled" : "subtle"} color={skipFrameMode ? "blue" : "gray"} onClick={handleSkipFrameClick}>
+                    {/* 更新所有 Tooltip 的 label 属性，使其动态化 */}
+                    <Tooltip label={getTooltipLabel(skipFrameMode ? "退出跳帧模式" : "进入跳帧模式", 'toggle_skip_frame_mode')}>
+                        <ActionIcon variant={skipFrameMode ? "filled" : "subtle"} color={skipFrameMode ? "blue" : "gray"} onClick={() => setSkipFrameMode(!skipFrameMode)}>
                             {skipFrameMode ? <IconColumns3 size={20} /> : <IconArrowRight size={20} />}
                         </ActionIcon>
                     </Tooltip>
                     <Tooltip label={`当前步进: ${stepMode === 'frame' ? '1帧' : '1秒'} (点击切换)`}>
-                        <Button variant="subtle" color="gray" size="xs" onClick={handleStepModeClick} style={{ width: 40, padding: 0 }}>
+                        <Button variant="subtle" color="gray" size="xs" onClick={() => setStepMode(stepMode === 'frame' ? 'second' : 'frame')} style={{ width: 40, padding: 0 }}>
                             {stepMode === 'frame' ? '帧' : '秒'}
                         </Button>
                     </Tooltip>
-                    <Tooltip label="点击重置旋转 (快捷键: Alt+R 旋转90°)">
-                        <Button variant="subtle" color="gray" size="xs" onClick={onRotate} style={{ width: 40, padding: 0 }}>
-                            {rotation % 360}°
-                        </Button>
+                    <Tooltip label={getTooltipLabel(`旋转视频 (当前 ${rotation % 360}°)`, 'rotate_video')}>
+                        <ActionIcon variant="subtle" color="gray" onClick={onRotate}>
+                            <IconRotateClockwise size={20} />
+                        </ActionIcon>
                     </Tooltip>
-                    <Tooltip label="截图 (快捷键: E)">
+                    <Tooltip label={getTooltipLabel("截图", 'screenshot')}>
                         <ActionIcon variant="subtle" color="gray" onClick={onScreenshot}>
                             <IconCamera size={20} />
                         </ActionIcon>
                     </Tooltip>
-                    <Tooltip label={isCropMode ? "退出框选模式" : "框选截图"}>
-                        <ActionIcon variant={isCropMode ? "filled" : "subtle"} color={isCropMode ? "green" : "gray"} onClick={handleCropModeClick}>
+                    <Tooltip label={getTooltipLabel(isCropMode ? "退出框选模式" : "框选截图", 'toggle_crop_mode')}>
+                        <ActionIcon variant={isCropMode ? "filled" : "subtle"} color={isCropMode ? "green" : "gray"} onClick={() => setCropMode(!isCropMode)}>
                             <IconScissors size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>
                 <Group>
-                    {/* ... (所有右侧按钮保持不变) ... */}
                     <Group gap={5}>
                         {volume === 0 ? <IconVolume3 size={18} /> : volume < 50 ? <IconVolume2 size={18} /> : <IconVolume size={18} />}
                         <Slider value={volume} onChange={setVolume} style={{ width: 80 }} size="xs" color="gray" />
                     </Group>
-                    <Tooltip label="下一个视频 (PageDown)">
+                    <Tooltip label={getTooltipLabel("下一个视频", 'play_next')}>
                         <ActionIcon variant="subtle" color="gray" onClick={onNext}>
                             <IconPlayerSkipForward size={20} />
                         </ActionIcon>

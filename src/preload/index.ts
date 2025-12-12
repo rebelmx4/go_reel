@@ -77,12 +77,14 @@ const api = {
     ipcRenderer.invoke('get-annotations-by-tag', tagId),
   
   // Settings
-  saveVolume: (volume: number) =>
-    ipcRenderer.invoke('save-volume', volume),
-  loadVolume: () =>
-    ipcRenderer.invoke('load-volume'),
+  getAssetStatistics: () => ipcRenderer.invoke('get-asset-statistics'),
+  getPathOverview: () => ipcRenderer.invoke('get-path-overview'),
+  getKeyBindings: () => ipcRenderer.invoke('get-key-bindings'),
+  saveKeyBindings: (keyBindings: any) => ipcRenderer.invoke('save-key-bindings', keyBindings),
   loadSettings: () =>
     ipcRenderer.invoke('load-settings'),
+  updateSettings: (settings: any) => ipcRenderer.invoke('update-settings', settings), // 新增
+  openPathInExplorer: (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
   
   // Tags
   loadTags: () =>
