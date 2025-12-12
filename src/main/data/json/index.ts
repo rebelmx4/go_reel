@@ -1,11 +1,12 @@
 // JSON Managers
 export { BaseJsonManager } from './BaseJsonManager';
-export { SettingsManager } from './SettingsManager';
+export { settingsManager } from './SettingsManager';
 export { TagManager } from './TagManager';
 export { HistoryManager } from './HistoryManager';
+export { annotationManager} from './AnnotationManager';
 
 // Type exports
-export type { Annotation, AnnotaionList, annotationManager} from './AnnotationManager';
+export type { Annotation, AnnotaionList} from './AnnotationManager';
 export type { AppSettings } from './SettingsManager';
 export type { Tag, TagStore } from './TagManager';
 export type { HistoryStore } from './HistoryManager';

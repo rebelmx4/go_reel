@@ -7,7 +7,7 @@ export function useScreenshotExport(
     setCropMode: (val: boolean) => void,
 ) {
     const [showExportDialog, setShowExportDialog] = useState(false);
-    const [exportRotationMetadata, setExportRotationMetadata] = useState<number | null>(null);
+    const [exportRotationAnnotation, setExportRotationAnnotation] = useState<number | null>(null);
     const [currentHash, setCurrentHash] = useState<string | null>(null);
     const showToast = useToastStore((state) => state.showToast);
 
@@ -24,7 +24,7 @@ export function useScreenshotExport(
             const annotation = await window.api.getAnnotation(hash);
             // 从注解对象中获取旋转角度，如果不存在则为 null
             const savedRotation = annotation?.screenshot_rotation ?? null;
-            setExportRotationMetadata(savedRotation);
+            setExportRotationAnnotation(savedRotation);
 
             // 如果强制配置，或者从未配置过 -> 打开弹窗
             if (forceDialog || savedRotation === null) {
@@ -66,7 +66,7 @@ export function useScreenshotExport(
     return {
         showExportDialog,
         setShowExportDialog,
-        exportRotationMetadata,
+        exportRotationMetadata: exportRotationAnnotation,
         currentHash
     };
 }

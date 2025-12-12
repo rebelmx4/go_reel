@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
 import { StartupService, RefreshService, VideoExportService } from './services';
-import { SettingsManager, annotationManager, HistoryManager } from './data';
+import { settingsManager, screenshotManager, annotationManager, HistoryManager } from './data';
 import { registerWindowHandlers } from './ipc/windowHandlers';
 import { registerMetadataHandler } from './ipc/MetadataHandler';
 import { registerScreenshotHandlers } from './ipc/screenshotHandlers';
@@ -23,7 +23,6 @@ let videoExportService: VideoExportService | null = null;
 
 log.info('Initializing startup service...');
 
-const settingsManager = new SettingsManager();
 const historyManager = new HistoryManager();
 
 // Create startup service
@@ -51,8 +50,8 @@ log.info('Startup service initialized');
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    width: 1600,
+    height: 900,
     show: false,
     frame: false, // Frameless window
     titleBarStyle: 'hidden',
@@ -154,7 +153,6 @@ function setupIpcHandlers() {
   // Update configuration
   ipcMain.handle('update-configuration', async (_, config) => {
     try {
-      const settingsManager = new SettingsManager();
 
       settingsManager.setVideoSourcePath(config.videoSource);
       settingsManager.setStagedPath(config.staged_path);

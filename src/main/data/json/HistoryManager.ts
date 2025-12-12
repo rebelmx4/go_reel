@@ -59,3 +59,5 @@ export class HistoryManager extends BaseJsonManager<HistoryStore> {
     return this.data.includes(filePath);
   }
 }
+
+export const historyManager = new HistoryManager();
