@@ -38,10 +38,6 @@ const api = {
     ipcRenderer.invoke('get-cover', videoHash, videoPath),
   setManualCover: (screenshotPath: string, videoHash: string) =>
     ipcRenderer.invoke('set-manual-cover', screenshotPath, videoHash),
-  isScreenshotCover: (screenshotFilename: string, videoHash: string) =>
-    ipcRenderer.invoke('is-screenshot-cover', screenshotFilename, videoHash),
-  saveCover: (videoHash: string, dataUrl: string, isDefault: boolean) =>
-    ipcRenderer.invoke('save-cover', videoHash, dataUrl, isDefault),
   
   // Export
   exportScreenshots: (videoHash: string, rotation: number) =>

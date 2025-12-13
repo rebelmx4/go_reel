@@ -1,158 +1,162 @@
+// src/stores/videoStore.ts
+
 import { create } from 'zustand';
 
 /**
- * Video file data structure
+ * 从文件完整路径中提取文件名。
+ * @param path - 文件路径 (e.g., "C:\\Users\\Videos\\example.mp4")
+ * @returns 文件名 (e.g., "example.mp4")
+ */
+export const deriveFilename = (path: string): string => {
+  return path.replace(/\\/g, '/').split('/').pop() || '';
+};
+
+/**
+ * @interface VideoFile
+ * @description 视频的核心数据模型，在前端状态管理中使用。
+ * 这是后端 ScanResult 和 Annotation 数据合并后的理想形态。
  */
 export interface VideoFile {
-  id: number;
-  path: string;
-  filename: string;
-  duration: number;
-  size: number;
-  createdAt: number;
-  lastPlayedAt?: number;
-  playCount: number;
-  liked: boolean;
-  elite: boolean;
-  tags: number[];
-  thumbnail?: string;
+  hash: string;       // 视频哈希 (来自 Annotation key)
+  path: string;     // 文件绝对路径 (来自 ScanResult)
+  createdAt: number;// 文件创建时间戳 (来自 ScanResult)
+  liked: boolean;   // 是否喜欢 (来自 Annotation)
+  elite: boolean;   // 是否精品 (来自 Annotation.is_favorite)
+  tags: number[];   // 标签ID列表 (来自 Annotation)
 }
 
-interface VideoState {
+// 定义派生状态的接口
+interface DerivedVideoState {
+  newestVideos: VideoFile[];
+  likedVideos: VideoFile[];
+  eliteVideos: VideoFile[];
+}
+
+interface VideoState extends DerivedVideoState {
   videos: VideoFile[];
   isLoading: boolean;
   
-  // Actions
+  // 动作
   loadVideos: () => Promise<void>;
-  getVideoById: (id: number) => VideoFile | undefined;
-  toggleLike: (id: number) => void;
-  toggleElite: (id: number) => void;
-  updateLastPlayed: (id: number) => void;
+  toggleLike: (hash: string) => Promise<void>;
+  toggleElite: (hash: string) => Promise<void>;
   
-  // Filtered lists
-  getRecentVideos: () => VideoFile[];
+  // 选择器 (现在变得更简单)
+  getVideoById: (hash: string) => VideoFile | undefined;
   getNewestVideos: () => VideoFile[];
   getLikedVideos: () => VideoFile[];
   getEliteVideos: () => VideoFile[];
-  searchByFilename: (keyword: string) => VideoFile[];
 }
+
+/**
+ * 模拟从主进程获取并合并视频数据。
+ * 在真实应用中，这个逻辑可能在主进程完成，前端只需接收最终结果。
+ */
+async function fetchHybridVideoData(): Promise<VideoFile[]> {
+    const startupResult = await window.api.getStartupResult();
+    const annotationsList = await window.api.getAllAnnotations();
+    const annotations = new Map(annotationsList);
+
+    if (!startupResult || !startupResult.videoList) return [];
+
+    const videoDataList: VideoFile[] = [];
+
+    // ✨ 已根据您的要求修正这里的逻辑
+    for (const video of startupResult.videoList) {
+        const hash = video.hash;
+        const annotation = annotations.get(hash);
+
+        // 无论是否存在 annotation，都将视频加入列表
+        // 如果不存在，则提供默认值
+        videoDataList.push({
+            hash: hash,
+            path: video.path,
+            createdAt: video.creation_time,
+            liked: annotation ? annotation.like_count > 0 : false,
+            elite: annotation ? annotation.is_favorite : false,
+            tags: annotation ? annotation.tags || [] : [],
+        });
+    }
+    return videoDataList;
+}
+
+// 一个集中的函数来计算所有派生状态
+const computeDerivedVideoLists = (videos: VideoFile[]): DerivedVideoState => {
+  const sortedByDate = [...videos].sort((a, b) => b.createdAt - a.createdAt);
+
+  return {
+    newestVideos: sortedByDate.slice(0, 100),
+    likedVideos: sortedByDate.filter(v => v.liked),
+    eliteVideos: sortedByDate.filter(v => v.elite),
+  };
+};
 
 export const useVideoStore = create<VideoState>((set, get) => ({
   videos: [],
-  isLoading: false,
+  isLoading: true,
+  // 初始化派生状态
+  newestVideos: [],
+  likedVideos: [],
+  eliteVideos: [],
 
   loadVideos: async () => {
     set({ isLoading: true });
     try {
-      // TODO: Load from files.json via IPC
-      // For now, use mock data
-      const mockVideos: VideoFile[] = [
-        {
-          id: 1,
-          path: '/videos/sample1.mp4',
-          filename: '富士山日落.mp4',
-          duration: 120,
-          size: 50000000,
-          createdAt: Date.now() - 86400000 * 5,
-          lastPlayedAt: Date.now() - 3600000,
-          playCount: 10,
-          liked: true,
-          elite: true,
-          tags: [1, 2],
-        },
-        {
-          id: 2,
-          path: '/videos/sample2.mp4',
-          filename: '海滩风景.mp4',
-          duration: 90,
-          size: 40000000,
-          createdAt: Date.now() - 86400000 * 3,
-          lastPlayedAt: Date.now() - 7200000,
-          playCount: 5,
-          liked: false,
-          elite: false,
-          tags: [2],
-        },
-        {
-          id: 3,
-          path: '/videos/sample3.mp4',
-          filename: '人物特写.mp4',
-          duration: 60,
-          size: 30000000,
-          createdAt: Date.now() - 86400000 * 1,
-          playCount: 2,
-          liked: true,
-          elite: false,
-          tags: [3, 4],
-        },
-      ];
-      set({ videos: mockVideos, isLoading: false });
+      const videos = await fetchHybridVideoData();
+      // 加载数据后，一次性计算并设置所有派生状态
+      set({ videos, ...computeDerivedVideoLists(videos), isLoading: false });
     } catch (error) {
-      console.error('Failed to load videos:', error);
+      console.error('加载混合视频数据失败:', error);
       set({ isLoading: false });
     }
   },
 
-  getVideoById: (id) => {
-    return get().videos.find(v => v.id === id);
+  getVideoById: (hash) => get().videos.find(v => v.hash === hash),
+  
+  toggleLike: async (hash) => {
+    const originalVideos = get().videos;
+    const video = originalVideos.find(v => v.hash === hash);
+    if (!video) return;
+
+    const newLikedState = !video.liked;
+    
+    // 乐观更新UI
+    const updatedVideos = originalVideos.map(v => v.hash === hash ? { ...v, liked: newLikedState } : v);
+    // 每当原始 videos 变化时，重新计算派生状态
+    set({ videos: updatedVideos, ...computeDerivedVideoLists(updatedVideos) });
+
+    try {
+      await window.api.updateAnnotation(hash, { like_count: newLikedState ? 1 : 0 });
+    } catch (error) {
+      console.error(`更新喜欢状态失败 for ${hash}:`, error);
+      // 失败时回滚并重新计算派生状态
+      set({ videos: originalVideos, ...computeDerivedVideoLists(originalVideos) });
+    }
   },
 
-  toggleLike: (id) => {
-    set(state => ({
-      videos: state.videos.map(v =>
-        v.id === id ? { ...v, liked: !v.liked } : v
-      )
-    }));
-    // TODO: Save to files.json
+  toggleElite: async (hash) => {
+    const originalVideos = get().videos;
+    const video = originalVideos.find(v => v.hash === hash);
+    if (!video) return;
+
+    const newEliteState = !video.elite;
+
+    // 乐观更新UI
+    const updatedVideos = originalVideos.map(v => v.hash === hash ? { ...v, elite: newEliteState } : v);
+    // 每当原始 videos 变化时，重新计算派生状态
+    set({ videos: updatedVideos, ...computeDerivedVideoLists(updatedVideos) });
+    
+    try {
+      await window.api.updateAnnotation(hash, { is_favorite: newEliteState });
+    } catch (error) {
+      console.error(`更新精品状态失败 for ${hash}:`, error);
+      // 失败时回滚并重新计算派生状态
+      set({ videos: originalVideos, ...computeDerivedVideoLists(originalVideos) });
+    }
   },
 
-  toggleElite: (id) => {
-    set(state => ({
-      videos: state.videos.map(v =>
-        v.id === id ? { ...v, elite: !v.elite } : v
-      )
-    }));
-    // TODO: Save to files.json
-  },
-
-  updateLastPlayed: (id) => {
-    set(state => ({
-      videos: state.videos.map(v =>
-        v.id === id
-          ? { ...v, lastPlayedAt: Date.now(), playCount: v.playCount + 1 }
-          : v
-      )
-    }));
-    // TODO: Save to files.json
-  },
-
-  getRecentVideos: () => {
-    return get().videos
-      .filter(v => v.lastPlayedAt)
-      .sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
-  },
-
-  getNewestVideos: () => {
-    return get().videos
-      .sort((a, b) => b.createdAt - a.createdAt);
-  },
-
-  getLikedVideos: () => {
-    return get().videos
-      .filter(v => v.liked)
-      .sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
-  },
-
-  getEliteVideos: () => {
-    return get().videos
-      .filter(v => v.elite)
-      .sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
-  },
-
-  searchByFilename: (keyword) => {
-    const lowerKeyword = keyword.toLowerCase();
-    return get().videos
-      .filter(v => v.filename.toLowerCase().includes(lowerKeyword))
-      .sort((a, b) => b.createdAt - a.createdAt);
-  },
+  // --- 选择器 (现在它们只返回已存储的状态，不会创建新数组) ---
+  getNewestVideos: () => get().newestVideos,
+  getLikedVideos: () => get().likedVideos,
+  getEliteVideos: () => get().eliteVideos,
 }));

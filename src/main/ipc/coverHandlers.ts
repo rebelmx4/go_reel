@@ -1,94 +1,37 @@
 /**
  * Cover IPC Handlers
- * Main process handlers for cover management
+ * 主进程中的封面管理句柄。
+ * 这一层负责 IPC 通信，并将业务逻辑委托给 CoverManager。
  */
 
 import { ipcMain } from 'electron';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const COVERS_DIR = path.join(DATA_DIR, 'covers');
+// 假设 coverManager 实例已在别处创建并导出
+import { coverManager } from '../data/assets/CoverManager'; 
 
 /**
- * Convert data URL to buffer
- */
-function dataUrlToBuffer(dataUrl: string): Buffer {
-  const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-  return Buffer.from(base64Data, 'base64');
-}
-
-/**
- * Check if file exists
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Register cover IPC handlers
+ * 注册所有与视频封面相关的 IPC handlers
  */
 export function registerCoverHandlers() {
-  // Get cover (three-tier logic)
-  ipcMain.handle('get-cover', async (_, videoHash: string): Promise<string> => {
-    await fs.mkdir(COVERS_DIR, { recursive: true });
-    
-    // 1. Check manual cover
-    const manualCover = path.join(COVERS_DIR, `${videoHash}.webp`);
-    if (await fileExists(manualCover)) {
-      return manualCover;
-    }
-    
-    // 2. Check default cover
-    const defaultCover = path.join(COVERS_DIR, `${videoHash}_d.webp`);
-    if (await fileExists(defaultCover)) {
-      return defaultCover;
-    }
-    
-    // 3. Generate default cover
-    // Note: This should be done in renderer process and sent back
-    // For now, return empty path to trigger renderer-side generation
-    return '';
+  
+  /**
+   * 获取视频封面（三级逻辑）
+   * 1. 优先返回用户设置的手动封面。
+   * 2. 如果没有手动封面，返回自动生成的默认封面。
+   * 3. 如果默认封面也不存在，则立即生成默认封面（例如，在视频20%位置截图），保存并返回其路径。
+   */
+  ipcMain.handle('get-cover', async (_, videoHash: string, videoPath: string): Promise<string> => {
+    // 核心逻辑已移入 coverManager.getCover
+    // 它会自动处理“手动 -> 默认 -> 生成并返回”的完整逻辑
+    return coverManager.getCover(videoHash, videoPath);
   });
   
-  // Set manual cover
-  ipcMain.handle('set-manual-cover', async (_, screenshotPath: string, videoHash: string) => {
-    await fs.mkdir(COVERS_DIR, { recursive: true });
-    
-    const targetPath = path.join(COVERS_DIR, `${videoHash}.webp`);
-    await fs.copyFile(screenshotPath, targetPath);
-  });
-  
-  // Save cover from data URL
-  ipcMain.handle('save-cover', async (_, videoHash: string, dataUrl: string, isDefault: boolean) => {
-    await fs.mkdir(COVERS_DIR, { recursive: true });
-    
-    const suffix = isDefault ? '_d' : '';
-    const filename = `${videoHash}${suffix}.webp`;
-    const filePath = path.join(COVERS_DIR, filename);
-    
-    const buffer = dataUrlToBuffer(dataUrl);
-    await fs.writeFile(filePath, buffer);
-    
-    return filePath;
-  });
-  
-  // Check if screenshot is cover
-  ipcMain.handle('is-screenshot-cover', async (_, screenshotFilename: string, videoHash: string): Promise<boolean> => {
-    const manualCover = path.join(COVERS_DIR, `${videoHash}.webp`);
-    
-    if (!(await fileExists(manualCover))) {
-      return false;
-    }
-    
-    // Compare file contents or metadata
-    // For simplicity, we can track this in files.json
-    // For now, return false
-    return false;
+  /**
+   * 将一个指定的截图文件设置为手动封面
+   * @param screenshotPath - 源截图文件的完整路径
+   * @param videoHash - 视频的哈希值
+   */
+  ipcMain.handle('set-manual-cover', async (_, screenshotPath: string, videoHash: string): Promise<void> => {
+    // 核心逻辑同样移入 coverManager
+    await coverManager.setManualCoverFromPath(videoHash, screenshotPath);
   });
 }

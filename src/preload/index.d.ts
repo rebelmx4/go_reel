@@ -65,8 +65,6 @@ declare global {
       // Cover Management
       getCover: (videoHash: string, videoPath: string) => Promise<string>
       setManualCover: (screenshotPath: string, videoHash: string) => Promise<void>
-      isScreenshotCover: (screenshotFilename: string, videoHash: string) => Promise<boolean>
-      saveCover: (videoHash: string, dataUrl: string, isDefault: boolean) => Promise<string>
       
       // Export
       exportScreenshots: (videoHash: string, rotation: number) => Promise<void>

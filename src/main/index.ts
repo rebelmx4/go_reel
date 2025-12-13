@@ -14,12 +14,15 @@ import { registerAnnotationHandlers } from './ipc/AnnotationHandlers';
 import { registerTagHandlers } from './ipc/tagHandlers';
 import { registerTagCoverHandlers } from './ipc/tagCoverHandlers';
 import { calculateFastHash } from './utils/hash'
+import { setupFfmpeg } from './utils/ffmpeg-setup';
 
 // Global startup result
 let startupResult: any = null;
 let refreshService: RefreshService | null = null;
 let videoExportService: VideoExportService | null = null;
 
+
+setupFfmpeg()
 
 log.info('Initializing startup service...');
 

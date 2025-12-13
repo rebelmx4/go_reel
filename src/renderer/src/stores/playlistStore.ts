@@ -5,13 +5,13 @@ export type PlaylistMode = 'recent' | 'newest' | 'liked' | 'elite' | 'tag-search
 
 interface PlaylistState {
   mode: PlaylistMode;
-  currentVideoId: number | null;
+  currentVideoId: string | null;
   playlist: VideoFile[];
   
   // Actions
   setMode: (mode: PlaylistMode) => void;
   setPlaylist: (videos: VideoFile[]) => void;
-  setCurrentVideo: (videoId: number) => void;
+  setCurrentVideo: (videoId: string) => void;
   getNextVideo: () => VideoFile | null;
   getPreviousVideo: () => VideoFile | null;
   getCurrentIndex: () => number;
@@ -37,7 +37,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   getCurrentIndex: () => {
     const { playlist, currentVideoId } = get();
     if (!currentVideoId) return -1;
-    return playlist.findIndex(v => v.id === currentVideoId);
+    return playlist.findIndex(v => v.hash === currentVideoId);
   },
 
   getNextVideo: () => {
@@ -48,7 +48,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     if (mode === 'random') {
       // Random mode: pick random video excluding current
       const available = currentVideoId
-        ? playlist.filter(v => v.id !== currentVideoId)
+        ? playlist.filter(v => v.hash !== currentVideoId)
         : playlist;
       
       if (available.length === 0) return playlist[0];
@@ -76,7 +76,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     if (mode === 'random') {
       // Random mode: pick random video excluding current
       const available = currentVideoId
-        ? playlist.filter(v => v.id !== currentVideoId)
+        ? playlist.filter(v => v.hash !== currentVideoId)
         : playlist;
       
       if (available.length === 0) return playlist[0];

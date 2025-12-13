@@ -1,9 +1,9 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
 import { BaseAssetManager } from './BaseAssetManager';
 import { settingsManager }  from '../json/SettingsManager';
+import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator'; 
 
 // 定义了 'load-screenshots' 返回的截图对象结构
 export interface Screenshot {
@@ -19,8 +19,9 @@ export class ScreenshotManager extends BaseAssetManager {
     super('screenshots');
   }
 
+ 
   /**
-   * 从视频文件为指定时间戳创建一张手动截图
+   * 从视频文件为指定时间戳创建一张手动截图。
    * @param hash - 视频哈希
    * @param videoPath - 原始视频文件路径
    * @param timestampInSeconds - 截图所在的时间点（秒）
@@ -28,90 +29,80 @@ export class ScreenshotManager extends BaseAssetManager {
    */
   public async createManualScreenshot(hash: string, videoPath: string, timestampInSeconds: number): Promise<boolean> {
     const dir = this.getHashBasedDir(hash);
-    await fs.mkdir(dir, { recursive: true });
+    
+    try {
+      // 1. 使用工具类生成一张带有临时名字的截图
+      const tempPath = await ScreenshotGenerator.generateScreenshotAtTimestamp(videoPath, timestampInSeconds, dir);
 
-    const msTimestamp = Math.floor(timestampInSeconds * 1000);
-    const filename = `${msTimestamp}_m.webp`;
-    const outputPath = path.join(dir, filename);
-
-    return new Promise<boolean>((resolve) => {
-      ffmpeg(videoPath)
-        .seekInput(timestampInSeconds)
-        .frames(1)
-        .outputOptions('-vcodec', 'webp', '-lossless', '1', '-q:v', '75', '-an')
-        .output(outputPath)
-        .on('start', function(commandLine) {
-          console.log('Spawining Ffmpeg with command: ' + commandLine);
-        })
-        .on('end', () => resolve(true))
-        .on('error', (err) => {
-          console.error(`[Manual Screenshot Manager] Failed for ${hash}:`, err);
-          resolve(false);
-        })
-        .run();
-    });
+      // 2. 根据我们的业务规则重命名文件
+      const msTimestamp = Math.floor(timestampInSeconds * 1000);
+      const finalFilename = `${msTimestamp}_m.webp`;
+      const finalPath = path.join(dir, finalFilename);
+      
+      await fs.rename(tempPath, finalPath);
+      
+      console.log(`[Manual Screenshot Manager] Successfully created screenshot for ${hash} at ${timestampInSeconds}s.`);
+      return true;
+    } catch (error) {
+      console.error(`[Manual Screenshot Manager] Failed for ${hash}:`, error);
+      return false;
+    }
   }
 
   /**
-   * 为视频自动生成9张截图（如果尚不存在）
+   * 为视频自动生成9张截图（如果尚不存在）。
+   * 此方法经过重构，使用单次 FFMpeg 调用，性能更高。
    * @param hash - 视频哈希
    * @param videoPath - 原始视频文件路径
    * @returns 如果成功生成或已存在，返回 true，否则返回 false
    */
   public async generateAutoScreenshots(hash: string, videoPath: string): Promise<boolean> {
-    // 检查是否已有截图存在，避免重复生成
     if (await this.hasScreenshots(hash)) {
       console.log(`[Auto Screenshot Manager] Screenshots already exist for ${hash}. Skipping.`);
-      return true; // 认为已存在也是一种“成功”状态
+      return true;
     }
 
-    try {
-      // 1. 使用 ffprobe 获取视频时长
-      const metadata = await new Promise<ffmpeg.FfprobeData>((resolve, reject) => {
-        ffmpeg.ffprobe(videoPath, (err, data) => {
-          if (err) return reject(err);
-          resolve(data);
-        });
-      });
+    const dir = this.getHashBasedDir(hash);
 
-      const duration = metadata.format.duration;
-      if (!duration || duration <= 0) {
+    try {
+      // 1. 获取视频时长
+      const duration = await ScreenshotGenerator.getVideoDuration(videoPath);
+      if (duration <= 0) {
         throw new Error('Could not determine a valid video duration.');
       }
 
-      // 2. 计算9个截图的时间点并执行截图命令
+      // 2. 计算9个截图的时间点
       const interval = duration / 10;
       const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1));
       
-      const dir = this.getHashBasedDir(hash);
-      await fs.mkdir(dir, { recursive: true });
+      // 3. 一次性生成所有截图（它们的文件名是临时的，如 temp_1.webp, temp_2.webp...）
+      const tempScreenshotPaths = await ScreenshotGenerator.generateMultipleScreenshots(videoPath, timestamps, { outputDir: dir });
 
-      const promises = timestamps.map(time => {
-        const msTimestamp = Math.floor(time * 1000);
-        const filename = `${msTimestamp}_a.webp`;
-        const outputPath = path.join(dir, filename);
-        
-        return new Promise<void>((resolve, reject) => {
-          ffmpeg(videoPath)
-            .seekInput(time)
-            .frames(1)
-            .outputOptions('-vcodec', 'webp', '-lossless', '1', '-q:v', '75', '-an')
-            .output(outputPath)
-            .on('end', () => resolve())
-            .on('error', (err) => reject(err))
-            .run();
-        });
+      if (tempScreenshotPaths.length !== timestamps.length) {
+          throw new Error('Mismatch between requested and generated screenshots.');
+      }
+
+      // 4. 将所有临时文件重命名为符合业务规范的最终文件名
+      const renamePromises = tempScreenshotPaths.map((tempPath, index) => {
+        const timestamp = timestamps[index];
+        const msTimestamp = Math.floor(timestamp * 1000);
+        const finalFilename = `${msTimestamp}_a.webp`;
+        const finalPath = path.join(dir, finalFilename);
+        return fs.rename(tempPath, finalPath);
       });
 
-      await Promise.all(promises);
-      console.log(`[Auto Screenshot Manager] Successfully generated 9 screenshots for ${hash}.`);
+      await Promise.all(renamePromises);
+
+      console.log(`[Auto Screenshot Manager] Successfully generated 9 screenshots for ${hash} in a single process.`);
       return true;
 
     } catch (error) {
       console.error(`[Auto Screenshot Manager] Failed to generate screenshots for ${hash}:`, error);
+      // 可选：清理可能已生成的临时文件
       return false;
     }
   }
+
 
   /**
    * 加载指定视频的所有截图信息

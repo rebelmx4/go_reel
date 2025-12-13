@@ -44,8 +44,6 @@ export function MainLayout({ children }: MainLayoutProps) {
                 {children}
             </Box>
 
-            {/* Bottom Control Bar */}
-            <BottomControlBar />
         </Box>
     );
 }

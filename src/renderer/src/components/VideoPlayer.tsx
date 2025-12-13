@@ -406,8 +406,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         const nextVideo = getNextVideo();
         if (nextVideo) {
             setCurrentVideo(nextVideo.path);
-            updateLastPlayed(nextVideo.id);
-            usePlaylistStore.getState().setCurrentVideo(nextVideo.id);
+            updateLastPlayed(nextVideo.hash);
+            usePlaylistStore.getState().setCurrentVideo(nextVideo.hash);
             setView('player');
         }
     }, []);

@@ -140,7 +140,7 @@ export class StartupService {
     log.info(`Scanning directory: ${videoSource}`);
     log.info(`Blacklist: ${blacklist.join(', ')}`);
 
-    const videoList = await scanVideoFiles(videoSource, blacklist);
+    const videoList = await scanVideoFiles(videoSource, []);
 
     log.info(`Found ${videoList.length} video files`);
     return videoList;

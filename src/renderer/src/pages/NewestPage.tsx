@@ -1,13 +1,11 @@
 import { useEffect } from 'react';
 import { Box, Text } from '@mantine/core';
 import { useVideoStore, usePlayerStore, useNavigationStore, usePlaylistStore } from '../stores';
-import { VideoGrid } from '../components/Video/VideoGrid';
+import { CoverGrid } from '../components/Video/CoverGrid';
 
 export function NewestPage() {
     const videos = useVideoStore((state) => state.getNewestVideos());
     const loadVideos = useVideoStore((state) => state.loadVideos);
-    const toggleLike = useVideoStore((state) => state.toggleLike);
-    const toggleElite = useVideoStore((state) => state.toggleElite);
     const updateLastPlayed = useVideoStore((state) => state.updateLastPlayed);
 
     const setCurrentVideo = usePlayerStore((state) => state.setCurrentVideo);
@@ -19,7 +17,7 @@ export function NewestPage() {
 
     const handlePlay = (video: any) => {
         setCurrentVideo(video.path);
-        updateLastPlayed(video.id);
+        // updateLastPlayed(video.id);
         setView('player');
     };
 
@@ -32,11 +30,9 @@ export function NewestPage() {
                 </Text>
             </Box>
 
-            <VideoGrid
+            <CoverGrid
                 videos={videos}
                 onPlay={handlePlay}
-                onToggleLike={(v) => toggleLike(v.id)}
-                onToggleElite={(v) => toggleElite(v.id)}
                 emptyMessage="暂无视频"
             />
         </Box>

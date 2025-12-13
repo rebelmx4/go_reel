@@ -6,12 +6,7 @@ import * as path from 'path';
 import { app, BrowserWindow } from 'electron';
 import log from 'electron-log';
 import ffmpeg from 'fluent-ffmpeg';
-import ffmpegStatic from 'ffmpeg-static';
 
-// Set ffmpeg path
-if (ffmpegStatic) {
-  ffmpeg.setFfmpegPath(ffmpegStatic);
-}
 
 export interface VideoClip {
   startTime: number;
