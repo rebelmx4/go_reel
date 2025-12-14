@@ -71,9 +71,9 @@ export class ScreenshotManager extends BaseAssetManager {
         throw new Error('Could not determine a valid video duration.');
       }
 
-      // 2. 计算9个截图的时间点
+      // 2. 计算9个截图的时间点，并排序
       const interval = duration / 10;
-      const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1));
+      const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1)).sort((a, b) => a - b);
       
       // 3. 一次性生成所有截图（它们的文件名是临时的，如 temp_1.webp, temp_2.webp...）
       const tempScreenshotPaths = await ScreenshotGenerator.generateMultipleScreenshots(videoPath, timestamps, { outputDir: dir });
@@ -84,7 +84,7 @@ export class ScreenshotManager extends BaseAssetManager {
 
       // 4. 将所有临时文件重命名为符合业务规范的最终文件名
       const renamePromises = tempScreenshotPaths.map((tempPath, index) => {
-        const timestamp = timestamps[index];
+        const timestamp = timestamps[index]; // 按顺序一一对应
         const msTimestamp = Math.floor(timestamp * 1000);
         const finalFilename = `${msTimestamp}_a.webp`;
         const finalPath = path.join(dir, finalFilename);
@@ -98,11 +98,9 @@ export class ScreenshotManager extends BaseAssetManager {
 
     } catch (error) {
       console.error(`[Auto Screenshot Manager] Failed to generate screenshots for ${hash}:`, error);
-      // 可选：清理可能已生成的临时文件
       return false;
     }
   }
-
 
   /**
    * 加载指定视频的所有截图信息

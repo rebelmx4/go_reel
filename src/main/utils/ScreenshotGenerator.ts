@@ -98,14 +98,71 @@ export class ScreenshotGenerator {
     }
   }
 
+
   /**
    * 通过单次 FFMpeg 调用在多个指定时间点高效生成截图。
+   * 此版本使用多个输出的方案，以实现最佳的性能和兼容性。
    * @param videoPath - 视频文件的路径。
    * @param timestamps - 一个包含所有截图时间点（秒）的数组。
    * @param options - 输出选项，包括输出目录等。
-   * @returns 返回一个包含所有成功生成的截图文件路径的数组。
+   * @returns 返回一个包含所有成功生成的【临时】截图文件路径的数组。
    */
   public static async generateMultipleScreenshots(
+    videoPath: string,
+    timestamps: number[],
+    options: ScreenshotOptions
+  ): Promise<string[]> {
+    if (!timestamps || timestamps.length === 0) {
+      return [];
+    }
+    // 必须对时间戳进行排序，以确保 seek 操作最高效
+    const sortedTimestamps = [...timestamps].sort((a, b) => a - b);
+
+    try {
+      await fs.mkdir(options.outputDir, { recursive: true });
+
+      const command = ffmpeg(videoPath);
+      const tempOutputPaths: string[] = [];
+      const format = options.format ?? 'webp';
+
+      // 为每个时间戳添加一个独立的输出配置
+      sortedTimestamps.forEach((timestamp, index) => {
+        // 创建一个可预测的临时文件名，如 temp_1.webp, temp_2.webp, ...
+        const tempPath = path.join(options.outputDir, `temp_${index + 1}.${format}`);
+        tempOutputPaths.push(tempPath);
+        
+        command
+          .output(tempPath)
+          .outputOptions([
+            '-ss', timestamp.toString(), // 定位到指定时间
+            '-vframes', '1',             // 只截取一帧
+            '-vcodec', 'webp',           // 设置输出编解码器
+            '-lossless', '1',
+            '-q:v', '75'
+          ]);
+      });
+
+      return new Promise<string[]>((resolve, reject) => {
+        command
+          .on('end', () => {
+            // 所有截图任务在同一个进程中完成
+            resolve(tempOutputPaths);
+          })
+          .on('error', (err) => {
+            reject(new Error(`[ScreenshotGenerator] FFMpeg single-process with multiple outputs failed: ${err.message}`));
+          })
+          .run();
+      });
+
+    } catch (error) {
+      console.error('[ScreenshotGenerator] An error occurred during multiple screenshot generation:', error);
+      return []; // 确保在准备阶段出错时返回空数组
+    }
+  }
+
+  
+
+  public static async generateMultipleScreenshots2(
     videoPath: string,
     timestamps: number[],
     options: ScreenshotOptions

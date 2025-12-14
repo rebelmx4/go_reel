@@ -71,7 +71,7 @@ async function fetchHybridVideoData(): Promise<VideoFile[]> {
         videoDataList.push({
             hash: hash,
             path: video.path,
-            createdAt: video.creation_time,
+            createdAt: video.createdAt,
             liked: annotation ? annotation.like_count > 0 : false,
             elite: annotation ? annotation.is_favorite : false,
             tags: annotation ? annotation.tags || [] : [],
@@ -85,7 +85,7 @@ const computeDerivedVideoLists = (videos: VideoFile[]): DerivedVideoState => {
   const sortedByDate = [...videos].sort((a, b) => b.createdAt - a.createdAt);
 
   return {
-    newestVideos: sortedByDate.slice(0, 100),
+    newestVideos: sortedByDate.slice(0, 50),
     likedVideos: sortedByDate.filter(v => v.liked),
     eliteVideos: sortedByDate.filter(v => v.elite),
   };
