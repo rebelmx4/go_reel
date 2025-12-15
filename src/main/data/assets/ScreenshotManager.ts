@@ -75,8 +75,13 @@ export class ScreenshotManager extends BaseAssetManager {
       const interval = duration / 10;
       const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1)).sort((a, b) => a - b);
       
+       const startTime = performance.now();
       // 3. 一次性生成所有截图（它们的文件名是临时的，如 temp_1.webp, temp_2.webp...）
       const tempScreenshotPaths = await ScreenshotGenerator.generateMultipleScreenshots(videoPath, timestamps, { outputDir: dir });
+      const endTime = performance.now();
+      const totalDuration = endTime - startTime;
+
+      console.log(`平均每张耗时: ${(totalDuration  / tempScreenshotPaths.length).toFixed(2)}ms`);
 
       if (tempScreenshotPaths.length !== timestamps.length) {
           throw new Error('Mismatch between requested and generated screenshots.');
