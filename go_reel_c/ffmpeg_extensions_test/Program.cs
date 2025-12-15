@@ -12,7 +12,7 @@ namespace DllTester
     internal static class NativeMethods
     {
       // 定义你的 DLL 文件名。确保它和你的 C++ 项目生成的文件名一致。
-      private const string DllName = "ffmpeg_utils.dll";
+      private const string DllName = "ffmpeg_extensions.dll";
 
       // 导入第一个函数：为单个视频、单个时间点截图
       [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -34,9 +34,9 @@ namespace DllTester
       // ==================  !!! 重要 !!! ==================
       // ================== 请修改以下路径 ==================
       // 注意：请确保 testVideo1 是一个长视频（例如30分钟），以满足测试2的要求。
-      string testVideo1 = @"E:\100_MyProjects\go_reel_videos\1.mp4";
-      string testVideo2 = @"E:\100_MyProjects\go_reel_videos\2.mp4";
-      string outputDirectory = @"E:\100_MyProjects\1";
+      string testVideo1 = @"test_video\1.mp4";
+      string testVideo2 = @"..\..\..\..\..\test_video\2.mp4";
+      string outputDirectory = @"..\..\..\..\..\test_video\capture";
       // ======================================================
 
       // 确保输出目录存在
@@ -101,7 +101,7 @@ namespace DllTester
       }
 
       // --- 为一个30分钟的视频生成100个均匀分布的时间点 ---
-      const long videoDurationMs = 30 * 60 * 1000;
+      const long videoDurationMs = 120 * 60 * 1000;
       const int screenshotCount = 100;
       long[] timestamps = new long[screenshotCount];
       long interval = videoDurationMs / (screenshotCount + 1); // +1 是为了避免取到视频的最开始和最末尾，使分布更均匀

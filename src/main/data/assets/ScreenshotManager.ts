@@ -76,6 +76,7 @@ export class ScreenshotManager extends BaseAssetManager {
       const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1)).sort((a, b) => a - b);
       
        const startTime = performance.now();
+       console.log("开始 截图")
       // 3. 一次性生成所有截图（它们的文件名是临时的，如 temp_1.webp, temp_2.webp...）
       const tempScreenshotPaths = await ScreenshotGenerator.generateMultipleScreenshots(videoPath, timestamps, { outputDir: dir });
       const endTime = performance.now();

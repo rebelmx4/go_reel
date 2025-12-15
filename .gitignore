@@ -6,3 +6,9 @@ out
 *.log*
 /data
 /ffmpeg
+/go_reel_c/Debug
+/go_reel_c/ffmpeg_extensions/Debug
+/go_reel_c/ffmpeg_extensions/x64/Debug
+/go_reel_c/ffmpeg_extensions_test/bin/Debug/net5.0
+/go_reel_c/ffmpeg_extensions_test/obj/Debug/net5.0
+/go_reel_c/test_video/*.mp4
