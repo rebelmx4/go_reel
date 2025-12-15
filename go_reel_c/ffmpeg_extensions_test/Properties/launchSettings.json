@@ -1,8 +1,7 @@
 {
   "profiles": {
     "ffmpeg_extensions_test": {
-      "commandName": "Project",
-      "workingDirectory": "."
+      "commandName": "Project"
     }
   }
 }

@@ -23,10 +23,12 @@ namespace DllTester
       [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
       public static extern int generate_screenshots_for_video(string video_path, long[] timestamps_ms, int count, string output_path_template);
 
+      // ====================== VVV 已更新的函数签名 VVV ======================
       // 导入第三个函数：为多个视频、单个时间点截图
       // C++ 的 const char* const* 对应 C# 的 string[]
       [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-      public static extern int generate_screenshots_for_videos(string[] video_paths, int count, long timestamp_ms, string output_dir);
+      public static extern int generate_screenshots_for_videos(string[] video_paths, string[] output_paths, int count, long timestamp_ms);
+      // ====================== ^^^ 已更新的函数签名 ^^^ ======================
     }
 
     static void Main(string[] args)
@@ -34,9 +36,9 @@ namespace DllTester
       // ==================  !!! 重要 !!! ==================
       // ================== 请修改以下路径 ==================
       // 注意：请确保 testVideo1 是一个长视频（例如30分钟），以满足测试2的要求。
-      string testVideo1 = @"test_video\1.mp4";
-      string testVideo2 = @"..\..\..\..\..\test_video\2.mp4";
-      string outputDirectory = @"..\..\..\..\..\test_video\capture";
+      string testVideo1 = @"..\..\..\..\test_video\1.mp4";
+      string testVideo2 = @"..\..\..\..\test_video\2.mp4";
+      string outputDirectory = @"..\..\..\..\test_video\capture";
       // ======================================================
 
       // 确保输出目录存在
@@ -53,7 +55,7 @@ namespace DllTester
       // --- 情况 3: 为多个视频在同一个时间点截图 ---
       TestMultipleVideosSingleTimestamp(new[] { testVideo1, testVideo2 }, outputDirectory);
 
-      Console.WriteLine("\n所有测试完成。请检查输出目录: " + outputDirectory);
+      Console.WriteLine("\n所有测试完成。请检查输出目录: " + Path.GetFullPath(outputDirectory));
       Console.ReadKey();
     }
 
@@ -101,27 +103,29 @@ namespace DllTester
       }
 
       // --- 为一个30分钟的视频生成100个均匀分布的时间点 ---
+      // 注意：已将时长修改为30分钟，以匹配注释
       const long videoDurationMs = 120 * 60 * 1000;
       const int screenshotCount = 100;
       long[] timestamps = new long[screenshotCount];
-      long interval = videoDurationMs / (screenshotCount + 1); // +1 是为了避免取到视频的最开始和最末尾，使分布更均匀
+      long interval = videoDurationMs / (screenshotCount + 1);
 
       for (int i = 0; i < screenshotCount; i++)
       {
         timestamps[i] = interval * (i + 1);
       }
+      // 此处的循环生成方式天然保证了 timestamps 数组是升序的，符合C++函数的要求。
       Console.WriteLine($"已生成 {screenshotCount} 个时间点, 从 {timestamps.First()}ms 到 {timestamps.Last()}ms。");
       // --------------------------------------------------------
 
       string templatePath = Path.Combine(outputDir, "case2_multi_shot_%ms.webp");
 
-      var stopwatch = new Stopwatch(); // 创建计时器
+      var stopwatch = new Stopwatch();
 
       try
       {
-        stopwatch.Start(); // 开始计时
+        stopwatch.Start();
         int successCount = NativeMethods.generate_screenshots_for_video(videoFile, timestamps, timestamps.Length, templatePath);
-        stopwatch.Stop(); // 停止计时
+        stopwatch.Stop();
 
         Console.WriteLine($"成功生成 {successCount} / {timestamps.Length} 张截图。");
         Console.WriteLine($"总耗时: {stopwatch.Elapsed.TotalSeconds:F2} 秒 ({stopwatch.ElapsedMilliseconds} ms)");
@@ -129,7 +133,7 @@ namespace DllTester
         {
           Console.WriteLine($"平均每张截图耗时: {stopwatch.ElapsedMilliseconds / (double)successCount:F2} ms");
         }
-        Console.WriteLine("文件名应为 case2_multi_shot_18000.webp, case2_multi_shot_36000.webp 等。\n");
+        Console.WriteLine("文件名应为 case2_multi_shot_....webp 等。\n");
       }
       catch (Exception ex)
       {
@@ -137,39 +141,53 @@ namespace DllTester
       }
     }
 
+    // ====================== VVV 已更新的测试逻辑 VVV ======================
     private static void TestMultipleVideosSingleTimestamp(string[] videoFiles, string outputDir)
     {
       Console.WriteLine("--- 3. 测试: 多个视频, 单个时间点 (2秒) ---");
-      foreach (var file in videoFiles)
+      if (videoFiles.Any(f => !File.Exists(f)))
       {
-        if (!File.Exists(file))
-        {
-          Console.WriteLine($"错误: 测试视频文件未找到: {file}\n");
-          return;
-        }
+        Console.WriteLine($"错误: 至少一个测试视频文件未找到。\n");
+        return;
+      }
+
+      // 1. 根据输入视频文件，手动构建一一对应的输出文件路径数组
+      string[] outputPaths = videoFiles
+          .Select(videoPath => {
+            string fileName = Path.GetFileNameWithoutExtension(videoPath);
+            return Path.Combine(outputDir, $"case3_{fileName}.webp");
+          })
+          .ToArray();
+
+      Console.WriteLine("将要生成的截图文件:");
+      foreach (var path in outputPaths)
+      {
+        Console.WriteLine($" - {path}");
       }
 
       long timestamp = 2000; // 统一在 2 秒处截图
-      var stopwatch = new Stopwatch(); // 创建计时器
+      var stopwatch = new Stopwatch();
 
       try
       {
-        stopwatch.Start(); // 开始计时
-        int successCount = NativeMethods.generate_screenshots_for_videos(videoFiles, videoFiles.Length, timestamp, outputDir);
-        stopwatch.Stop(); // 停止计时
+        stopwatch.Start();
+        // 2. 调用更新后的 native 方法
+        int successCount = NativeMethods.generate_screenshots_for_videos(videoFiles, outputPaths, videoFiles.Length, timestamp);
+        stopwatch.Stop();
 
         Console.WriteLine($"成功为 {successCount} / {videoFiles.Length} 个视频生成截图。");
-        Console.WriteLine($"总耗时: {stopwatch.Elapsed.TotalSeconds:F2} 秒 ({stopwatch.ElapsedMilliseconds} ms)");
+        Console.WriteLine($"总耗时: {stopwatch.Elapsed.TotalSeconds:F2} 秒 ({stopwatch.ElapsedMilliseconds} ms) (多线程并行)");
         if (successCount > 0)
         {
           Console.WriteLine($"平均每个视频耗时: {stopwatch.ElapsedMilliseconds / (double)successCount:F2} ms");
         }
-        Console.WriteLine("文件名应根据原视频名生成，例如 1.webp, 2.webp 等。\n");
+        Console.WriteLine();
       }
       catch (Exception ex)
       {
         Console.WriteLine($"调用 DLL 时发生异常: {ex.Message}\n");
       }
     }
+    // ====================== ^^^ 已更新的测试逻辑 ^^^ ======================
   }
 }

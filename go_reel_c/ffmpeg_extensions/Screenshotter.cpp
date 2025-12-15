@@ -4,6 +4,10 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <algorithm>
+#include <utility>
+#include <thread>   // <-- 新增: 用于多线程
+#include <atomic>   // <-- 新增: 用于线程安全的计数器
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -88,7 +92,6 @@ static int save_frame_as_webp(AVFrame* frame, const char* out_path)
     return -1;
   }
 
-  /* flush: 必须送 NULL 帧才能让 image encoder 出包 */
   ret = avcodec_send_frame(codec_ctx, NULL);
   if (ret < 0) {
     fprintf(stderr, "avcodec_send_frame(NULL) failed, ret=%d\n", ret);
@@ -142,18 +145,17 @@ static int save_frame_as_webp(AVFrame* frame, const char* out_path)
   return 0;
 }
 
-// 核心函数实现 (已解决所有 GOTO 问题)
+// 单张截图函数 (无变化)
 DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms, const char* output_path) {
   av_log_set_level(AV_LOG_VERBOSE);
 
-  // <<< 最终修正: 将 *所有* 变量声明提前到函数顶部
   AVFormatContext* format_ctx = nullptr;
   const AVCodec* decoder = nullptr;
   AVCodecContext* codec_ctx_dec = nullptr;
-  AVStream* video_stream = nullptr; // <<< 声明提前
+  AVStream* video_stream = nullptr;
   AVFrame* frame = nullptr;
   AVPacket* packet = nullptr;
-  int64_t seek_timestamp = 0; // <<< 声明提前
+  int64_t seek_timestamp = 0;
   int video_stream_index = -1;
   int ret = -1;
 
@@ -173,7 +175,6 @@ DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms
     goto cleanup;
   }
 
-  // <<< 这里现在是赋值，不是初始化
   video_stream = format_ctx->streams[video_stream_index];
 
   codec_ctx_dec = avcodec_alloc_context3(decoder);
@@ -183,7 +184,6 @@ DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms
     goto cleanup;
   }
 
-  // <<< 这里现在是赋值，不是初始化
   seek_timestamp = av_rescale(timestamp_ms, video_stream->time_base.den, (int64_t)video_stream->time_base.num * 1000);
 
   if (av_seek_frame(format_ctx, video_stream_index, seek_timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
@@ -231,37 +231,182 @@ cleanup:
   return ret;
 }
 
-// 后续函数 (无变化)
-DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long long* timestamps_ms, int count, const char* output_path_template) {
-  int success_count = 0;
-  std::string template_str(output_path_template);
 
+struct ScreenshotRequest {
+  long long timestamp_ms;
+  std::string output_path;
+
+  // 虽然你的代码中已经移除了排序，但保留这个比较运算符是个好习惯，
+  // 以便未来需要排序时可以直接使用 std::sort。
+  bool operator<(const ScreenshotRequest& other) const {
+    return timestamp_ms < other.timestamp_ms;
+  }
+};
+
+
+/**
+ * @brief 为单个视频文件在多个时间点生成截图（高效串行处理）。
+ * @warning 调用者必须保证 `timestamps_ms` 数组已经按升序排列！
+ *
+ * @param video_path 输入视频文件的路径。
+ * @param timestamps_ms 需要截图的时间点（毫秒）数组，必须是已排序的。
+ * @param count 时间戳的数量。
+ * @param output_path_template 输出文件名的模板，"%ms" 会被替换为时间戳。
+ * @return 成功生成截图的数量。
+ */
+DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long long* timestamps_ms, int count, const char* output_path_template) {
+  if (count <= 0) {
+    return 0;
+  }
+
+  av_log_set_level(AV_LOG_VERBOSE);
+
+  // --- 1. 一次性初始化所有 FFmpeg 相关上下文 ---
+  AVFormatContext* format_ctx = nullptr;
+  const AVCodec* decoder = nullptr;
+  AVCodecContext* codec_ctx_dec = nullptr;
+  AVStream* video_stream = nullptr;
+  AVFrame* frame = nullptr;
+  AVPacket* packet = nullptr;
+  int video_stream_index = -1;
+  int success_count = 0;
+
+  if (avformat_open_input(&format_ctx, video_path, NULL, NULL) != 0) {
+    // ... (错误处理代码无变化)
+    return 0;
+  }
+  if (avformat_find_stream_info(format_ctx, NULL) < 0) {
+    // ... (错误处理代码无变化)
+    avformat_close_input(&format_ctx);
+    return 0;
+  }
+  video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
+  if (video_stream_index < 0) {
+    // ... (错误处理代码无变化)
+    avformat_close_input(&format_ctx);
+    return 0;
+  }
+  video_stream = format_ctx->streams[video_stream_index];
+  codec_ctx_dec = avcodec_alloc_context3(decoder);
+  avcodec_parameters_to_context(codec_ctx_dec, video_stream->codecpar);
+  if (avcodec_open2(codec_ctx_dec, decoder, NULL) < 0) {
+    // ... (错误处理代码无变化)
+    avcodec_free_context(&codec_ctx_dec);
+    avformat_close_input(&format_ctx);
+    return 0;
+  }
+
+  frame = av_frame_alloc();
+  packet = av_packet_alloc();
+  if (!frame || !packet) {
+    // ... (错误处理代码无变化)
+    av_frame_free(&frame);
+    av_packet_free(&packet);
+    avcodec_free_context(&codec_ctx_dec);
+    avformat_close_input(&format_ctx);
+    return 0;
+  }
+
+  // --- 2. 创建截图请求列表 (不再排序) ---
+  // 注意：函数现在依赖于调用者提供的 timestamps_ms 数组是预先排序好的。
+  std::vector<ScreenshotRequest> requests;
+  std::string template_str(output_path_template);
   for (int i = 0; i < count; ++i) {
     std::string final_path = template_str;
     size_t pos = final_path.find("%ms");
     if (pos != std::string::npos) {
       final_path.replace(pos, 3, std::to_string(timestamps_ms[i]));
     }
-
-    if (generate_screenshot(video_path, timestamps_ms[i], final_path.c_str()) == 0) {
-      success_count++;
-    }
+    requests.push_back({ timestamps_ms[i], final_path });
   }
+  // std::sort(requests.begin(), requests.end()); // <-- 此行已根据您的要求移除
+
+  // --- 3. 循环处理所有请求 ---
+  for (const auto& req : requests) {
+    int64_t seek_timestamp = av_rescale(req.timestamp_ms, video_stream->time_base.den, (int64_t)video_stream->time_base.num * 1000);
+
+    if (av_seek_frame(format_ctx, video_stream_index, seek_timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
+      fprintf(stderr, "Error: Could not seek to timestamp %lldms. Skipping.\n", req.timestamp_ms);
+      continue;
+    }
+    avcodec_flush_buffers(codec_ctx_dec);
+
+    bool frame_saved = false;
+    while (av_read_frame(format_ctx, packet) >= 0) {
+      if (packet->stream_index == video_stream_index) {
+        if (avcodec_send_packet(codec_ctx_dec, packet) == 0) {
+          while (avcodec_receive_frame(codec_ctx_dec, frame) == 0) {
+            int64_t frame_ts_ms = av_rescale_q(frame->pts, video_stream->time_base, { 1, 1000 });
+            if (frame_ts_ms >= req.timestamp_ms) {
+              printf("Found frame for %lld ms at timestamp %lld ms. Saving to %s...\n", req.timestamp_ms, frame_ts_ms, req.output_path.c_str());
+              if (save_frame_as_webp(frame, req.output_path.c_str()) == 0) {
+                success_count++;
+              }
+              else {
+                fprintf(stderr, "Error: Failed to save frame for timestamp %lldms.\n", req.timestamp_ms);
+              }
+              frame_saved = true;
+              goto next_request;
+            }
+          }
+        }
+      }
+      av_packet_unref(packet);
+    }
+  next_request:;
+  }
+
+  // --- 4. 一次性清理 ---
+  av_packet_free(&packet);
+  av_frame_free(&frame);
+  avcodec_free_context(&codec_ctx_dec);
+  avformat_close_input(&format_ctx);
+
   return success_count;
 }
 
-DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, int count, long long timestamp_ms, const char* output_dir) {
-  int success_count = 0;
-  std::filesystem::path out_dir(output_dir);
 
+/**
+ * @brief 为多个不同的视频文件在同一时间点生成截图（并行处理）。
+ *
+ * @param video_paths 输入视频文件的路径数组。
+ * @param output_paths 与视频路径一一对应的输出 WebP 文件的路径数组。
+ * @param count 视频文件的数量（即数组的大小）。
+ * @param timestamp_ms 需要截图的时间点（毫秒）。
+ * @return 成功生成截图的数量。
+ */
+DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, const char* const* output_paths, int count, long long timestamp_ms) {
+  if (count <= 0) {
+    return 0;
+  }
+
+  // 1. 准备多线程环境
+  std::atomic<int> success_count(0); // 使用原子变量确保线程安全
+  std::vector<std::thread> threads;
+
+  // 建议的并发线程数，避免创建过多线程。
+  // 使用 hardware_concurrency 可以获取CPU核心数，但简单起见，这里直接处理所有任务。
+  // 对于IO密集型任务，线程数可以多于核心数。
+
+  // 2. 为每个视频启动一个处理线程
   for (int i = 0; i < count; ++i) {
-    std::filesystem::path video_p(video_paths[i]);
-    std::string output_filename = video_p.stem().string() + ".webp";
-    std::filesystem::path final_path = out_dir / output_filename;
+    // 使用 emplace_back 直接在 vector 中构造线程对象
+    threads.emplace_back([&success_count, video_path = video_paths[i], output_path = output_paths[i], timestamp_ms]() {
+      // 每个线程调用独立的单文件截图函数
+      // 这是一个独立的、无共享状态（除了原子计数器）的任务
+      if (generate_screenshot(video_path, timestamp_ms, output_path) == 0) {
+        success_count++; // 原子操作，线程安全
+      }
+    });
+  }
 
-    if (generate_screenshot(video_paths[i], timestamp_ms, final_path.string().c_str()) == 0) {
-      success_count++;
+  // 3. 等待所有线程执行完毕
+  for (auto& t : threads) {
+    if (t.joinable()) {
+      t.join();
     }
   }
-  return success_count;
+
+  // 4. 返回成功计数
+  return success_count.load();
 }
