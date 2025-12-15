@@ -336,7 +336,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
 
         initializeScreenshots();
 
-    }, [currentVideoPath, duration, setScreenshots, showToast]);
+    }, [currentVideoPath]);
 
     // Handle crop mode mouse events
     const handleCropMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
