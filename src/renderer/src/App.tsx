@@ -4,7 +4,7 @@ import '@mantine/core/styles.css';
 import { useNavigationStore, usePlayerStore, useRefreshStore, usePlaylistStore } from './stores';
 import { MainLayout, ToastContainer, PathConfigurationScreen, VideoPlayer } from './components';
 import { TagSearchPage } from './pages/TagSearchPage';
-import { RecentPage } from './pages/RecentPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { NewestPage } from './pages/NewestPage';
 import { SearchPage } from './pages/SearchPage';
 import { LikedPage } from './pages/LikedPage';
@@ -105,8 +105,7 @@ function App() {
     };
 
     // 4. 注册所有动作对应的处理器函数
-    // 这告诉管理器，当 'list_recent' 动作被触发时，应该做什么
-    keyBindingManager.registerHandler('list_recent', () => setView('recent'));
+    keyBindingManager.registerHandler('list_history', () => setView('history'));
     keyBindingManager.registerHandler('list_newest', () => setView('newest'));
     keyBindingManager.registerHandler('list_search', () => setView('search'));
     keyBindingManager.registerHandler('list_random', () => setView('random'));
@@ -130,7 +129,7 @@ function App() {
     switch (currentView) {
       case 'configuration': return <PathConfigurationScreen />;
       case 'player': return <VideoPlayer />;
-      case 'recent': return <RecentPage />;
+      case 'history': return <HistoryPage />;
       case 'newest': return <NewestPage />;
       case 'search': return <SearchPage />;
       case 'random': return <div style={{ padding: 20 }}>随机推荐 (待实现)</div>;

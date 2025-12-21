@@ -1,13 +1,17 @@
-#include "pch.h"
+// --- START OF FILE Screenshotter.cpp ---
+
+#include "pch.h" 
 #include "Screenshotter.h"
 #include <iostream>
 #include <string>
 #include <vector>
-#include <filesystem>
 #include <algorithm>
-#include <utility>
-#include <thread>   // <-- 新增: 用于多线程
-#include <atomic>   // <-- 新增: 用于线程安全的计数器
+#include <filesystem>
+#include <future>
+#include <deque>
+#include <thread>
+#include <chrono>
+#include <cstring> // for strrchr, _stricmp
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -19,58 +23,113 @@ extern "C" {
 #include <libavutil/time.h>
 }
 
-// 内部辅助函数 (无变化)
-static int save_frame_as_webp(AVFrame* frame, const char* out_path)
+using namespace std::chrono_literals;
+
+// =================================================================
+// 内部工具：简单的字符串不区分大小写比较 (跨平台兼容)
+// =================================================================
+static bool ends_with_ignore_case(const char* str, const char* suffix) {
+  if (!str || !suffix) return false;
+  size_t len_str = strlen(str);
+  size_t len_suffix = strlen(suffix);
+  if (len_suffix > len_str) return false;
+
+  const char* ptr_str = str + len_str - len_suffix;
+#ifdef _WIN32
+  return _stricmp(ptr_str, suffix) == 0;
+#else
+  return strcasecmp(ptr_str, suffix) == 0;
+#endif
+}
+
+// =================================================================
+// 1. [重构] 内部核心函数：通用帧保存 (支持 WebP, PNG, JPG)
+//    根据 out_path 的后缀自动选择编码器
+// =================================================================
+static int save_frame_internal(const AVFrame* frame, const char* out_path)
 {
-  fprintf(stderr, "DEBUG: enter save_frame_as_webp, frame fmt=%d, wxh=%dx%d\n",
-    frame->format, frame->width, frame->height);
+  int ret = 0;
 
-  const AVCodec* webp_codec = avcodec_find_encoder(AV_CODEC_ID_WEBP);
-  if (!webp_codec) {
-    fprintf(stderr, "Could not find WEBP encoder.\n");
+  // 1. 根据后缀确定编码器 ID 和像素格式
+  AVCodecID codec_id = AV_CODEC_ID_WEBP; // 默认
+  AVPixelFormat target_pix_fmt = AV_PIX_FMT_YUV420P; // 默认
+
+  if (ends_with_ignore_case(out_path, ".png")) {
+    codec_id = AV_CODEC_ID_PNG;
+    target_pix_fmt = AV_PIX_FMT_RGB24; // PNG 通常用 RGB24 或 RGBA
+  }
+  else if (ends_with_ignore_case(out_path, ".jpg") || ends_with_ignore_case(out_path, ".jpeg")) {
+    codec_id = AV_CODEC_ID_MJPEG;
+    target_pix_fmt = AV_PIX_FMT_YUVJ420P; // JPEG 使用 YUVJ420P (全范围) 或 YUV420P
+  }
+  // else .webp
+
+  const AVCodec* codec = avcodec_find_encoder(codec_id);
+  if (!codec) {
+    fprintf(stderr, "[Error] Encoder not found for output file.\n");
     return -1;
   }
 
-  AVCodecContext* codec_ctx = avcodec_alloc_context3(webp_codec);
-  if (!codec_ctx) {
-    fprintf(stderr, "Could not allocate WEBP codec context.\n");
-    return -1;
-  }
+  AVCodecContext* codec_ctx = avcodec_alloc_context3(codec);
+  if (!codec_ctx) return -1;
 
+  // --- 编码参数配置 ---
   codec_ctx->width = frame->width;
   codec_ctx->height = frame->height;
-  codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-  codec_ctx->time_base = { 1,25 };
-  codec_ctx->framerate = { 25,1 };
+  codec_ctx->pix_fmt = target_pix_fmt;
+  codec_ctx->time_base = { 1, 25 };
+  codec_ctx->framerate = { 25, 1 };
 
-  av_opt_set_int(codec_ctx->priv_data, "lossless", 0, 0);
-  av_opt_set(codec_ctx->priv_data, "quality", "100", 0);
+  // 针对不同格式的特定参数
+  if (codec_id == AV_CODEC_ID_WEBP) {
+    av_opt_set_int(codec_ctx->priv_data, "lossless", 0, 0); // 0=有损
+    av_opt_set(codec_ctx->priv_data, "quality", "80", 0);
+    av_opt_set_int(codec_ctx->priv_data, "compression_level", 4, 0);
+  }
+  else if (codec_id == AV_CODEC_ID_MJPEG) {
+    // JPEG 质量范围 2-31 (越小越好)，或者用 qscale
+    // FFmpeg 中 global_quality 通常对应 lambda * FF_QP2LAMBDA
+    // 为了简单，我们尝试用 qmin/qmax 或者直接设置 bit_rate (不推荐)
+    // 使用 av_opt_set "q" 或者 codec_ctx->flags
+    // 这里简单设置 color range 以防灰度偏色
+    if (target_pix_fmt == AV_PIX_FMT_YUVJ420P) {
+      codec_ctx->color_range = AVCOL_RANGE_JPEG;
+    }
+    // 设置 JPEG 质量 (相当于 -q:v 3 左右，范围 1-31，1最好)
+    // 注意：API 控制 MJPEG 质量比较麻烦，这里作为示例使用默认
+  }
+  else if (codec_id == AV_CODEC_ID_PNG) {
+    // PNG 压缩级别 0-9
+    av_opt_set_int(codec_ctx->priv_data, "compression_level", 7, 0);
+  }
 
-  if (avcodec_open2(codec_ctx, webp_codec, NULL) < 0) {
-    fprintf(stderr, "Could not open WEBP codec.\n");
+  if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
+    fprintf(stderr, "[Error] Could not open codec.\n");
     avcodec_free_context(&codec_ctx);
     return -1;
   }
 
+  // --- 图像格式转换 (源格式 -> 目标格式) ---
+  // 即使源格式和目标格式一样，为了处理 linesize 对齐或数据拷贝，使用 sws_scale 也是最稳妥的
   SwsContext* sws_ctx = sws_getContext(
     frame->width, frame->height, (AVPixelFormat)frame->format,
     codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt,
     SWS_BILINEAR, NULL, NULL, NULL);
+
   if (!sws_ctx) {
-    fprintf(stderr, "Could not initialize SwsContext\n");
     avcodec_free_context(&codec_ctx);
     return -1;
   }
 
-  AVFrame* frame_for_webp = av_frame_alloc();
-  frame_for_webp->format = codec_ctx->pix_fmt;
-  frame_for_webp->width = codec_ctx->width;
-  frame_for_webp->height = codec_ctx->height;
-  if (av_image_alloc(frame_for_webp->data, frame_for_webp->linesize,
-    frame_for_webp->width, frame_for_webp->height,
+  AVFrame* frame_converted = av_frame_alloc();
+  frame_converted->format = codec_ctx->pix_fmt;
+  frame_converted->width = codec_ctx->width;
+  frame_converted->height = codec_ctx->height;
+
+  if (av_image_alloc(frame_converted->data, frame_converted->linesize,
+    frame_converted->width, frame_converted->height,
     codec_ctx->pix_fmt, 32) < 0) {
-    fprintf(stderr, "av_image_alloc failed\n");
-    av_frame_free(&frame_for_webp);
+    av_frame_free(&frame_converted);
     sws_freeContext(sws_ctx);
     avcodec_free_context(&codec_ctx);
     return -1;
@@ -78,285 +137,184 @@ static int save_frame_as_webp(AVFrame* frame, const char* out_path)
 
   sws_scale(sws_ctx,
     (const uint8_t* const*)frame->data, frame->linesize, 0, frame->height,
-    frame_for_webp->data, frame_for_webp->linesize);
+    frame_converted->data, frame_converted->linesize);
 
+  // --- 编码与写入 ---
   AVPacket* packet = av_packet_alloc();
-  int ret = avcodec_send_frame(codec_ctx, frame_for_webp);
-  if (ret < 0) {
-    fprintf(stderr, "avcodec_send_frame failed, ret=%d\n", ret);
-    av_packet_free(&packet);
-    av_freep(&frame_for_webp->data[0]);
-    av_frame_free(&frame_for_webp);
-    sws_freeContext(sws_ctx);
-    avcodec_free_context(&codec_ctx);
-    return -1;
-  }
-
-  ret = avcodec_send_frame(codec_ctx, NULL);
-  if (ret < 0) {
-    fprintf(stderr, "avcodec_send_frame(NULL) failed, ret=%d\n", ret);
-    av_packet_free(&packet);
-    av_freep(&frame_for_webp->data[0]);
-    av_frame_free(&frame_for_webp);
-    sws_freeContext(sws_ctx);
-    avcodec_free_context(&codec_ctx);
-    return -1;
-  }
-
-  ret = avcodec_receive_packet(codec_ctx, packet);
-  if (ret < 0) {
-    fprintf(stderr, "avcodec_receive_packet failed after flush, ret=%d\n", ret);
-    av_packet_free(&packet);
-    av_freep(&frame_for_webp->data[0]);
-    av_frame_free(&frame_for_webp);
-    sws_freeContext(sws_ctx);
-    avcodec_free_context(&codec_ctx);
-    return -1;
-  }
-
-  FILE* f = fopen(out_path, "wb");
-  if (!f) {
-    fprintf(stderr, "Could not open output file: %s\n", out_path);
-    av_packet_free(&packet);
-    av_freep(&frame_for_webp->data[0]);
-    av_frame_free(&frame_for_webp);
-    sws_freeContext(sws_ctx);
-    avcodec_free_context(&codec_ctx);
-    return -1;
-  }
-  size_t w = fwrite(packet->data, 1, packet->size, f);
-  fclose(f);
-  if (w != packet->size) {
-    fprintf(stderr, "fwrite failed: %zu / %d bytes\n", w, packet->size);
-    av_packet_free(&packet);
-    av_freep(&frame_for_webp->data[0]);
-    av_frame_free(&frame_for_webp);
-    sws_freeContext(sws_ctx);
-    avcodec_free_context(&codec_ctx);
-    return -1;
-  }
-
-  fprintf(stderr, "DEBUG: WebP saved to %s, %d bytes\n", out_path, packet->size);
-  av_packet_free(&packet);
-  av_freep(&frame_for_webp->data[0]);
-  av_frame_free(&frame_for_webp);
-  sws_freeContext(sws_ctx);
-  avcodec_free_context(&codec_ctx);
-  return 0;
-}
-
-// 单张截图函数 (无变化)
-DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms, const char* output_path) {
-  av_log_set_level(AV_LOG_VERBOSE);
-
-  AVFormatContext* format_ctx = nullptr;
-  const AVCodec* decoder = nullptr;
-  AVCodecContext* codec_ctx_dec = nullptr;
-  AVStream* video_stream = nullptr;
-  AVFrame* frame = nullptr;
-  AVPacket* packet = nullptr;
-  int64_t seek_timestamp = 0;
-  int video_stream_index = -1;
-  int ret = -1;
-
-  if (avformat_open_input(&format_ctx, video_path, NULL, NULL) != 0) {
-    fprintf(stderr, "Error: Could not open video file: %s\n", video_path);
-    return -1;
-  }
-  if (avformat_find_stream_info(format_ctx, NULL) < 0) {
-    fprintf(stderr, "Error: Could not find stream information.\n");
-    avformat_close_input(&format_ctx);
-    return -1;
-  }
-
-  video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
-  if (video_stream_index < 0) {
-    fprintf(stderr, "Error: Could not find a video stream in the input file.\n");
-    goto cleanup;
-  }
-
-  video_stream = format_ctx->streams[video_stream_index];
-
-  codec_ctx_dec = avcodec_alloc_context3(decoder);
-  avcodec_parameters_to_context(codec_ctx_dec, video_stream->codecpar);
-  if (avcodec_open2(codec_ctx_dec, decoder, NULL) < 0) {
-    fprintf(stderr, "Error: Could not open codec.\n");
-    goto cleanup;
-  }
-
-  seek_timestamp = av_rescale(timestamp_ms, video_stream->time_base.den, (int64_t)video_stream->time_base.num * 1000);
-
-  if (av_seek_frame(format_ctx, video_stream_index, seek_timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
-    fprintf(stderr, "Error: Could not seek to timestamp %lldms\n", timestamp_ms);
-    goto cleanup;
-  }
-  avcodec_flush_buffers(codec_ctx_dec);
-
-  frame = av_frame_alloc();
-  packet = av_packet_alloc();
-
-  while (av_read_frame(format_ctx, packet) >= 0) {
-    if (packet->stream_index == video_stream_index) {
-      if (avcodec_send_packet(codec_ctx_dec, packet) == 0) {
-        while (avcodec_receive_frame(codec_ctx_dec, frame) == 0) {
-          int64_t frame_ts_ms = av_rescale_q(frame->pts, video_stream->time_base, { 1, 1000 });
-          if (frame_ts_ms >= timestamp_ms) {
-            printf("Found frame at timestamp %lld ms (target was %lld ms). Saving...\n", frame_ts_ms, timestamp_ms);
-            if (save_frame_as_webp(frame, output_path) == 0) {
-              ret = 0;
-            }
-            else {
-              fprintf(stderr, "Error: Failed to save frame as WebP.\n");
-              ret = -1;
-            }
-            goto end_loop;
-          }
-        }
+  ret = avcodec_send_frame(codec_ctx, frame_converted);
+  if (ret >= 0) {
+    avcodec_send_frame(codec_ctx, NULL); // Flush encoder
+    ret = avcodec_receive_packet(codec_ctx, packet);
+    if (ret >= 0) {
+      FILE* f = fopen(out_path, "wb");
+      if (f) {
+        fwrite(packet->data, 1, packet->size, f);
+        fclose(f);
+        ret = 0; // Success
+      }
+      else {
+        fprintf(stderr, "[Error] Could not open output file: %s\n", out_path);
+        ret = -1;
       }
     }
-    av_packet_unref(packet);
   }
 
-end_loop:
-cleanup:
+  // --- 资源清理 ---
   av_packet_free(&packet);
-  av_frame_free(&frame);
-  avcodec_free_context(&codec_ctx_dec);
-  avformat_close_input(&format_ctx);
-
-  if (ret != 0) {
-    fprintf(stderr, "Function generate_screenshot failed to produce an image.\n");
-  }
+  av_freep(&frame_converted->data[0]);
+  av_frame_free(&frame_converted);
+  sws_freeContext(sws_ctx);
+  avcodec_free_context(&codec_ctx);
 
   return ret;
 }
 
 
-struct ScreenshotRequest {
-  long long timestamp_ms;
-  std::string output_path;
-
-  // 虽然你的代码中已经移除了排序，但保留这个比较运算符是个好习惯，
-  // 以便未来需要排序时可以直接使用 std::sort。
-  bool operator<(const ScreenshotRequest& other) const {
-    return timestamp_ms < other.timestamp_ms;
-  }
-};
-
-
-/**
- * @brief 为单个视频文件在多个时间点生成截图（高效串行处理）。
- * @warning 调用者必须保证 `timestamps_ms` 数组已经按升序排列！
- *
- * @param video_path 输入视频文件的路径。
- * @param timestamps_ms 需要截图的时间点（毫秒）数组，必须是已排序的。
- * @param count 时间戳的数量。
- * @param output_path_template 输出文件名的模板，"%ms" 会被替换为时间戳。
- * @return 成功生成截图的数量。
- */
-DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long long* timestamps_ms, int count, const char* output_path_template) {
-  if (count <= 0) {
-    return 0;
-  }
-
-  av_log_set_level(AV_LOG_VERBOSE);
-
-  // --- 1. 一次性初始化所有 FFmpeg 相关上下文 ---
+// =================================================================
+// 2. [新增功能] 获取视频时长 (毫秒)
+// =================================================================
+DLLEXPORT long long get_video_duration(const char* video_path) {
   AVFormatContext* format_ctx = nullptr;
-  const AVCodec* decoder = nullptr;
-  AVCodecContext* codec_ctx_dec = nullptr;
-  AVStream* video_stream = nullptr;
-  AVFrame* frame = nullptr;
-  AVPacket* packet = nullptr;
-  int video_stream_index = -1;
-  int success_count = 0;
+  // 抑制日志
+  av_log_set_level(AV_LOG_ERROR);
 
   if (avformat_open_input(&format_ctx, video_path, NULL, NULL) != 0) {
-    // ... (错误处理代码无变化)
-    return 0;
+    return -1;
   }
+
+  // 必须调用这个才能获取准确时长
   if (avformat_find_stream_info(format_ctx, NULL) < 0) {
-    // ... (错误处理代码无变化)
     avformat_close_input(&format_ctx);
-    return 0;
+    return -1;
   }
-  video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
+
+  long long duration_ms = 0;
+  if (format_ctx->duration != AV_NOPTS_VALUE) {
+    // format_ctx->duration 单位是 AV_TIME_BASE (微秒)
+    // 转换为毫秒: duration / 1000
+    duration_ms = format_ctx->duration / 1000;
+  }
+
+  avformat_close_input(&format_ctx);
+  return duration_ms;
+}
+
+
+// =================================================================
+// 3. [核心功能] 单视频批量截图 (已更新：调用 save_frame_internal)
+// =================================================================
+DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long long* timestamps_ms, int count, const char* output_path_template) {
+  if (count <= 0) return 0;
+
+  std::vector<long long> sorted_timestamps(timestamps_ms, timestamps_ms + count);
+  std::sort(sorted_timestamps.begin(), sorted_timestamps.end());
+  sorted_timestamps.erase(std::unique(sorted_timestamps.begin(), sorted_timestamps.end()), sorted_timestamps.end());
+
+  av_log_set_level(AV_LOG_ERROR);
+
+  unsigned int max_concurrent = std::thread::hardware_concurrency();
+  if (max_concurrent == 0) max_concurrent = 4;
+  std::deque<std::future<int>> tasks;
+
+  int success_count = 0;
+
+  AVFormatContext* format_ctx = nullptr;
+  if (avformat_open_input(&format_ctx, video_path, NULL, NULL) != 0) {
+    return -1;
+  }
+
+  if (avformat_find_stream_info(format_ctx, NULL) < 0) {
+    avformat_close_input(&format_ctx);
+    return -1;
+  }
+
+  const AVCodec* decoder = nullptr;
+  int video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
   if (video_stream_index < 0) {
-    // ... (错误处理代码无变化)
     avformat_close_input(&format_ctx);
-    return 0;
+    return -1;
   }
-  video_stream = format_ctx->streams[video_stream_index];
-  codec_ctx_dec = avcodec_alloc_context3(decoder);
+
+  AVStream* video_stream = format_ctx->streams[video_stream_index];
+  AVCodecContext* codec_ctx_dec = avcodec_alloc_context3(decoder);
   avcodec_parameters_to_context(codec_ctx_dec, video_stream->codecpar);
+  codec_ctx_dec->thread_count = 0;
+
   if (avcodec_open2(codec_ctx_dec, decoder, NULL) < 0) {
-    // ... (错误处理代码无变化)
     avcodec_free_context(&codec_ctx_dec);
     avformat_close_input(&format_ctx);
-    return 0;
+    return -1;
   }
 
-  frame = av_frame_alloc();
-  packet = av_packet_alloc();
-  if (!frame || !packet) {
-    // ... (错误处理代码无变化)
-    av_frame_free(&frame);
-    av_packet_free(&packet);
-    avcodec_free_context(&codec_ctx_dec);
-    avformat_close_input(&format_ctx);
-    return 0;
-  }
+  AVFrame* frame = av_frame_alloc();
+  AVPacket* packet = av_packet_alloc();
 
-  // --- 2. 创建截图请求列表 (不再排序) ---
-  // 注意：函数现在依赖于调用者提供的 timestamps_ms 数组是预先排序好的。
-  std::vector<ScreenshotRequest> requests;
-  std::string template_str(output_path_template);
-  for (int i = 0; i < count; ++i) {
-    std::string final_path = template_str;
+  for (long long target_ms : sorted_timestamps) {
+    std::string final_path = output_path_template;
     size_t pos = final_path.find("%ms");
     if (pos != std::string::npos) {
-      final_path.replace(pos, 3, std::to_string(timestamps_ms[i]));
+      final_path.replace(pos, 3, std::to_string(target_ms));
     }
-    requests.push_back({ timestamps_ms[i], final_path });
-  }
-  // std::sort(requests.begin(), requests.end()); // <-- 此行已根据您的要求移除
+    else {
+      final_path += "_" + std::to_string(target_ms);
+    }
 
-  // --- 3. 循环处理所有请求 ---
-  for (const auto& req : requests) {
-    int64_t seek_timestamp = av_rescale(req.timestamp_ms, video_stream->time_base.den, (int64_t)video_stream->time_base.num * 1000);
+    int64_t seek_target = av_rescale(target_ms, video_stream->time_base.den, (int64_t)video_stream->time_base.num * 1000);
 
-    if (av_seek_frame(format_ctx, video_stream_index, seek_timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
-      fprintf(stderr, "Error: Could not seek to timestamp %lldms. Skipping.\n", req.timestamp_ms);
+    if (av_seek_frame(format_ctx, video_stream_index, seek_target, AVSEEK_FLAG_BACKWARD) < 0) {
       continue;
     }
+
     avcodec_flush_buffers(codec_ctx_dec);
 
-    bool frame_saved = false;
     while (av_read_frame(format_ctx, packet) >= 0) {
       if (packet->stream_index == video_stream_index) {
         if (avcodec_send_packet(codec_ctx_dec, packet) == 0) {
           while (avcodec_receive_frame(codec_ctx_dec, frame) == 0) {
             int64_t frame_ts_ms = av_rescale_q(frame->pts, video_stream->time_base, { 1, 1000 });
-            if (frame_ts_ms >= req.timestamp_ms) {
-              printf("Found frame for %lld ms at timestamp %lld ms. Saving to %s...\n", req.timestamp_ms, frame_ts_ms, req.output_path.c_str());
-              if (save_frame_as_webp(frame, req.output_path.c_str()) == 0) {
-                success_count++;
+
+            if (frame_ts_ms >= target_ms) {
+              AVFrame* frame_clone = av_frame_clone(frame);
+              if (!frame_clone) break;
+
+              for (auto it = tasks.begin(); it != tasks.end(); ) {
+                if (it->wait_for(0s) == std::future_status::ready) {
+                  if (it->get() == 0) success_count++;
+                  it = tasks.erase(it);
+                }
+                else {
+                  ++it;
+                }
               }
-              else {
-                fprintf(stderr, "Error: Failed to save frame for timestamp %lldms.\n", req.timestamp_ms);
+
+              if (tasks.size() >= max_concurrent) {
+                if (tasks.front().get() == 0) success_count++;
+                tasks.pop_front();
               }
-              frame_saved = true;
-              goto next_request;
+
+              tasks.push_back(std::async(std::launch::async, [frame_clone, final_path]() {
+                // [修改] 调用新的内部函数，支持多种格式
+                int res = save_frame_internal(frame_clone, final_path.c_str());
+                AVFrame* to_free = frame_clone;
+                av_frame_free(&to_free);
+                return res;
+                }));
+
+              goto next_timestamp_label;
             }
           }
         }
       }
       av_packet_unref(packet);
     }
-  next_request:;
+  next_timestamp_label:
+    av_packet_unref(packet);
   }
 
-  // --- 4. 一次性清理 ---
+  for (auto& task : tasks) {
+    if (task.get() == 0) success_count++;
+  }
+
   av_packet_free(&packet);
   av_frame_free(&frame);
   avcodec_free_context(&codec_ctx_dec);
@@ -366,47 +324,129 @@ DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long 
 }
 
 
-/**
- * @brief 为多个不同的视频文件在同一时间点生成截图（并行处理）。
- *
- * @param video_paths 输入视频文件的路径数组。
- * @param output_paths 与视频路径一一对应的输出 WebP 文件的路径数组。
- * @param count 视频文件的数量（即数组的大小）。
- * @param timestamp_ms 需要截图的时间点（毫秒）。
- * @return 成功生成截图的数量。
- */
-DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, const char* const* output_paths, int count, long long timestamp_ms) {
-  if (count <= 0) {
-    return 0;
-  }
+// =================================================================
+// 4. [修改] 多视频处理 (适配 save_frame_internal 的变化)
+// =================================================================
+DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, int count, long long timestamp_ms, const char* output_dir) {
+  int total_success = 0;
+  unsigned int max_concurrent = std::thread::hardware_concurrency();
+  if (max_concurrent == 0) max_concurrent = 4;
 
-  // 1. 准备多线程环境
-  std::atomic<int> success_count(0); // 使用原子变量确保线程安全
-  std::vector<std::thread> threads;
+  std::deque<std::future<int>> file_tasks;
 
-  // 建议的并发线程数，避免创建过多线程。
-  // 使用 hardware_concurrency 可以获取CPU核心数，但简单起见，这里直接处理所有任务。
-  // 对于IO密集型任务，线程数可以多于核心数。
-
-  // 2. 为每个视频启动一个处理线程
   for (int i = 0; i < count; ++i) {
-    // 使用 emplace_back 直接在 vector 中构造线程对象
-    threads.emplace_back([&success_count, video_path = video_paths[i], output_path = output_paths[i], timestamp_ms]() {
-      // 每个线程调用独立的单文件截图函数
-      // 这是一个独立的、无共享状态（除了原子计数器）的任务
-      if (generate_screenshot(video_path, timestamp_ms, output_path) == 0) {
-        success_count++; // 原子操作，线程安全
+    for (auto it = file_tasks.begin(); it != file_tasks.end(); ) {
+      if (it->wait_for(0s) == std::future_status::ready) {
+        if (it->get() == 0) total_success++;
+        it = file_tasks.erase(it);
       }
-    });
-  }
-
-  // 3. 等待所有线程执行完毕
-  for (auto& t : threads) {
-    if (t.joinable()) {
-      t.join();
+      else {
+        ++it;
+      }
     }
+
+    if (file_tasks.size() >= max_concurrent) {
+      if (file_tasks.front().get() == 0) total_success++;
+      file_tasks.pop_front();
+    }
+
+    std::string v_path = video_paths[i];
+    std::string o_dir = output_dir;
+
+    file_tasks.push_back(std::async(std::launch::async, [v_path, o_dir, timestamp_ms]() {
+      std::filesystem::path video_p(v_path);
+      // 默认保存为 webp，如果需要其他格式，可以在这里修改逻辑或者传入参数
+      std::string output_filename = video_p.stem().string() + ".webp";
+      std::filesystem::path final_path = std::filesystem::path(o_dir) / output_filename;
+
+      return generate_screenshot(v_path.c_str(), timestamp_ms, final_path.string().c_str());
+      }));
   }
 
-  // 4. 返回成功计数
-  return success_count.load();
+  for (auto& t : file_tasks) {
+    if (t.get() == 0) total_success++;
+  }
+
+  return total_success;
 }
+
+
+// =================================================================
+// 5. [修改] 单张截图 (适配 save_frame_internal)
+// =================================================================
+DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms, const char* output_path) {
+  int ret = -1;
+  AVFormatContext* format_ctx = nullptr;
+  const AVCodec* decoder = nullptr;
+  AVCodecContext* codec_ctx = nullptr;
+  AVFrame* frame = nullptr;
+  AVPacket* packet = nullptr;
+  int stream_idx = -1;
+  int64_t seek_target = 0;
+
+  // 抑制日志
+  av_log_set_level(AV_LOG_ERROR);
+
+  if (avformat_open_input(&format_ctx, video_path, NULL, NULL) != 0) goto cleanup;
+  if (avformat_find_stream_info(format_ctx, NULL) < 0) goto cleanup;
+
+  stream_idx = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
+  if (stream_idx < 0) goto cleanup;
+
+  codec_ctx = avcodec_alloc_context3(decoder);
+  if (!codec_ctx) goto cleanup;
+  avcodec_parameters_to_context(codec_ctx, format_ctx->streams[stream_idx]->codecpar);
+
+  if (avcodec_open2(codec_ctx, decoder, NULL) < 0) goto cleanup;
+
+  seek_target = av_rescale(timestamp_ms, format_ctx->streams[stream_idx]->time_base.den, (int64_t)format_ctx->streams[stream_idx]->time_base.num * 1000);
+
+  if (av_seek_frame(format_ctx, stream_idx, seek_target, AVSEEK_FLAG_BACKWARD) < 0) goto cleanup;
+
+  avcodec_flush_buffers(codec_ctx);
+
+  frame = av_frame_alloc();
+  packet = av_packet_alloc();
+  if (!frame || !packet) goto cleanup;
+
+  while (av_read_frame(format_ctx, packet) >= 0) {
+    if (packet->stream_index == stream_idx) {
+      if (avcodec_send_packet(codec_ctx, packet) == 0) {
+        while (avcodec_receive_frame(codec_ctx, frame) == 0) {
+          int64_t pts = av_rescale_q(frame->pts, format_ctx->streams[stream_idx]->time_base, { 1, 1000 });
+          if (pts >= timestamp_ms) {
+            // [修改] 调用通用保存函数
+            ret = save_frame_internal(frame, output_path);
+            goto cleanup;
+          }
+        }
+      }
+    }
+    av_packet_unref(packet);
+  }
+
+cleanup:
+  if (packet) av_packet_free(&packet);
+  if (frame) av_frame_free(&frame);
+  if (codec_ctx) avcodec_free_context(&codec_ctx);
+  if (format_ctx) avformat_close_input(&format_ctx);
+  return ret;
+}
+
+// =================================================================
+// 6. [新增功能] 百分比截图
+// =================================================================
+DLLEXPORT int generate_screenshot_at_percentage(const char* video_path, double percentage, const char* output_path) {
+  if (percentage < 0.0 || percentage > 100.0) return -1;
+
+  // 1. 获取时长
+  long long duration_ms = get_video_duration(video_path);
+  if (duration_ms <= 0) return -1;
+
+  // 2. 计算时间戳
+  long long timestamp_ms = (long long)(duration_ms * (percentage / 100.0));
+
+  // 3. 调用单张截图函数
+  return generate_screenshot(video_path, timestamp_ms, output_path);
+}
+// --- END OF FILE Screenshotter.cpp ---

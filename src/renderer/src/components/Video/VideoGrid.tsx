@@ -44,7 +44,7 @@ export function VideoGrid({
         >
             {videos.map(video => (
                 <VideoCard
-                    key={video.id}
+                    key={video.hash}
                     video={video}
                     onPlay={onPlay}
                     onToggleLike={onToggleLike}

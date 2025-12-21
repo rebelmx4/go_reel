@@ -92,7 +92,7 @@ export class KeyBindingManager {
 
   /**
    * 注册一个当特定动作被触发时调用的函数。
-   * @param action 动作名称 (例如 'toggle_play', 'list_recent')。
+   * @param action 动作名称 (例如 'toggle_play', 'list_history')。
    * @param handler 要执行的函数。
    */
   public registerHandler(action: string, handler: ActionHandler): void {

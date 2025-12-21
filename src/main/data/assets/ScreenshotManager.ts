@@ -1,3 +1,5 @@
+// --- START OF FILE ScreenshotManager.ts ---
+
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import sharp from 'sharp';
@@ -5,7 +7,6 @@ import { BaseAssetManager } from './BaseAssetManager';
 import { settingsManager }  from '../json/SettingsManager';
 import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator'; 
 
-// 定义了 'load-screenshots' 返回的截图对象结构
 export interface Screenshot {
   filename: string;
   timestamp: number;
@@ -15,104 +16,84 @@ export interface Screenshot {
 
 export class ScreenshotManager extends BaseAssetManager {
   constructor() {
-    // 'screenshots' 是存储截图的根目录名
     super('screenshots');
   }
 
- 
   /**
-   * 从视频文件为指定时间戳创建一张手动截图。
-   * @param hash - 视频哈希
-   * @param videoPath - 原始视频文件路径
-   * @param timestampInSeconds - 截图所在的时间点（秒）
-   * @returns 成功则返回 true，否则返回 false
+   * 手动截图
+   * [优化] 直接生成最终文件名，无需重命名
    */
   public async createManualScreenshot(hash: string, videoPath: string, timestampInSeconds: number): Promise<boolean> {
     const dir = this.getHashBasedDir(hash);
     
     try {
-      // 1. 使用工具类生成一张带有临时名字的截图
-      const tempPath = await ScreenshotGenerator.generateScreenshotAtTimestamp(videoPath, timestampInSeconds, dir);
-
-      // 2. 根据我们的业务规则重命名文件
+      // 1. 预先计算最终路径： {timestamp}_m.webp
       const msTimestamp = Math.floor(timestampInSeconds * 1000);
       const finalFilename = `${msTimestamp}_m.webp`;
       const finalPath = path.join(dir, finalFilename);
-      
-      await fs.rename(tempPath, finalPath);
-      
-      console.log(`[Manual Screenshot Manager] Successfully created screenshot for ${hash} at ${timestampInSeconds}s.`);
+
+      // 2. 直接告诉生成器生成这个文件
+      await ScreenshotGenerator.generateScreenshotAtTimestamp(videoPath, timestampInSeconds, finalPath);
+
+      console.log(`[Manual Screenshot] Success: ${finalPath}`);
       return true;
     } catch (error) {
-      console.error(`[Manual Screenshot Manager] Failed for ${hash}:`, error);
+      console.error(`[Manual Screenshot] Failed for ${hash}:`, error);
       return false;
     }
   }
 
   /**
-   * 为视频自动生成9张截图（如果尚不存在）。
-   * 此方法经过重构，使用单次 FFMpeg 调用，性能更高。
-   * @param hash - 视频哈希
-   * @param videoPath - 原始视频文件路径
-   * @returns 如果成功生成或已存在，返回 true，否则返回 false
+   * 自动截图 (9张)
+   * [优化] 利用 C++ 模板功能直接生成 _a 后缀的文件，无需重命名循环
    */
   public async generateAutoScreenshots(hash: string, videoPath: string): Promise<boolean> {
     if (await this.hasScreenshots(hash)) {
-      console.log(`[Auto Screenshot Manager] Screenshots already exist for ${hash}. Skipping.`);
+      console.log(`[Auto Screenshot] Exists for ${hash}. Skipping.`);
       return true;
     }
 
     const dir = this.getHashBasedDir(hash);
 
     try {
-      // 1. 获取视频时长
+      // 1. 获取时长并计算时间点
       const duration = await ScreenshotGenerator.getVideoDuration(videoPath);
-      if (duration <= 0) {
-        throw new Error('Could not determine a valid video duration.');
-      }
+      if (duration <= 0) throw new Error('Invalid video duration.');
 
-      // 2. 计算9个截图的时间点，并排序
       const interval = duration / 10;
       const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1)).sort((a, b) => a - b);
       
-       const startTime = performance.now();
-       console.log("开始 截图")
-      // 3. 一次性生成所有截图（它们的文件名是临时的，如 temp_1.webp, temp_2.webp...）
-      const tempScreenshotPaths = await ScreenshotGenerator.generateMultipleScreenshots(videoPath, timestamps, { outputDir: dir });
+      const startTime = performance.now();
+      
+      // 2. [关键修改] 传入 filenamePattern: '%ms_a'
+      // C++ 会自动将 %ms 替换为时间戳，生成如 "12345_a.webp" 的文件
+      const generatedPaths = await ScreenshotGenerator.generateMultipleScreenshots(
+        videoPath, 
+        timestamps, 
+        { 
+          outputDir: dir,
+          filenamePattern: '%ms_a' // 这里指定生成的格式为 {时间戳}_a
+        }
+      );
+
       const endTime = performance.now();
-      const totalDuration = endTime - startTime;
+      console.log(`[Auto Screenshot] Generated 9 images in ${(endTime - startTime).toFixed(2)}ms`);
 
-      console.log(`平均每张耗时: ${(totalDuration  / tempScreenshotPaths.length).toFixed(2)}ms`);
-
-      if (tempScreenshotPaths.length !== timestamps.length) {
+      if (generatedPaths.length !== timestamps.length) {
           throw new Error('Mismatch between requested and generated screenshots.');
       }
 
-      // 4. 将所有临时文件重命名为符合业务规范的最终文件名
-      const renamePromises = tempScreenshotPaths.map((tempPath, index) => {
-        const timestamp = timestamps[index]; // 按顺序一一对应
-        const msTimestamp = Math.floor(timestamp * 1000);
-        const finalFilename = `${msTimestamp}_a.webp`;
-        const finalPath = path.join(dir, finalFilename);
-        return fs.rename(tempPath, finalPath);
-      });
-
-      await Promise.all(renamePromises);
-
-      console.log(`[Auto Screenshot Manager] Successfully generated 9 screenshots for ${hash} in a single process.`);
+      // 3. 以前这里需要遍历 rename，现在完全不需要了！
+      
       return true;
 
     } catch (error) {
-      console.error(`[Auto Screenshot Manager] Failed to generate screenshots for ${hash}:`, error);
+      console.error(`[Auto Screenshot] Failed for ${hash}:`, error);
       return false;
     }
   }
 
-  /**
-   * 加载指定视频的所有截图信息
-   * @param hash - 视频哈希
-   * @returns 截图对象数组
-   */
+  
   public async loadScreenshots(hash: string): Promise<Screenshot[]> {
     try {
       const files = await this.listHashBasedFiles(hash);
@@ -125,40 +106,25 @@ export class ScreenshotManager extends BaseAssetManager {
           screenshots.push({
             filename: file,
             timestamp: parseInt(match[1], 10),
-            path: `file://${absolutePath}`, // 为渲染进程提供可以访问的 file协议 路径
+            path: `file://${absolutePath}`, 
             type: match[2] === 'm' ? 'manual' : 'auto'
           });
         }
       }
       
-      // 按时间戳排序
       screenshots.sort((a, b) => a.timestamp - b.timestamp);
-      
       return screenshots;
     } catch (error) {
-      // 目录不存在或其他读取错误
       return [];
     }
   }
 
-  /**
-   * 删除一张截图
-   * @param hash - 视频哈希
-   * @param filename - 要删除的截图文件名
-   */
   public async deleteScreenshot(hash: string, filename: string): Promise<void> {
     return this.deleteHashBasedFile(hash, filename);
   }
 
-  /**
-   * 导出指定视频的所有截图到外部路径，并应用旋转。
-   * @param hash - 视频的哈希值
-   * @param rotation - 顺时针旋转角度。支持的值为 90、180、270。
-   * @param exportPath - 导出的目标目录路径
-   */
   public async exportScreenshots(hash: string, rotation: number): Promise<void> {
     const exportPath = settingsManager.getScreenshotExportPath();
-
     const targetDir = path.join(exportPath, hash);
     await fs.mkdir(targetDir, { recursive: true });
     
@@ -168,41 +134,27 @@ export class ScreenshotManager extends BaseAssetManager {
       if (file.endsWith('.webp')) {
         const sourcePath = this.getHashBasedPath(hash, file);
         const targetPath = path.join(targetDir, file);
-        
         try {
-          // 当旋转角度为 0 或其他无效值时，将跳过旋转处理。
           if (rotation > 0 && [90, 180, 270].includes(rotation)) {
-            // 使用 sharp 库应用顺时针旋转，并保存到目标路径。
-            await sharp(sourcePath)
-              .rotate(rotation)
-              .toFile(targetPath);
+            await sharp(sourcePath).rotate(rotation).toFile(targetPath);
           } else {
-            // 如果不需要旋转，直接复制文件。
             await fs.copyFile(sourcePath, targetPath);
           }
         } catch (error) {
-            console.error(`处理或复制截图 ${file} 时失败:`, error);
-            // 即使单个文件处理失败，也继续处理下一个文件。
+            console.error(`Export error ${file}:`, error);
         }
       }
     }
   }
   
-  /**
-   * 检查视频是否已存在任何截图
-   * @param hash - 视频哈希
-   * @returns 如果存在截图则返回 true
-   */
   public async hasScreenshots(hash: string): Promise<boolean> {
     try {
       const files = await this.listHashBasedFiles(hash);
-      // 仅当找到 .webp 文件时才返回 true
       return files.some(f => f.endsWith('.webp'));
     } catch {
       return false;
     }
   }
 }
-
 
 export const screenshotManager = new ScreenshotManager();

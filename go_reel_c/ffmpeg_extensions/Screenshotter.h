@@ -1,48 +1,59 @@
+// --- START OF FILE Screenshotter.h ---
 #pragma once
 
-// 如果是C++编译器，使用C风格的链接方式导出函数，
-// 以便在其他语言中（例如C#）也能轻松调用。
+#include <cstdint> // 为了使用 int64_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-  // 使用 __declspec(dllexport) 将函数标记为从DLL导出
+#ifdef _WIN32
+#ifdef FFMPEG_EXTENSIONS_EXPORTS
 #define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT __declspec(dllimport)
+#endif
+#else
+#define DLLEXPORT
+#endif
 
-/**
- * @brief [核心函数] 为单个视频的单个时间点生成一张截图。
- * @param video_path 视频文件的完整路径。
- * @param timestamp_ms 截图的时间点（毫秒）。
- * @param output_path 输出图片的完整路径。
- * @return 0 表示成功, 小于 0 表示失败。
- */
+  /**
+   * @brief [新增功能] 获取视频时长（毫秒）。
+   * @param video_path 视频文件的完整路径。
+   * @return 视频时长（毫秒）。如果失败返回 -1。
+   */
+  DLLEXPORT long long get_video_duration(const char* video_path);
+
+  /**
+   * @brief [核心功能] 为单个视频的单个时间点生成一张截图。
+   *        (现已支持 .webp, .png, .jpg，根据 output_path 后缀自动判断)
+   * @param video_path 视频文件的完整路径。
+   * @param timestamp_ms 截图的时间点（毫秒）。
+   * @param output_path 输出图片的完整路径。
+   * @return 0 表示成功, 小于 0 表示失败。
+   */
   DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms, const char* output_path);
 
   /**
-   * @brief [需求1] 为单个视频文件在多个时间点生成截图。
-   *        此函数内部会进行优化，只打开一次视频文件。
-   * @warning 调用者必须保证 `timestamps_ms` 数组已经按升序排列以获得最佳性能！
+   * @brief [新增功能] 根据视频时长的百分比生成截图。
    * @param video_path 视频文件的完整路径。
-   * @param timestamps_ms 一个包含所有截图时间点（毫秒）的数组。必须是已排序的。
-   * @param count 数组中时间点的数量。
-   * @param output_path_template 输出文件名的模板，例如 "D:/screenshots/capture_%ms.webp"。
-   *                             '%ms' 将被替换为对应的时间戳。
-   * @return 成功生成的截图数量。
+   * @param percentage 百分比 (0.0 - 100.0)。
+   * @param output_path 输出图片的完整路径。
+   * @return 0 表示成功, 小于 0 表示失败。
+   */
+  DLLEXPORT int generate_screenshot_at_percentage(const char* video_path, double percentage, const char* output_path);
+
+  /**
+   * @brief [批量功能] 单视频多截图 (高性能版)。
    */
   DLLEXPORT int generate_screenshots_for_video(const char* video_path, const long long* timestamps_ms, int count, const char* output_path_template);
 
   /**
-   * @brief [需求2] 为多个视频文件在同一个时间点生成截图。
-   *        此函数会使用多线程并行处理以提高效率。
-   * @param video_paths 一个包含所有视频文件完整路径的数组。
-   * @param output_paths 一个包含所有输出文件完整路径的数组，必须与 `video_paths` 一一对应。
-   * @param count 数组中路径的数量。
-   * @param timestamp_ms 截图的时间点（毫秒）。
-   * @return 成功生成的截图数量。
+   * @brief [批量功能] 多视频同时间点截图 (IO优化版)。
    */
-  DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, const char* const* output_paths, int count, long long timestamp_ms);
-
+  DLLEXPORT int generate_screenshots_for_videos(const char* const* video_paths, int count, long long timestamp_ms, const char* output_dir);
 
 #ifdef __cplusplus
 }
 #endif
+// --- END OF FILE Screenshotter.h ---

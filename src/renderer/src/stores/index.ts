@@ -16,3 +16,4 @@ export { useRecordingStore } from './recordingStore';
 export type { RecordingState } from './recordingStore';
 export { useSettingsStore } from './settingsStore';
 export type { SkipFrameConfig } from './settingsStore';
+export { useHistoryStore } from './historyStore';

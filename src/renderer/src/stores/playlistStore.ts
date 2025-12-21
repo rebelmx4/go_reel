@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { VideoFile } from './videoStore';
 
-export type PlaylistMode = 'recent' | 'newest' | 'liked' | 'elite' | 'tag-search' | 'random';
+export type PlaylistMode = 'newest' | 'liked' | 'elite' | 'tag-search' | 'random';
 
 interface PlaylistState {
   mode: PlaylistMode;

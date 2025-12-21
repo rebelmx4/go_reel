@@ -73,21 +73,25 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;FFMPEGEXTIONS_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;FFMPEG_EXTENSIONS_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -101,6 +105,25 @@
       <AdditionalLibraryDirectories>..\ffmpeg-7.1.1-full_build-shared\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>avformat.lib;avcodec.lib;avutil.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>:: ==============================================================
+:: 目标路径：上一级的 bin 目录 "$(SolutionDir)..\bin\"
+:: ==============================================================
+
+:: 1. 确保目标目录存在
+if not exist "$(SolutionDir)..\bin" mkdir "$(SolutionDir)..\bin"
+
+:: 2. 拷贝核心 DLL (你的 C++ 库)
+xcopy /Y /D "$(OutDir)ffmpeg_extensions.dll" "$(SolutionDir)..\bin\"
+
+:: 3. 拷贝 FFmpeg 依赖库
+xcopy /Y /D "$(OutDir)av*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)sw*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)postproc*.dll" "$(SolutionDir)..\bin\"
+
+:: 输出提示
+echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -108,7 +131,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;FFMPEGEXTIONS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;FFMPEG_EXTENSIONS_EXPORTS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -123,12 +146,31 @@
       <AdditionalLibraryDirectories>..\ffmpeg-7.1.1-full_build-shared\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>avformat.lib;avcodec.lib;avutil.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>:: ==============================================================
+:: 目标路径：上一级的 bin 目录 "$(SolutionDir)..\bin\"
+:: ==============================================================
+
+:: 1. 确保目标目录存在
+if not exist "$(SolutionDir)..\bin" mkdir "$(SolutionDir)..\bin"
+
+:: 2. 拷贝核心 DLL (你的 C++ 库)
+xcopy /Y /D "$(OutDir)ffmpeg_extensions.dll" "$(SolutionDir)..\bin\"
+
+:: 3. 拷贝 FFmpeg 依赖库
+xcopy /Y /D "$(OutDir)av*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)sw*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)postproc*.dll" "$(SolutionDir)..\bin\"
+
+:: 输出提示
+echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;FFMPEGEXTIONS_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;FFMPEG_EXTENSIONS_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -143,7 +185,23 @@
       <AdditionalDependencies>avformat.lib;avcodec.lib;avutil.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetPath)" "$(SolutionDir)ffmpeg_extensions_test\bin\$(Configuration)\net5.0\" /Y /I</Command>
+      <Command>:: ==============================================================
+:: 目标路径：上一级的 bin 目录 "$(SolutionDir)..\bin\"
+:: ==============================================================
+
+:: 1. 确保目标目录存在
+if not exist "$(SolutionDir)..\bin" mkdir "$(SolutionDir)..\bin"
+
+:: 2. 拷贝核心 DLL (你的 C++ 库)
+xcopy /Y /D "$(OutDir)ffmpeg_extensions.dll" "$(SolutionDir)..\bin\"
+
+:: 3. 拷贝 FFmpeg 依赖库
+xcopy /Y /D "$(OutDir)av*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)sw*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)postproc*.dll" "$(SolutionDir)..\bin\"
+
+:: 输出提示
+echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -152,7 +210,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;FFMPEGEXTIONS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;FFMPEG_EXTENSIONS_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -169,7 +227,23 @@
       <AdditionalDependencies>avformat.lib;avcodec.lib;avutil.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetPath)" "$(SolutionDir)ffmpeg_extensions_test\bin\$(Configuration)\net5.0\" /Y /I</Command>
+      <Command>:: ==============================================================
+:: 目标路径：上一级的 bin 目录 "$(SolutionDir)..\bin\"
+:: ==============================================================
+
+:: 1. 确保目标目录存在
+if not exist "$(SolutionDir)..\bin" mkdir "$(SolutionDir)..\bin"
+
+:: 2. 拷贝核心 DLL (你的 C++ 库)
+xcopy /Y /D "$(OutDir)ffmpeg_extensions.dll" "$(SolutionDir)..\bin\"
+
+:: 3. 拷贝 FFmpeg 依赖库
+xcopy /Y /D "$(OutDir)av*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)sw*.dll" "$(SolutionDir)..\bin\"
+xcopy /Y /D "$(OutDir)postproc*.dll" "$(SolutionDir)..\bin\"
+
+:: 输出提示
+echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

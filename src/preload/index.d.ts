@@ -111,6 +111,12 @@ declare global {
       
       // Video Export
       exportVideo: (videoPath: string, clips: any[]) => Promise<any>
+
+       // History Management (New)
+      addHistory: (filePath: string) => Promise<void>
+      getHistory: () => Promise<string[]>
+      clearHistory: () => Promise<void>
+      removeFromHistory: (filePath: string) => Promise<void>
     }
   }
 }

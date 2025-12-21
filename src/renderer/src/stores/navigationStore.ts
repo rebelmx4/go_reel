@@ -5,7 +5,7 @@ import { create } from 'zustand';
  */
 export type ViewType =
   | 'player'
-  | 'recent'
+  | 'history'
   | 'newest'
   | 'search'
   | 'random'

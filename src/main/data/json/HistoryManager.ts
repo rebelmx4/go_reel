@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { BaseJsonManager } from './BaseJsonManager';
 
 /**
@@ -8,6 +9,8 @@ export type HistoryStore = string[];
 
 export class HistoryManager extends BaseJsonManager<HistoryStore> {
   constructor() {
+    // 注意：文件名根据你的需求描述可能是 recent.json 或 history.json
+    // 这里保持你原本代码中的 history.json
     super('history.json', []);
   }
 
@@ -27,9 +30,32 @@ export class HistoryManager extends BaseJsonManager<HistoryStore> {
 
   /**
    * Get all history items
+   * Validates existence of files. If a file is missing, it removes it from storage.
    * @returns Array of file paths (most recent first)
    */
   public getHistory(): string[] {
+    const originalCount = this.data.length;
+
+    // 过滤掉不存在的文件
+    // 注意：这里使用同步检查 (existsSync)，对于 max 100 个文件通常很快，不会造成明显阻塞
+    const validPaths = this.data.filter((path) => {
+      try {
+        return fs.existsSync(path);
+      } catch (error) {
+        // 如果检查过程中出错（例如权限问题），保险起见视为不存在或保留
+        // 这里选择返回 false (视为不存在并移除)，防止后续读取报错
+        console.warn(`Error checking existence of ${path}:`, error);
+        return false;
+      }
+    });
+
+    // 如果数量有变化，说明有文件被移除了，需要更新内存和磁盘
+    if (validPaths.length !== originalCount) {
+      console.log(`[HistoryManager] Cleaned up ${originalCount - validPaths.length} missing files from history.`);
+      this.data = validPaths;
+      this.save();
+    }
+
     return this.data;
   }
 

@@ -6,8 +6,6 @@
 
 import { ipcMain } from 'electron';
 import { screenshotManager } from '../data/assets/ScreenshotManager'; 
-import { annotationManager } from '../data/json/AnnotationManager';
-
 
 
 /**

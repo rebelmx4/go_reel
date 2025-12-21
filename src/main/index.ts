@@ -15,6 +15,7 @@ import { registerTagHandlers } from './ipc/tagHandlers';
 import { registerTagCoverHandlers } from './ipc/tagCoverHandlers';
 import { calculateFastHash } from './utils/hash'
 import { setupFfmpeg } from './utils/ffmpeg-setup';
+import { registerHistoryHandlers } from './ipc/historyHandlers';
 
 // Global startup result
 let startupResult: any = null;
@@ -147,6 +148,7 @@ function setupIpcHandlers() {
   registerAnnotationHandlers();
   registerTagHandlers();
   registerTagCoverHandlers();
+  registerHistoryHandlers();
   
   // Get startup result
   ipcMain.handle('get-startup-result', async () => {

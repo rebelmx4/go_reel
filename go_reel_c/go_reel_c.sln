@@ -3,9 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.32407.337
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ffmpeg_extensions_test", "ffmpeg_extensions_test\ffmpeg_extensions_test.csproj", "{79642C9F-1C6C-4D58-B85F-8452A5D8C561}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ffmpeg_extensions", "ffmpeg_extensions\ffmpeg_extions.vcxproj", "{6C583225-9713-477E-A2A9-65204DA7CF3A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ffmpeg_extensions_test", "ffmpeg_extensions_test\ffmpeg_extensions_test.vcxproj", "{4AD01810-7659-49AD-BBEE-465736C58F05}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6C583225-9713-477E-A2A9-65204DA7CF3A} = {6C583225-9713-477E-A2A9-65204DA7CF3A}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,18 +20,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|x64.Build.0 = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Debug|x86.Build.0 = Debug|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|Any CPU.Build.0 = Release|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|x64.ActiveCfg = Release|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|x64.Build.0 = Release|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|x86.ActiveCfg = Release|Any CPU
-		{79642C9F-1C6C-4D58-B85F-8452A5D8C561}.Release|x86.Build.0 = Release|Any CPU
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Debug|x64.ActiveCfg = Debug|x64
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Debug|x64.Build.0 = Debug|x64
@@ -39,6 +30,16 @@ Global
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Release|x64.Build.0 = Release|x64
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Release|x86.ActiveCfg = Release|Win32
 		{6C583225-9713-477E-A2A9-65204DA7CF3A}.Release|x86.Build.0 = Release|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Debug|x64.ActiveCfg = Debug|x64
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Debug|x64.Build.0 = Debug|x64
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Debug|x86.ActiveCfg = Debug|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Debug|x86.Build.0 = Debug|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Release|Any CPU.ActiveCfg = Release|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Release|x64.ActiveCfg = Release|x64
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Release|x64.Build.0 = Release|x64
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Release|x86.ActiveCfg = Release|Win32
+		{4AD01810-7659-49AD-BBEE-465736C58F05}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

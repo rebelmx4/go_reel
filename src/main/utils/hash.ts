@@ -7,15 +7,6 @@ const CONFIG = {
   BLOCK_SIZE: 2 * 1024, // 2KB
 };
 
-// --- Caching Layer ---
-interface CacheEntry {
-  hash: string;
-  size: number; // Store file size
-  mtime: number; // Store modification time
-}
-
-const fileHashCache = new Map<string, CacheEntry>();
-
 /**
  * FNV-1a 64-bit hash algorithm
  */
@@ -33,26 +24,17 @@ function fnv1a64(buffer: Buffer, seed: bigint = 0xcbf29ce484222325n): bigint {
 /**
  * Calculate fast hash for video files
  * Algorithm: Head (2KB) + Mid (2KB) + Tail (2KB) + FileSize -> FNV-1a_64 -> Hex String
- *
- * Now with a corrected and robust cache based on file path, size, and modification time.
+ * 
+ * For files < 10KB: reads entire file
+ * For files >= 10KB: samples 6KB (head + mid + tail)
  */
 export async function calculateFastHash(filePath: string): Promise<string> {
   let fileHandle: fs.FileHandle | null = null;
 
   try {
-    const stat = await fs.stat(filePath);
-    const fileSize = stat.size;
-    const mtime = stat.mtime.getTime();
-
-    // --- Corrected Cache Check ---
-    const cachedEntry = fileHashCache.get(filePath);
-    if (cachedEntry && fileSize === cachedEntry.size && mtime === cachedEntry.mtime) {
-      // File size and modification time match, it's safe to return the cached hash
-      return cachedEntry.hash;
-    }
-
-    // --- Proceed with hashing if cache miss ---
     fileHandle = await fs.open(filePath, constants.O_RDONLY);
+    const stat = await fileHandle.stat();
+    const fileSize = stat.size;
 
     let buffer: Buffer;
 
@@ -63,11 +45,14 @@ export async function calculateFastHash(filePath: string): Promise<string> {
     } else {
       // Large file: sample head + mid + tail
       buffer = Buffer.alloc(CONFIG.BLOCK_SIZE * 3);
+
       // Read head
       await fileHandle.read(buffer, 0, CONFIG.BLOCK_SIZE, 0);
+
       // Read mid
       const midOffset = Math.floor(fileSize / 2) - Math.floor(CONFIG.BLOCK_SIZE / 2);
       await fileHandle.read(buffer, CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE, midOffset);
+
       // Read tail
       const tailOffset = fileSize - CONFIG.BLOCK_SIZE;
       await fileHandle.read(buffer, CONFIG.BLOCK_SIZE * 2, CONFIG.BLOCK_SIZE, tailOffset);
@@ -81,12 +66,8 @@ export async function calculateFastHash(filePath: string): Promise<string> {
     sizeBuffer.writeBigUInt64LE(BigInt(fileSize));
     hashVal = fnv1a64(sizeBuffer, hashVal);
 
-    const hash = hashVal.toString(16).padStart(16, '0');
-
-    // --- Store the new hash and correct metadata in the cache ---
-    fileHashCache.set(filePath, { hash, size: fileSize, mtime });
-
-    return hash;
+    // Output as 16-char hex string
+    return hashVal.toString(16).padStart(16, '0');
   } catch (error) {
     console.error(`Hash calculation failed for: ${filePath}`, error);
     throw error;
@@ -108,10 +89,12 @@ export async function calculateHashBatch(
 
   for (let i = 0; i < filePaths.length; i++) {
     const filePath = filePaths[i];
+
     try {
       const hash = await calculateFastHash(filePath);
       results.set(filePath, hash);
 
+      // Update progress every 100 files to prevent UI flicker
       if (onProgress && (i % 100 === 0 || i === filePaths.length - 1)) {
         onProgress(i + 1, filePaths.length, filePath);
       }

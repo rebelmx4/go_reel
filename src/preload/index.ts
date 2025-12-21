@@ -50,6 +50,16 @@ const api = {
     ipcRenderer.invoke('get-video-metadata', videoPath),
   
 
+   // History Management
+  addHistory: (filePath: string) => 
+    ipcRenderer.invoke('add-history', filePath),
+  getHistory: () => 
+    ipcRenderer.invoke('get-history'),
+  clearHistory: () => 
+    ipcRenderer.invoke('clear-history'),
+  removeFromHistory: (filePath: string) => 
+    ipcRenderer.invoke('remove-from-history', filePath),
+  
   // Annotation
   addAnnotation: (videoHash: string, annotation: Annotation) =>
     ipcRenderer.invoke('add-annotation', videoHash, annotation),
@@ -101,6 +111,8 @@ const api = {
   // Video Export
   exportVideo: (videoPath: string, clips: any[]) =>
     ipcRenderer.invoke('export-video', videoPath, clips)
+
+  
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

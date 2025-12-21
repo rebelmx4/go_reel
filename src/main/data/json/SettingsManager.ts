@@ -69,7 +69,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   key_bindings: {
     global: {
       view_nav: {
-        list_recent: '1',
+        list_history: '1',
         list_newest: '2',
         list_search: '3',
         list_random: '4',
