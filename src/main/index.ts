@@ -3,7 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { StartupService, RefreshService, VideoExportService } from './services';
+import { startupService, RefreshService, VideoExportService,  StartupResult } from './services';
 import { settingsManager, screenshotManager, annotationManager, HistoryManager } from './data';
 import { registerWindowHandlers } from './ipc/windowHandlers';
 import { registerMetadataHandler } from './ipc/MetadataHandler';
@@ -17,8 +17,6 @@ import { calculateFastHash } from './utils/hash'
 import { setupFfmpeg } from './utils/ffmpeg-setup';
 import { registerHistoryHandlers } from './ipc/historyHandlers';
 
-// Global startup result
-let startupResult: any = null;
 let refreshService: RefreshService | null = null;
 let videoExportService: VideoExportService | null = null;
 
@@ -26,15 +24,6 @@ let videoExportService: VideoExportService | null = null;
 setupFfmpeg()
 
 log.info('Initializing startup service...');
-
-const historyManager = new HistoryManager();
-
-// Create startup service
-const startupService = new StartupService(
-  settingsManager,
-  annotationManager,
-  historyManager
-);
 
 // Create refresh service
 refreshService = new RefreshService(
@@ -102,7 +91,7 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window);
   });
 
-  startupResult = await startupService.firstStartup();
+  await startupService.startup();
 
   // IPC handlers
   setupIpcHandlers();
@@ -152,26 +141,9 @@ function setupIpcHandlers() {
   
   // Get startup result
   ipcMain.handle('get-startup-result', async () => {
-    return startupResult;
+    return startupService.getLastResult();
   });
 
-  // Update configuration
-  ipcMain.handle('update-configuration', async (_, config) => {
-    try {
-
-      settingsManager.setVideoSourcePath(config.videoSource);
-      settingsManager.setStagedPath(config.staged_path);
-      settingsManager.setScreenshotExportPath(config.screenshotExportPath);
-
-      // Re-run startup
-      startupResult = await startupService.startup();
-
-      return { success: true, result: startupResult };
-    } catch (error) {
-      console.error('Failed to update configuration:', error);
-      return { success: false, error: String(error) };
-    }
-  });
 
   // Select directory
   ipcMain.handle('select-directory', async () => {

@@ -64,7 +64,7 @@ export class CoverManager extends BaseAssetManager {
    * [核心方法] 从一个指定的截图文件路径来设置手动封面。
    * [优化] 使用 copyFile 替代 readFile + saveAsset，效率更高
    */
-  public async setManualCoverFromPath(hash: string, sourcePath: string): Promise<string> {
+  public async setManualCoverFromPath(hash: string, sourcePath: string): Promise<boolean> {
     const filename = this.getManualCoverFilename(hash);
     
     // 获取目标文件的绝对路径
@@ -73,7 +73,7 @@ export class CoverManager extends BaseAssetManager {
     // 使用文件系统级别的拷贝，比读入 Buffer 再写入更快且省内存
     await fs.copyFile(sourcePath, targetPath);
     
-    return targetPath;
+    return true;
   }
 
   // ====================================================================

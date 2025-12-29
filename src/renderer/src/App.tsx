@@ -3,13 +3,7 @@ import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import { useNavigationStore, usePlayerStore, useRefreshStore, usePlaylistStore } from './stores';
 import { MainLayout, ToastContainer, PathConfigurationScreen, VideoPlayer } from './components';
-import { TagSearchPage } from './pages/TagSearchPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { NewestPage } from './pages/NewestPage';
-import { SearchPage } from './pages/SearchPage';
-import { LikedPage } from './pages/LikedPage';
-import { ElitePage } from './pages/ElitePage';
-import { SettingsPage } from './pages/SettingsPage'; // 确保引入了 SettingsPage
+import { TagSearchPage, HistoryPage, NewestPage, SearchPage, LikedPage, ElitePage, SettingsPage } from './pages';
 import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
 import { RecordingIndicator } from './components/RecordingIndicator';
 
@@ -32,41 +26,38 @@ function App() {
       try {
         const result = await window.api.getStartupResult();
 
-        if (result.needsConfiguration) {
-          setView('configuration');
-        } else {
-          // 加载初始视频
-          if (result.initialVideo) {
-            setCurrentVideo(result.initialVideo.path);
-            if (result.playlists?.all) {
-              setPlaylistMode('random');
-              setPlaylist(result.playlists.all);
-            }
+        // 加载初始视频
+        if (result.initialVideo) {
+          setCurrentVideo(result.initialVideo.path);
+          if (result.videoList) {
+            setPlaylistMode('random');
+            setPlaylist(result.playlists.all);
           }
-
-          // 加载所有设置
-          const settings = await window.api.loadSettings();
-
-          // 2. 使用加载的设置来初始化快捷键管理器
-          // 这是关键的第一步，它告诉管理器所有的快捷键规则
-          if (settings.key_bindings) {
-            keyBindingManager.initialize(settings.key_bindings);
-          }
-
-          // 恢复音量
-          if (settings.playback?.global_volume !== undefined) {
-            setVolume(settings.playback.global_volume);
-          }
-
-          // 加载跳帧预览配置
-          if (settings.skip_frame) {
-            setSkipFrameConfig(settings.skip_frame.rules);
-            setSkipDuration(settings.skip_frame.skip_duration);
-          }
-
-          // 切换到播放器视图
-          setView('player');
         }
+
+        // 加载所有设置
+        const settings = await window.api.loadSettings();
+
+        // 2. 使用加载的设置来初始化快捷键管理器
+        // 这是关键的第一步，它告诉管理器所有的快捷键规则
+        if (settings.key_bindings) {
+          keyBindingManager.initialize(settings.key_bindings);
+        }
+
+        // 恢复音量
+        if (settings.playback?.global_volume !== undefined) {
+          setVolume(settings.playback.global_volume);
+        }
+
+        // 加载跳帧预览配置
+        if (settings.skip_frame) {
+          setSkipFrameConfig(settings.skip_frame.rules);
+          setSkipDuration(settings.skip_frame.skip_duration);
+        }
+
+        // 切换到播放器视图
+        setView('player');
+
       } catch (error) {
         console.error('Failed to load startup result:', error);
         setView('configuration');
@@ -108,7 +99,6 @@ function App() {
     keyBindingManager.registerHandler('list_history', () => setView('history'));
     keyBindingManager.registerHandler('list_newest', () => setView('newest'));
     keyBindingManager.registerHandler('list_search', () => setView('search'));
-    keyBindingManager.registerHandler('list_random', () => setView('random'));
     keyBindingManager.registerHandler('list_liked', () => setView('liked'));
     keyBindingManager.registerHandler('list_elite', () => setView('elite'));
     keyBindingManager.registerHandler('back_to_player', () => setView('player'));
@@ -132,7 +122,6 @@ function App() {
       case 'history': return <HistoryPage />;
       case 'newest': return <NewestPage />;
       case 'search': return <SearchPage />;
-      case 'random': return <div style={{ padding: 20 }}>随机推荐 (待实现)</div>;
       case 'liked': return <LikedPage />;
       case 'elite': return <ElitePage />;
       case 'tag-search': return <TagSearchPage />;

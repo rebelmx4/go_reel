@@ -47,7 +47,7 @@ export class ScreenshotManager extends BaseAssetManager {
    * 自动截图 (9张)
    * [优化] 利用 C++ 模板功能直接生成 _a 后缀的文件，无需重命名循环
    */
-  public async generateAutoScreenshots(hash: string, videoPath: string): Promise<boolean> {
+  private async generateAutoScreenshots(hash: string, videoPath: string): Promise<boolean> {
     if (await this.hasScreenshots(hash)) {
       console.log(`[Auto Screenshot] Exists for ${hash}. Skipping.`);
       return true;
@@ -94,10 +94,20 @@ export class ScreenshotManager extends BaseAssetManager {
   }
 
   
-  public async loadScreenshots(hash: string): Promise<Screenshot[]> {
+  public async loadScreenshots(hash: string, filePath: string): Promise<Screenshot[]> {
     try {
       const files = await this.listHashBasedFiles(hash);
       const screenshots: Screenshot[] = [];
+      
+      // ✨ 关键逻辑：如果发现没有截图，自动触发生成，但不阻塞当前返回
+      if (files.length === 0) {
+        console.log(`[ScreenshotManager] No screenshots for ${hash}, triggering auto-generation...`);
+        // 异步执行，不 await，直接让它在后台跑
+        this.generateAutoScreenshots(hash, filePath).catch(err => {
+            console.error('[ScreenshotManager] Background auto-gen failed:', err);
+        });
+        return []; // 第一次返回空
+      }
       
       for (const file of files) {
         const match = file.match(/^(\d+)_(m|a)\.webp$/);

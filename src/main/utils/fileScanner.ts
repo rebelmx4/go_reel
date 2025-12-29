@@ -4,23 +4,25 @@ import { isVideoFile } from './videoUtils';
 import log from 'electron-log';
 
 /**
- * Scan result containing file path and creation time
+ * 物理文件扫描结果
+ * 包含用于与 FileProfileManager 撮合的关键固有属性
  */
 export interface ScanResult {
-  path: string; // Absolute path to video file
-  createdAt: number; // Creation timestamp in milliseconds
+  path: string;      // 绝对路径
+  createdAt: number; // 创建时间 (birthtimeMs)
+  mtime: number;     // 最后修改时间 (mtimeMs) - 用于校验缓存是否失效
+  size: number;      // 文件大小 (bytes) - 用于校验缓存是否失效
 }
 
 /**
- * Configuration for file scanner
+ * 扫描配置
  */
-const MAX_CONCURRENCY = 200; // Maximum concurrent operations
+const MAX_CONCURRENCY = 200; // 最大并发操作数
 
 /**
- * Scan directory for video files with concurrency control
- * @param rootDir Root directory to scan
- * @param blacklist Array of absolute paths to skip
- * @returns Array of scan results
+ * 扫描目录下的视频文件
+ * @param rootDir 根目录
+ * @param blacklist 排除列表 (绝对路径)
  */
 export async function scanVideoFiles(
   rootDir: string,
@@ -30,7 +32,6 @@ export async function scanVideoFiles(
   const queue: (() => Promise<void>)[] = [];
   let activePromises = 0;
 
-  // Normalize blacklist paths for comparison
   const normalizedBlacklist = blacklist.map((p) => path.normalize(p).toLowerCase());
 
   let resolveFinish: () => void;
@@ -40,22 +41,15 @@ export async function scanVideoFiles(
     rejectFinish = rej;
   });
 
-  /**
-   * Process queue - consumer function
-   * Dispatches tasks while respecting concurrency limit
-   */
   const processQueue = async (): Promise<void> => {
     while (queue.length > 0 && activePromises < MAX_CONCURRENCY) {
       activePromises++;
-
       const task = queue.shift();
       if (task) {
         task()
           .finally(() => {
             activePromises--;
-            processQueue(); // Recursively process next task
-
-            // Check if all tasks are complete
+            processQueue(); 
             if (activePromises === 0 && queue.length === 0) {
               resolveFinish();
             }
@@ -68,11 +62,6 @@ export async function scanVideoFiles(
     }
   };
 
-  /**
-   * Check if a path is in the blacklist
-   * @param dirPath Path to check
-   * @returns True if path should be skipped
-   */
   const isBlacklisted = (dirPath: string): boolean => {
     const normalizedPath = path.normalize(dirPath).toLowerCase();
     return normalizedBlacklist.some((blacklistedPath) =>
@@ -80,38 +69,29 @@ export async function scanVideoFiles(
     );
   };
 
-  /**
-   * Process a directory - producer function
-   * Reads directory and adds tasks to queue
-   * @param currentPath Current directory path
-   */
   const processDirectory = async (currentPath: string): Promise<void> => {
     try {
-      // Check if this directory is blacklisted
-      if (isBlacklisted(currentPath)) {
-        log.info(`Skipping blacklisted directory: ${currentPath}`);
-        return;
-      }
+      if (isBlacklisted(currentPath)) return;
 
-      // Read directory contents
       const items = await fs.readdir(currentPath, { withFileTypes: true });
 
       for (const item of items) {
         const fullPath = path.join(currentPath, item.name);
 
         if (item.isDirectory()) {
-          // Add subdirectory to queue
           queue.push(() => processDirectory(fullPath));
         } else if (item.isFile() && isVideoFile(item.name)) {
-          // Process video file
           try {
+            // 获取文件的详细统计信息
             const stats = await fs.stat(fullPath);
             results.push({
               path: fullPath,
-              createdAt: stats.birthtimeMs, // Creation time in milliseconds
+              createdAt: stats.birthtimeMs,
+              mtime: stats.mtimeMs, // 关键属性：修改时间
+              size: stats.size,      // 关键属性：文件大小
             });
           } catch (error) {
-            log.warn(`Failed to get stats for file: ${fullPath}`, error);
+            log.warn(`Failed to stat file: ${fullPath}`, error);
           }
         }
       }
@@ -120,27 +100,19 @@ export async function scanVideoFiles(
     }
   };
 
-  // Initialize with root directory
+  // 开始递归
   queue.push(() => processDirectory(rootDir));
-
-  // Start processing
   processQueue();
 
-  // Wait for all tasks to complete
   await finishPromise;
-
-  log.info(`Scan complete. Found ${results.length} video files.`);
   return results;
 }
 
 /**
- * Get newest videos from scan results
- * @param scanResults Scan results
- * @param limit Maximum number of results (default: 100)
- * @returns Array of newest videos
+ * 排序辅助函数：获取最新视频
  */
 export function getNewestVideos(scanResults: ScanResult[], limit: number = 100): ScanResult[] {
   return [...scanResults]
-    .sort((a, b) => b.createdAt - a.createdAt) // Sort by creation time descending
+    .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit);
 }

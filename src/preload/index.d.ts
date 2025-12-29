@@ -2,6 +2,14 @@ import { ElectronAPI } from '@electron-toolkit/preload'
 import { Annotation } from '../main/data/json/AnnotationManager'
 import { Screenshot } from '../main/data/assets/ScreenshotManager'
 
+import type { FileProfile } from '../main/data/json/FileProfileManager';
+
+import type { 
+  Annotation, 
+  JoinedVideo, 
+  StartupResult 
+} from '../shared/models'; 
+
 // 根据 `SettingsManager.ts` 定义的完整设置类型
 // 这使得前端在调用 `loadSettings` 和 `saveKeyBindings` 等接口时拥有完整的类型提示
 type KeyBindings = {
@@ -44,7 +52,7 @@ declare global {
     electron: ElectronAPI
     api: {
       // Startup & Configuration
-      getStartupResult: () => Promise<any>
+      getStartupResult: () => Promise<StartupResult>
       updateConfiguration: (config: { videoSource: string; stagedPath: string; screenshotExportPath: string }) => Promise<{ success: boolean; error?: string; result?: any }>
       selectDirectory: () => Promise<string | null>
       refreshFiles: () => Promise<{ success: boolean; error?: string; result?: any }>
@@ -57,30 +65,29 @@ declare global {
       getScreenSize: () => Promise<{ width: number; height: number }>
       
       // Screenshot Management
-      saveManualScreenshot: (videoHash: string, videoPath: string, timestamp: number) => Promise<boolean>
-      generateAutoScreenshots: (videoHash: string, videoPath: string) => Promise<boolean>
-      loadScreenshots: (videoHash: string) => Promise<Screenshot[]>
-      deleteScreenshot: (videoHash: string, filename: string) => Promise<void>
+      saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>
+      loadScreenshots: (fielPath: string) => Promise<Screenshot[]>
+      deleteScreenshot: (fielPath: string, filename: string) => Promise<void>
       
       // Cover Management
-      getCover: (videoHash: string, videoPath: string) => Promise<string>
-      setManualCover: (screenshotPath: string, videoHash: string) => Promise<void>
+      getCover: (fielPath: string) => Promise<string>
+      setManualCover: (fielPath: string, screenshotPath: string) => Promise<boolean>
       
       // Export
-      exportScreenshots: (videoHash: string, rotation: number) => Promise<void>
+      exportScreenshots: (fielPath: string, rotation: number) => Promise<void>
       
       // Video Metadata
       calculateVideoHash: (filePath: string) => Promise<string | null>
       getVideoMetadata: (videoPath: string) => Promise<{ duration: number; width: number; height: number; framerate: number }>
 
       // annotation
-      addAnnotation: (videoHash: string, annotation: Annotation) => Promise<{ success: boolean; error?: string }>
-      getAnnotation: (videoHash: string) => Promise<Annotation | null>
-      updateAnnotation: (videoHash: string, updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>
-      getAllAnnotations: () => Promise<Array<[string, Annotation]>>
-      getFavoriteAnnotations: () => Promise<Array<[string, Annotation]>>
-      getAnnotationsByLikeCount: (threshold: number) => Promise<Array<[string, Annotation]>>
-      getAnnotationsByTag: (tagId: number) => Promise<Array<[string, Annotation]>>
+      addAnnotation: (fielPath: string, annotation: Annotation) => Promise<{ success: boolean; error?: string }>
+      updateAnnotation: (fielPath: string, updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>
+      getAnnotation: (fielPath: string) => Promise<Annotation | null>
+      
+      // File Profile 相关接口...
+      getFileProfile: (filePath: string) => Promise<FileProfile | null>
+      getProfilesByHash: (hash: string) => Promise<FileProfile[] | null>
           
       // Settings
       getAssetStatistics: () => Promise<{ total_indexed_videos: string; total_disk_usage: string; }>

@@ -1,93 +1,74 @@
-// src/stores/playerStore.ts (已修复和增强)
+// src/stores/playerStore.ts
 
 import { create } from 'zustand';
 
-/**
- * Video player state interface
- */
 interface PlayerState {
-  currentVideoPath: string | null;
+  // 基础状态
   isPlaying: boolean;
   volume: number;
   currentTime: number;
   duration: number;
-  rotation: 0 | 90 | 180 | 270;
-  stepMode: 'frame' | 'second';
-  skipFrameMode: boolean;
-  framerate: number;
-  skipFrameConfig: Record<string, number>;
-  skipDuration: number;
+  playbackRate: number; // 新增：倍速播放
   
-  // --- Setters (设置器) ---
-  setCurrentVideo: (path: string) => void;
+  // 视觉状态
+  rotation: number; 
+  
+  // 帧控制技术参数
+  stepMode: 'frame' | 'second';
+  framerate: number;
+  
+  // Setters
   setPlaying: (playing: boolean) => void;
-  // 【修复1】允许 setVolume 接收一个函数，用于基于前一个状态进行更新
-  setVolume: (volume: number | ((prevVolume: number) => number)) => void;
-  setCurrentTime: (time: number) => void;
-  setDuration: (duration: number) => void;
-  setRotation: (rotation: 0 | 90 | 180 | 270) => void;
-  setStepMode: (mode: 'frame' | 'second') => void;
-  setSkipFrameMode: (enabled: boolean) => void;
-  setFramerate: (framerate: number) => void;
-  setSkipFrameConfig: (config: Record<string, number>) => void;
-  setSkipDuration: (duration: number) => void;
+  setVolume: (v: number) => void;
+  setCurrentTime: (t: number) => void;
+  setDuration: (d: number) => void;
+  setRotation: (r: number) => void;
+  setFramerate: (fps: number) => void;
+  setPlaybackRate: (rate: number) => void;
 
-  // --- Actions (动作) ---
-  // 【修复2】新增业务逻辑函数
+  // 快捷操作
   togglePlay: () => void;
   stepForward: () => void;
   stepBackward: () => void;
+  reset: () => void; // 切换视频时重置状态
 }
 
-/**
- * Video player store
- * Manages video playback state
- */
 export const usePlayerStore = create<PlayerState>((set, get) => ({
-  // --- 初始状态 (Initial State) ---
-  currentVideoPath: null,
   isPlaying: false,
   volume: 80,
   currentTime: 0,
   duration: 0,
+  playbackRate: 1.0,
   rotation: 0,
   stepMode: 'frame',
-  skipFrameMode: false,
   framerate: 30,
-  skipFrameConfig: {},
-  skipDuration: 2,
 
-  // --- Setters (设置器实现) ---
-  setCurrentVideo: (path) => set({ currentVideoPath: path, currentTime: 0, duration: 0, isPlaying: false }),
-  setPlaying: (playing) => set({ isPlaying: playing }),
-  // 【修复1】实现更灵活的 setVolume
-  setVolume: (volume) => set((state) => ({
-    volume: Math.max(0, Math.min(100, typeof volume === 'function' ? volume(state.volume) : volume)),
-  })),
-  setCurrentTime: (time) => set({ currentTime: time }),
+  setPlaying: (isPlaying) => set({ isPlaying }),
+  setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
+  setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
   setRotation: (rotation) => set({ rotation }),
-  setStepMode: (mode) => set({ stepMode: mode }),
-  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }),
   setFramerate: (framerate) => set({ framerate }),
-  setSkipFrameConfig: (config) => set({ skipFrameConfig: config }),
-  setSkipDuration: (duration) => set({ skipDuration: duration }),
+  setPlaybackRate: (playbackRate) => set({ playbackRate }),
 
-  // --- Actions (动作实现) ---
-  // 【修复2】实现新增的业务逻辑函数
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  
+
   stepForward: () => {
     const { currentTime, duration, stepMode, framerate } = get();
     const step = stepMode === 'frame' ? 1 / framerate : 1;
-    const newTime = Math.min(currentTime + step, duration);
-    set({ currentTime: newTime });
+    set({ currentTime: Math.min(currentTime + step, duration) });
   },
 
   stepBackward: () => {
     const { currentTime, stepMode, framerate } = get();
     const step = stepMode === 'frame' ? 1 / framerate : 1;
-    const newTime = Math.max(currentTime - step, 0);
-    set({ currentTime: newTime });
+    set({ currentTime: Math.max(currentTime - step, 0) });
   },
+
+  reset: () => set({
+    currentTime: 0,
+    duration: 0,
+    isPlaying: false,
+    rotation: 0 // 切换时先归零，后续由组件根据 Annotation 补齐
+  })
 }));

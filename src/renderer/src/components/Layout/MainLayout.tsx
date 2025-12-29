@@ -1,6 +1,5 @@
 import { Box } from '@mantine/core';
 import { TitleBar } from './TitleBar';
-import { BottomControlBar } from './BottomControlBar';
 import { ReactNode } from 'react';
 
 interface MainLayoutProps {

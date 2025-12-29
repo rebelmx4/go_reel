@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Annotation } from '../main/data/json/index';
+import type { Annotation } from '../shared/models'; 
 
 // Custom APIs for renderer
 const api = {
@@ -24,24 +24,23 @@ const api = {
   getScreenSize: () => ipcRenderer.invoke('get-screen-size'),
   
   // Screenshot Management
-  saveManualScreenshot: (videoHash: string, videoPath: string, timestamp: number) =>
-    ipcRenderer.invoke('save-manual-screenshot', videoHash, videoPath, timestamp),
-  generateAutoScreenshots: (videoHash: string, videoPath: string) =>
-    ipcRenderer.invoke('generate-auto-screenshots', videoHash, videoPath),
-  loadScreenshots: (videoHash: string) =>
-    ipcRenderer.invoke('load-screenshots', videoHash),
-  deleteScreenshot: (videoHash: string, filename: string) =>
-    ipcRenderer.invoke('delete-screenshot', videoHash, filename),
+  saveManualScreenshot: (filePath: string, timestamp: number) =>
+    ipcRenderer.invoke('save-manual-screenshot', filePath, timestamp),
+  generateAutoScreenshots: (filePath: string) =>
+    ipcRenderer.invoke('generate-auto-screenshots', filePath),
+  loadScreenshots: (filePath: string) =>
+    ipcRenderer.invoke('load-screenshots', filePath),
+  deleteScreenshot: (filePath: string, filename: string) =>
+    ipcRenderer.invoke('delete-screenshot', filePath, filename),
+   exportScreenshots: (filePath: string, rotation: number) =>
+    ipcRenderer.invoke('export-screenshots', filePath, rotation),
   
   // Cover Management
-  getCover: (videoHash: string, videoPath: string) =>
-    ipcRenderer.invoke('get-cover', videoHash, videoPath),
-  setManualCover: (screenshotPath: string, videoHash: string) =>
-    ipcRenderer.invoke('set-manual-cover', screenshotPath, videoHash),
+  getCover: (filePath: string, videoPath: string) =>
+    ipcRenderer.invoke('get-cover', filePath, videoPath),
+  setManualCover: (filePath: string, screenshotPath: string) =>
+    ipcRenderer.invoke('set-manual-cover', screenshotPath, filePath),
   
-  // Export
-  exportScreenshots: (videoHash: string, rotation: number) =>
-    ipcRenderer.invoke('export-screenshots', videoHash, rotation),
   
   // Video Metadata
   calculateVideoHash: (filePath: string) => 
@@ -60,27 +59,21 @@ const api = {
   removeFromHistory: (filePath: string) => 
     ipcRenderer.invoke('remove-from-history', filePath),
   
-  // Annotation
-  addAnnotation: (videoHash: string, annotation: Annotation) =>
-    ipcRenderer.invoke('add-annotation', videoHash, annotation),
 
-  getAnnotation: (videoHash: string) =>
-    ipcRenderer.invoke('get-annotation', videoHash),
-
-  updateAnnotation: (videoHash: string, updates: Partial<Annotation>) =>
-    ipcRenderer.invoke('update-annotation', videoHash, updates),
-
-  getAllAnnotations: () => 
-    ipcRenderer.invoke('get-all-annotations'),
-
-  getFavoriteAnnotations: () => 
-    ipcRenderer.invoke('get-favorite-annotations'),
-
-  getAnnotationsByLikeCount: (threshold: number) =>
-    ipcRenderer.invoke('get-annotations-by-like-count', threshold),
+  // Annotation 语义化操作
+  addAnnotation: (filePath: string, annotation: Annotation) => 
+    ipcRenderer.invoke('add-annotation', filePath, annotation),
+  updateAnnotation: (filePath: string, updates: Partial<Annotation>) => 
+    ipcRenderer.invoke('update-annotation', filePath, updates),
+  getAnnotation: (filePath: string) => 
+    ipcRenderer.invoke('get-annotation', filePath),
     
-  getAnnotationsByTag: (tagId: number) =>
-    ipcRenderer.invoke('get-annotations-by-tag', tagId),
+  // File Profile
+  getFileProfile: (filePath: string) => 
+    ipcRenderer.invoke('get-file-profile', filePath),
+  getProfilesByHash: (hash: string) => 
+    ipcRenderer.invoke('get-profiles-by-hash', hash),
+  
   
   // Settings
   getAssetStatistics: () => ipcRenderer.invoke('get-asset-statistics'),

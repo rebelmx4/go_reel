@@ -1,98 +1,76 @@
+// src/stores/playlistStore.ts
 import { create } from 'zustand';
-import { VideoFile } from './videoStore';
+import { useVideoStore } from './videoStore';
 
-export type PlaylistMode = 'newest' | 'liked' | 'elite' | 'tag-search' | 'random';
+type PlaylistMode = 'all' | 'liked' | 'elite' | 'search';
 
 interface PlaylistState {
   mode: PlaylistMode;
-  currentVideoId: string | null;
-  playlist: VideoFile[];
-  
+  currentPath: string | null;
+  searchQuery: string;
+
   // Actions
   setMode: (mode: PlaylistMode) => void;
-  setPlaylist: (videos: VideoFile[]) => void;
-  setCurrentVideo: (videoId: string) => void;
-  getNextVideo: () => VideoFile | null;
-  getPreviousVideo: () => VideoFile | null;
-  getCurrentIndex: () => number;
+  setCurrentPath: (path: string | null) => void;
+  setSearchQuery: (query: string) => void;
+
+  // 核心逻辑：获取当前活跃的播放列表（纯路径数组）
+  getCurrentQueue: () => string[];
+  
+  // 导航
+  next: (isRandom?: boolean) => void;
+  prev: () => void;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
-  mode: 'random',
-  currentVideoId: null,
-  playlist: [],
+  mode: 'all',
+  currentPath: null,
+  searchQuery: '',
 
-  setMode: (mode) => {
-    set({ mode });
+  setMode: (mode) => set({ mode }),
+  setCurrentPath: (path) => set({ currentPath: path }),
+  setSearchQuery: (query) => set({ searchQuery: query, mode: 'search' }),
+
+  getCurrentQueue: () => {
+    const { mode, searchQuery } = get();
+    const videoState = useVideoStore.getState();
+
+    switch (mode) {
+      case 'liked':
+        return videoState.videoPaths.filter(p => (videoState.videos[p].annotation?.like_count ?? 0) > 0);
+      case 'elite':
+        return videoState.videoPaths.filter(p => videoState.videos[p].annotation?.is_favorite);
+      case 'search':
+        return videoState.videoPaths.filter(p => p.toLowerCase().includes(searchQuery.toLowerCase()));
+      default:
+        return videoState.videoPaths;
+    }
   },
 
-  setPlaylist: (videos) => {
-    set({ playlist: videos });
-  },
+  next: (isRandom = false) => {
+    const queue = get().getCurrentQueue();
+    if (queue.length === 0) return;
 
-  setCurrentVideo: (videoId) => {
-    set({ currentVideoId: videoId });
-  },
+    const currentPath = get().currentPath;
+    let nextPath: string;
 
-  getCurrentIndex: () => {
-    const { playlist, currentVideoId } = get();
-    if (!currentVideoId) return -1;
-    return playlist.findIndex(v => v.hash === currentVideoId);
-  },
-
-  getNextVideo: () => {
-    const { mode, playlist, currentVideoId } = get();
-    
-    if (playlist.length === 0) return null;
-
-    if (mode === 'random') {
-      // Random mode: pick random video excluding current
-      const available = currentVideoId
-        ? playlist.filter(v => v.hash !== currentVideoId)
-        : playlist;
-      
-      if (available.length === 0) return playlist[0];
-      
-      const randomIndex = Math.floor(Math.random() * available.length);
-      return available[randomIndex];
+    if (isRandom) {
+      nextPath = queue[Math.floor(Math.random() * queue.length)];
+    } else {
+      const currentIndex = currentPath ? queue.indexOf(currentPath) : -1;
+      nextPath = queue[(currentIndex + 1) % queue.length];
     }
 
-    // Sequential mode: next in list, loop to start
-    const currentIndex = get().getCurrentIndex();
-    
-    if (currentIndex === -1) {
-      return playlist[0];
-    }
-
-    const nextIndex = (currentIndex + 1) % playlist.length;
-    return playlist[nextIndex];
+    set({ currentPath: nextPath });
   },
 
-  getPreviousVideo: () => {
-    const { mode, playlist, currentVideoId } = get();
-    
-    if (playlist.length === 0) return null;
+  prev: () => {
+    const queue = get().getCurrentQueue();
+    const currentPath = get().currentPath;
+    if (queue.length === 0 || !currentPath) return;
 
-    if (mode === 'random') {
-      // Random mode: pick random video excluding current
-      const available = currentVideoId
-        ? playlist.filter(v => v.hash !== currentVideoId)
-        : playlist;
-      
-      if (available.length === 0) return playlist[0];
-      
-      const randomIndex = Math.floor(Math.random() * available.length);
-      return available[randomIndex];
-    }
-
-    // Sequential mode: previous in list, loop to end
-    const currentIndex = get().getCurrentIndex();
-    
-    if (currentIndex === -1) {
-      return playlist[playlist.length - 1];
-    }
-
-    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
-    return playlist[prevIndex];
-  },
+    const currentIndex = queue.indexOf(currentPath);
+    const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+    set({ currentPath: queue[prevIndex] });
+  }
 }));

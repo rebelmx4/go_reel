@@ -1,10 +1,17 @@
+// src/components/layout/TitleBar.tsx
+
 import { Box, Group, Text, ActionIcon, Tabs, Tooltip } from '@mantine/core';
 import { IconMinus, IconSquare, IconX } from '@tabler/icons-react';
-import { usePlayerStore, usePlaylistStore, useNavigationStore, ViewType } from '../../stores';
-import { getFilename } from '../../utils/pathUtils';
+import {
+    usePlayerStore,
+    usePlaylistStore,
+    useNavigationStore,
+    ViewType
+} from '../../stores';
 
 /**
- * Tab configuration
+ * 导航标签配置
+ * 这里的快捷键仅作为 UI 提示，实际拦截逻辑通常在全局 KeyboardListener 中处理
  */
 const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
     { value: 'player', label: '播放器', shortcut: 'Esc' },
@@ -12,49 +19,49 @@ const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
     { value: 'liked', label: '点赞', shortcut: '5' },
     { value: 'history', label: '历史', shortcut: '1' },
     { value: 'newest', label: '最新', shortcut: '2' },
-    { value: 'search', label: '文件名搜索', shortcut: '3' },
-    { value: 'tag-search', label: '标签搜索', shortcut: '7' },
+    { value: 'search', label: '搜索', shortcut: '3' },
     { value: 'settings', label: '设置', shortcut: '8' },
 ];
 
 /**
- * Custom Title Bar Component
- * Displays: Navigation Tabs | Video Title | Window Controls
+ * 自定义标题栏组件
  */
 export function TitleBar() {
-    const currentVideoPath = usePlayerStore((state) => state.currentVideoPath);
+    // 1. 播放状态（用于展示当前正在播什么）
+    const currentPath = usePlaylistStore((s) => s.currentPath);
+    const getCurrentQueue = usePlaylistStore((s) => s.getCurrentQueue);
     const duration = usePlayerStore((state) => state.duration);
-    const playlist = usePlaylistStore((state) => state.playlist);
-    const currentVideoId = usePlaylistStore((state) => state.currentVideoId);
+
+    // 2. 导航状态（用于 Tab 切换）
     const currentView = useNavigationStore((state) => state.currentView);
     const setView = useNavigationStore((state) => state.setView);
 
-    const handleMinimize = () => {
-        window.api.windowMinimize();
-    };
+    // --- 窗口控制 ---
+    const handleMinimize = () => window.api.windowMinimize();
+    const handleMaximize = () => window.api.windowMaximize();
+    const handleClose = () => window.api.windowClose();
 
-    const handleMaximize = () => {
-        window.api.windowMaximize();
-    };
-
-    const handleClose = () => {
-        window.api.windowClose();
-    };
-
-    // Format video title
+    /**
+     * 获取格式化的标题
+     * 格式：[当前索引/总数] 文件名 (总时长)
+     */
     const getVideoTitle = () => {
-        if (!currentVideoPath) {
+        if (!currentPath) {
             return 'GoReel - 片遇';
         }
 
-        const total = playlist.length || 1;
-        const index = currentVideoId
-            ? (playlist.findIndex(v => v.id === currentVideoId) + 1) || 1
-            : 1;
+        // 获取当前播放模式下的队列（用于计算 Index/Total）
+        const queue = getCurrentQueue();
+        const total = queue.length;
+        const currentIndex = queue.indexOf(currentPath);
+        const displayIndex = currentIndex !== -1 ? currentIndex + 1 : 1;
 
-        const filename = getFilename(currentVideoPath);
+        // 从路径提取文件名
+        const filename = currentPath.split(/[\\/]/).pop() || '';
 
+        // 时长格式化函数
         const formatDuration = (seconds: number) => {
+            if (!seconds || seconds <= 0) return '00:00';
             const h = Math.floor(seconds / 3600);
             const m = Math.floor((seconds % 3600) / 60);
             const s = Math.floor(seconds % 60);
@@ -65,13 +72,23 @@ export function TitleBar() {
             return `${m}:${s.toString().padStart(2, '0')}`;
         };
 
-        const durationStr = duration > 0 ? formatDuration(duration) : '00:00';
+        const durationStr = formatDuration(duration);
 
-        return `[${index}/${total}] ${filename} (${durationStr})`;
+        return `[${displayIndex}/${total}] ${filename} (${durationStr})`;
     };
 
-    // Don't show tabs on configuration screen
-    const showTabs = currentView !== 'configuration';
+    /**
+     * 处理标签页切换
+     * 仅改变 UI 视图，不改变 Playlist 模式
+     */
+    const handleTabChange = (value: string | null) => {
+        if (value) {
+            setView(value as ViewType);
+        }
+    };
+
+    // 如果当前在配置引导界面，隐藏 Tabs
+    const showTabs = true;
 
     return (
         <Box
@@ -82,83 +99,109 @@ export function TitleBar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                WebkitAppRegion: 'drag',
+                WebkitAppRegion: 'drag', // 允许拖拽窗口
                 userSelect: 'none',
             }}
         >
-            {/* Left: Navigation Tabs */}
-            {showTabs ? (
-                <Box style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
+            {/* 左侧：导航标签页 */}
+            <Box style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
+                {showTabs ? (
                     <Tabs
                         value={currentView}
-                        onChange={(value) => setView(value as ViewType)}
+                        onChange={handleTabChange}
                         styles={{
                             root: { height: 32 },
-                            list: {
-                                borderBottom: 'none',
-                                height: 32,
-                            },
+                            list: { borderBottom: 'none', height: 32 },
                             tab: {
                                 height: 32,
                                 padding: '0 12px',
                                 fontSize: '12px',
+                                borderBottom: '2px solid transparent',
+                                transition: 'all 0.2s ease',
+                                '&[data-active]': {
+                                    borderColor: 'var(--mantine-color-blue-filled)',
+                                }
                             }
                         }}
                     >
                         <Tabs.List>
                             {TABS.map((tab) => (
-                                <Tooltip key={tab.value} label={`${tab.label} (${tab.shortcut})`} withArrow>
-                                    <Tabs.Tab value={tab.value}>{tab.label}</Tabs.Tab>
+                                <Tooltip
+                                    key={tab.value}
+                                    label={`${tab.label} (${tab.shortcut})`}
+                                    withArrow
+                                    position="bottom"
+                                    openDelay={500}
+                                >
+                                    <Tabs.Tab value={tab.value}>
+                                        {tab.label}
+                                    </Tabs.Tab>
                                 </Tooltip>
                             ))}
                         </Tabs.List>
                     </Tabs>
-                </Box>
-            ) : (
-                <Box style={{ width: 8 }} />
-            )}
+                ) : (
+                    <Box style={{ width: 12 }} />
+                )}
+            </Box>
 
-            {/* Center: Title Text */}
+            {/* 中间：视频标题信息 */}
             <Text
-                size="sm"
+                size="xs"
+                fw={500}
                 style={{
                     flex: 1,
                     textAlign: 'center',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    padding: '0 16px',
+                    padding: '0 20px',
+                    color: 'var(--mantine-color-dark-2)',
+                    // 标题文字通常不需要响应鼠标，让位给窗口拖拽
+                    pointerEvents: 'none',
                 }}
             >
                 {getVideoTitle()}
             </Text>
 
-            {/* Right: Window Controls */}
-            <Group gap={4} style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto', paddingRight: 8 }}>
+            {/* 右侧：窗口控制按钮 */}
+            <Group gap={0} style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
                 <ActionIcon
                     variant="subtle"
                     color="gray"
-                    size="sm"
+                    radius={0}
+                    w={38}
+                    h={32}
                     onClick={handleMinimize}
-                    aria-label="Minimize"
                 >
                     <IconMinus size={16} />
                 </ActionIcon>
                 <ActionIcon
                     variant="subtle"
                     color="gray"
-                    size="sm"
+                    radius={0}
+                    w={38}
+                    h={32}
                     onClick={handleMaximize}
-                    aria-label="Maximize"
                 >
                     <IconSquare size={14} />
                 </ActionIcon>
                 <ActionIcon
                     variant="subtle"
                     color="red"
-                    size="sm"
+                    radius={0}
+                    w={38}
+                    h={32}
                     onClick={handleClose}
-                    aria-label="Close"
+                    // 悬浮时显示红色背景，类似原生 Windows 关闭按钮
+                    styles={{
+                        root: {
+                            '&:hover': {
+                                backgroundColor: 'var(--mantine-color-red-8)',
+                                color: 'white'
+                            }
+                        }
+                    }}
                 >
                     <IconX size={16} />
                 </ActionIcon>

@@ -1,162 +1,157 @@
 // src/stores/videoStore.ts
 
 import { create } from 'zustand';
+import { JoinedVideo, Annotation } from '../../../shared/models';
 
 /**
- * 从文件完整路径中提取文件名。
- * @param path - 文件路径 (e.g., "C:\\Users\\Videos\\example.mp4")
- * @returns 文件名 (e.g., "example.mp4")
+ * VideoState 定义
  */
-export const deriveFilename = (path: string): string => {
-  return path.replace(/\\/g, '/').split('/').pop() || '';
-};
-
-/**
- * @interface VideoFile
- * @description 视频的核心数据模型，在前端状态管理中使用。
- * 这是后端 ScanResult 和 Annotation 数据合并后的理想形态。
- */
-export interface VideoFile {
-  hash: string;       // 视频哈希 (来自 Annotation key)
-  path: string;     // 文件绝对路径 (来自 ScanResult)
-  createdAt: number;// 文件创建时间戳 (来自 ScanResult)
-  liked: boolean;   // 是否喜欢 (来自 Annotation)
-  elite: boolean;   // 是否精品 (来自 Annotation.is_favorite)
-  tags: number[];   // 标签ID列表 (来自 Annotation)
-}
-
-// 定义派生状态的接口
-interface DerivedVideoState {
-  newestVideos: VideoFile[];
-  likedVideos: VideoFile[];
-  eliteVideos: VideoFile[];
-}
-
-interface VideoState extends DerivedVideoState {
-  videos: VideoFile[];
+interface VideoState {
+  // 数据核心：Path -> JoinedVideo 的映射表 (数据库)
+  videos: Record<string, JoinedVideo>;
+  // 索引列表：存储路径的有序数组 (用于 Grid 渲染和排序)
+  videoPaths: string[];
+  // 全局加载状态
   isLoading: boolean;
+
+  // --- Actions ---
+  /** 初始化：从后端获取物理扫描与注解合并后的结果 */
+  initStore: () => Promise<void>;
   
-  // 动作
-  loadVideos: () => Promise<void>;
-  toggleLike: (hash: string) => Promise<void>;
-  toggleElite: (hash: string) => Promise<void>;
-  
-  // 选择器 (现在变得更简单)
-  getVideoById: (hash: string) => VideoFile | undefined;
-  getNewestVideos: () => VideoFile[];
-  getLikedVideos: () => VideoFile[];
-  getEliteVideos: () => VideoFile[];
+  /** 
+   * 更新注解：统一处理点赞、收藏、标签、旋转等
+   * @param path 视频绝对路径
+   * @param updatesPartial 部分注解更新
+   */
+  updateAnnotation: (path: string, updates: Partial<Annotation>) => Promise<void>;
+
+  // --- 简易选择器 (用于在组件外或逻辑中快速获取数据) ---
+  getVideoByPath: (path: string) => JoinedVideo | undefined;
 }
-
-/**
- * 模拟从主进程获取并合并视频数据。
- * 在真实应用中，这个逻辑可能在主进程完成，前端只需接收最终结果。
- */
-async function fetchHybridVideoData(): Promise<VideoFile[]> {
-    const startupResult = await window.api.getStartupResult();
-    const annotationsList = await window.api.getAllAnnotations();
-    const annotations = new Map(annotationsList);
-
-    if (!startupResult || !startupResult.videoList) return [];
-
-    const videoDataList: VideoFile[] = [];
-
-    // ✨ 已根据您的要求修正这里的逻辑
-    for (const video of startupResult.videoList) {
-        const hash = video.hash;
-        const annotation = annotations.get(hash);
-
-        // 无论是否存在 annotation，都将视频加入列表
-        // 如果不存在，则提供默认值
-        videoDataList.push({
-            hash: hash,
-            path: video.path,
-            createdAt: video.createdAt,
-            liked: annotation ? annotation.like_count > 0 : false,
-            elite: annotation ? annotation.is_favorite : false,
-            tags: annotation ? annotation.tags || [] : [],
-        });
-    }
-    return videoDataList;
-}
-
-// 一个集中的函数来计算所有派生状态
-const computeDerivedVideoLists = (videos: VideoFile[]): DerivedVideoState => {
-  const sortedByDate = [...videos].sort((a, b) => b.createdAt - a.createdAt);
-
-  return {
-    newestVideos: sortedByDate.slice(0, 50),
-    likedVideos: sortedByDate.filter(v => v.liked),
-    eliteVideos: sortedByDate.filter(v => v.elite),
-  };
-};
 
 export const useVideoStore = create<VideoState>((set, get) => ({
-  videos: [],
-  isLoading: true,
-  // 初始化派生状态
-  newestVideos: [],
-  likedVideos: [],
-  eliteVideos: [],
+  videos: {},
+  videoPaths: [],
+  isLoading: false,
 
-  loadVideos: async () => {
+  /**
+   * 初始化 Store
+   * 启动时调用一次，直接获取后端 StartupService 的计算结果
+   */
+  initStore: async () => {
     set({ isLoading: true });
     try {
-      const videos = await fetchHybridVideoData();
-      // 加载数据后，一次性计算并设置所有派生状态
-      set({ videos, ...computeDerivedVideoLists(videos), isLoading: false });
+      // 从后端获取 StartupResult
+      const result = await window.api.getStartupResult();
+      
+      if (!result || !result.videoList) {
+        set({ videos: {}, videoPaths: [], isLoading: false });
+        return;
+      }
+
+      const videoMap: Record<string, JoinedVideo> = {};
+      const paths: string[] = [];
+
+      // 转换为 Map 结构，并记录路径索引
+      result.videoList.forEach((v) => {
+        videoMap[v.path] = v;
+        paths.push(v.path);
+      });
+
+      // 默认排序：可以根据需求在这里对 paths 进行排序，例如按修改时间倒序
+      paths.sort((a, b) => videoMap[b].mtime - videoMap[a].mtime);
+
+      set({
+        videos: videoMap,
+        videoPaths: paths,
+        isLoading: false,
+      });
     } catch (error) {
-      console.error('加载混合视频数据失败:', error);
+      console.error('[VideoStore] Failed to initialize:', error);
       set({ isLoading: false });
     }
   },
 
-  getVideoById: (hash) => get().videos.find(v => v.hash === hash),
-  
-  toggleLike: async (hash) => {
-    const originalVideos = get().videos;
-    const video = originalVideos.find(v => v.hash === hash);
-    if (!video) return;
+  /**
+   * 更新注解 (核心业务方法)
+   * 采用乐观更新策略：先改 UI，再发请求，失败则回滚
+   */
+  updateAnnotation: async (path: string, updates: Partial<Annotation>) => {
+    const originalVideo = get().videos[path];
+    if (!originalVideo) return;
 
-    const newLikedState = !video.liked;
-    
-    // 乐观更新UI
-    const updatedVideos = originalVideos.map(v => v.hash === hash ? { ...v, liked: newLikedState } : v);
-    // 每当原始 videos 变化时，重新计算派生状态
-    set({ videos: updatedVideos, ...computeDerivedVideoLists(updatedVideos) });
+    // 1. 准备旧注解，用于可能的失败回滚
+    const oldAnnotation = originalVideo.annotation;
+
+    // 2. 构造新注解对象
+    const newAnnotation: Annotation = {
+      // 默认初始值
+      like_count: 0,
+      is_favorite: false,
+      rotation: 0,
+      screenshot_rotation: null,
+      tags: [],
+      // 合并旧值与新更新
+      ...oldAnnotation,
+      ...updates
+    };
+
+    // 3. 乐观更新 UI (立即生效)
+    set((state) => ({
+      videos: {
+        ...state.videos,
+        [path]: {
+          ...originalVideo,
+          annotation: newAnnotation
+        }
+      }
+    }));
 
     try {
-      await window.api.updateAnnotation(hash, { like_count: newLikedState ? 1 : 0 });
+      // 4. 调用后端 IPC (使用路径，后端内部通过 withHash 处理哈希)
+      const res = await window.api.updateAnnotation(path, updates);
+      if (!res.success) throw new Error(res.error);
     } catch (error) {
-      console.error(`更新喜欢状态失败 for ${hash}:`, error);
-      // 失败时回滚并重新计算派生状态
-      set({ videos: originalVideos, ...computeDerivedVideoLists(originalVideos) });
+      console.error(`[VideoStore] Update annotation failed for ${path}:`, error);
+      
+      // 5. 失败回滚到旧状态
+      set((state) => ({
+        videos: {
+          ...state.videos,
+          [path]: {
+            ...originalVideo,
+            annotation: oldAnnotation
+          }
+        }
+      }));
     }
   },
 
-  toggleElite: async (hash) => {
-    const originalVideos = get().videos;
-    const video = originalVideos.find(v => v.hash === hash);
-    if (!video) return;
-
-    const newEliteState = !video.elite;
-
-    // 乐观更新UI
-    const updatedVideos = originalVideos.map(v => v.hash === hash ? { ...v, elite: newEliteState } : v);
-    // 每当原始 videos 变化时，重新计算派生状态
-    set({ videos: updatedVideos, ...computeDerivedVideoLists(updatedVideos) });
-    
-    try {
-      await window.api.updateAnnotation(hash, { is_favorite: newEliteState });
-    } catch (error) {
-      console.error(`更新精品状态失败 for ${hash}:`, error);
-      // 失败时回滚并重新计算派生状态
-      set({ videos: originalVideos, ...computeDerivedVideoLists(originalVideos) });
-    }
-  },
-
-  // --- 选择器 (现在它们只返回已存储的状态，不会创建新数组) ---
-  getNewestVideos: () => get().newestVideos,
-  getLikedVideos: () => get().likedVideos,
-  getEliteVideos: () => get().eliteVideos,
+  // 获取单个视频的工具方法
+  getVideoByPath: (path) => get().videos[path],
 }));
+
+/**
+ * --- 导出一些常用的选择器 (Selectors) ---
+ * 使用这些选择器可以避免组件在不相关数据变化时重渲染
+ */
+
+// 获取当前显示的路径列表
+export const useVideoPaths = () => useVideoStore((s) => s.videoPaths);
+
+// 获取特定的视频对象 (通过路径)
+export const useVideoItem = (path: string) => useVideoStore((s) => s.videos[path]);
+
+// 获取点赞列表路径
+export const useLikedPaths = () => {
+  return useVideoStore((s) => 
+    s.videoPaths.filter(path => (s.videos[path].annotation?.like_count ?? 0) > 0)
+  );
+};
+
+// 获取精品列表路径
+export const useElitePaths = () => {
+  return useVideoStore((s) => 
+    s.videoPaths.filter(path => s.videos[path].annotation?.is_favorite)
+  );
+};

@@ -8,12 +8,10 @@ export type ViewType =
   | 'history'
   | 'newest'
   | 'search'
-  | 'random'
   | 'liked'
   | 'elite'
   | 'tag-search'
-  | 'settings'
-  | 'configuration';
+  | 'settings';
 
 /**
  * Navigation state interface
@@ -28,6 +26,6 @@ interface NavigationState {
  * Manages the current view/page in the application
  */
 export const useNavigationStore = create<NavigationState>((set) => ({
-  currentView: 'configuration', // Start with configuration screen
+  currentView: 'player', // Start with configuration screen
   setView: (view) => set({ currentView: view }),
 }));

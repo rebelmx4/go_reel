@@ -1,102 +1,114 @@
-import { BaseJsonManager } from './BaseJsonManager';
+import fs from 'fs-extra';
+import path from 'path';
+import { app } from 'electron';
+import log from 'electron-log';
 
-/**
- * Video metadata according to documentation
- */
-export interface Annotation {
-  paths: string[]; // Array of relative paths (relative to video_source)
-  like_count: number; // Like/heat score
-  is_favorite: boolean; // Whether in elite/favorite list
-  rotation: 0 | 90 | 180 | 270; // Video playback rotation
-  screenshot_rotation: 0 | 90 | 180 | 270 | null; // Screenshot export rotation (null = not set)
-  tags: number[]; // Array of tag IDs (numbers)
-}
+import { Annotation } from '../../../shared/models';// 引入共享类型
 
-/**
- * Metadata store - keyed by video hash
- */
-export interface AnnotaionList {
+/** 分片字典对象 */
+export interface AnnotationShard {
   [hash: string]: Annotation;
 }
 
-export class AnnotationManager extends BaseJsonManager<AnnotaionList> {
+export class AnnotationManager {
+  private baseDir: string;
+  // 内存结构：ShardKey (0-f) -> 该分片内的所有 Hash 数据
+  private shards = new Map<string, AnnotationShard>();
+  private isInitialized = false;
+
   constructor() {
-    super('annotations.json', {});
+    this.baseDir = path.join(app.getAppPath(), 'data', 'Annotation');
+    this.ensureDir();
+  }
+
+  private ensureDir() {
+    try { fs.ensureDirSync(this.baseDir); } catch (e) { log.error(e); }
+  }
+
+  /** 获取 Hash 的首位作为分片 Key (0-f) */
+  private getShardKey(hash: string): string {
+    return hash.substring(0, 1).toLowerCase();
   }
 
   /**
-   * Get metadata for a video by hash
-   * @param hash - Video hash
-   * @returns Video metadata or undefined
+   * 初始化：启动时加载 16 个分片
    */
-  public getAnnotation(hash: string): Annotation | undefined {
-    return this.data[hash];
+  public async init(): Promise<void> {
+    if (this.isInitialized) return;
+
+    for (let i = 0; i < 16; i++) {
+      const key = i.toString(16);
+      const shardPath = path.join(this.baseDir, `${key}.json`);
+      let shardData: AnnotationShard = {};
+
+      if (await fs.pathExists(shardPath)) {
+        try {
+          shardData = await fs.readJson(shardPath);
+        } catch (e) { log.error(`Load Annotation shard ${key} failed`, e); }
+      }
+      this.shards.set(key, shardData);
+    }
+
+    this.isInitialized = true;
+    log.info(`AnnotationManager: All 16 shards loaded into memory.`);
   }
 
   /**
-   * Add or update a video's metadata
-   * @param hash - Video hash
-   * @param metadata - Video metadata
+   * 获取元数据 (直接从内存取)
    */
-  public addAnnotation(hash: string, metadata: Annotation): void {
-    this.set({ [hash]: metadata });
+  public getAnnotation(hash: string): Annotation | null {
+    const key = this.getShardKey(hash);
+    const shard = this.shards.get(key)!;
+    return shard[hash] || null;
   }
 
   /**
-   * Update specific fields of a video's metadata
-   * @param hash - Video hash
-   * @param updates - Partial metadata to update
+   * (Create) 新增完整注解
+   * 语义上用于首次创建记录，要求传入完整对象
    */
-  public updateAnnotation(hash: string, updates: Partial<Annotation>): void {
-    const file = this.data[hash];
-    if (file) {
-      this.set({ [hash]: { ...file, ...updates } });
+  public async addAnnotation(hash: string, annotation: Annotation): Promise<void> {
+    const key = this.getShardKey(hash);
+    const shard = this.shards.get(key)!;
+
+    // 直接覆盖或赋值，确保初始数据的完整性
+    shard[hash] = { ...annotation };
+
+    // 保存分片
+    const shardPath = path.join(this.baseDir, `${key}.json`);
+    try {
+      await fs.writeJson(shardPath, shard, { spaces: 0 }); // 生产环境建议 spaces: 0
+    } catch (e) {
+      log.error(`Failed to add Annotation for hash ${hash}`, e);
+      throw e;
     }
   }
 
   /**
-   * Remove a video's metadata
-   * @param hash - Video hash
+   * 更新元数据 (修改内存并立即持久化)
    */
-  public removeAnnotation(hash: string): void {
-    const newData = { ...this.data };
-    delete newData[hash];
-    this.data = newData;
-    this.save();
-  }
+  public async updateAnnotation(hash: string, updates: Partial<Annotation>): Promise<void> {
+    const key = this.getShardKey(hash);
+    const shard = this.shards.get(key)!;
 
-  /**
-   * Get all video metadata
-   * @returns Array of [hash, metadata] tuples
-   */
-  public getAllAnnotations(): Array<[string, Annotation]> {
-    return Object.entries(this.data);
-  }
+    // 默认值
+    const existing = shard[hash] || {
+      like_count: 0,
+      is_favorite: false,
+      rotation: 0,
+      screenshot_rotation: null,
+      tags: []
+    };
 
-  /**
-   * Get all favorite videos
-   * @returns Array of [hash, metadata] tuples for favorites
-   */
-  public getFavorites(): Array<[string, Annotation]> {
-    return this.getAllAnnotations().filter(([_, metadata]) => metadata.is_favorite);
-  }
+    // 合并并回写内存
+    shard[hash] = { ...existing, ...updates };
 
-  /**
-   * Get videos with like_count above threshold
-   * @param threshold - Minimum like count
-   * @returns Array of [hash, metadata] tuples
-   */
-  public getByLikeCount(threshold: number): Array<[string, Annotation]> {
-    return this.getAllAnnotations().filter(([_, metadata]) => metadata.like_count >= threshold);
-  }
-
-  /**
-   * Get videos with specific tag
-   * @param tagId - Tag ID to filter by
-   * @returns Array of [hash, metadata] tuples
-   */
-  public getByTag(tagId: number): Array<[string, Annotation]> {
-    return this.getAllAnnotations().filter(([_, metadata]) => metadata.tags.includes(tagId));
+    // 立即保存该分片
+    const shardPath = path.join(this.baseDir, `${key}.json`);
+    try {
+      await fs.writeJson(shardPath, shard, { spaces: 2 });
+    } catch (e) {
+      log.error(`Failed to save Annotation shard ${key}`, e);
+    }
   }
 }
 
