@@ -36,6 +36,8 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
                     handlers.stepFrame(1);
                     break;
                 case 'e':
+                    if (e.ctrlKey || e.altKey) 
+                        break              
                     e.preventDefault();
                     handlers.takeScreenshot();
                     break;

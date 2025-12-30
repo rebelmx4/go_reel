@@ -2,13 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToastStore } from '../stores';
 
 export function useScreenshotExport(
-    currentVideoPath: string | null, 
-    isCropMode: boolean,
-    setCropMode: (val: boolean) => void,
+    currentVideoPath: string | null
 ) {
     const [showExportDialog, setShowExportDialog] = useState(false);
-    const [exportRotationAnnotation, setExportRotationAnnotation] = useState<number | null>(null);
-    const [currentHash, setCurrentHash] = useState<string | null>(null);
     const showToast = useToastStore((state) => state.showToast);
 
     // 核心导出逻辑：判断是直接导出还是打开弹窗
@@ -16,15 +12,9 @@ export function useScreenshotExport(
         if (!currentVideoPath) return;
 
         try {
-            const hash = await window.api.calculateVideoHash(currentVideoPath);
-            if (!hash) return;
-            setCurrentHash(hash);
-
-            // 获取已保存的旋转角度
-            const annotation = await window.api.getAnnotation(hash);
-            // 从注解对象中获取旋转角度，如果不存在则为 null
+            const annotation = await window.api.getAnnotation(currentVideoPath);
+            
             const savedRotation = annotation?.screenshot_rotation ?? null;
-            setExportRotationAnnotation(savedRotation);
 
             // 如果强制配置，或者从未配置过 -> 打开弹窗
             if (forceDialog || savedRotation === null) {
@@ -32,7 +22,7 @@ export function useScreenshotExport(
             } else {
                 // 直接导出模式 (Smart Export)
                 showToast({ message: '正在快速导出...', type: 'info' });
-                await window.api.exportScreenshots(hash, savedRotation);
+                await window.api.exportScreenshots(currentVideoPath, savedRotation);
                 showToast({ message: '导出成功', type: 'success' });
             }
         } catch (error) {
@@ -61,12 +51,10 @@ export function useScreenshotExport(
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleSmartExport, isCropMode, setCropMode]);
+    }, [handleSmartExport]);
 
     return {
         showExportDialog,
-        setShowExportDialog,
-        exportRotationMetadata: exportRotationAnnotation,
-        currentHash
+        setShowExportDialog
     };
 }

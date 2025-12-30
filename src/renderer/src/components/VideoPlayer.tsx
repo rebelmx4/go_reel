@@ -69,7 +69,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const [showTagDialog, setShowTagDialog] = useState(false);
     const [showCreateTagDialog, setShowCreateTagDialog] = useState(false);
     const [tagCoverImage, setTagCoverImage] = useState('');
-    const [showExportDialog, setShowExportDialog] = useState(false);
 
     // 4. Custom Hooks Integration
     const { onVisualLoadedMetadata } = useVideoVisuals({
@@ -78,6 +77,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         rotation
     });
     const { currentVideoTags, setCurrentVideoTags } = useVideoData(videoRef);
+    const {
+        showExportDialog,
+        setShowExportDialog,
+    } = useScreenshotExport(currentPath);
 
 
     useImperativeHandle(ref, () => ({ videoElement: videoRef.current }));
