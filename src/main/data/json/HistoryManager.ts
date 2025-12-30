@@ -1,16 +1,10 @@
 import * as fs from 'fs';
 import { BaseJsonManager } from './BaseJsonManager';
 
-/**
- * History store - simple array of absolute paths
- * According to documentation (recent.json)
- */
 export type HistoryStore = string[];
 
 export class HistoryManager extends BaseJsonManager<HistoryStore> {
   constructor() {
-    // 注意：文件名根据你的需求描述可能是 recent.json 或 history.json
-    // 这里保持你原本代码中的 history.json
     super('history.json', []);
   }
 

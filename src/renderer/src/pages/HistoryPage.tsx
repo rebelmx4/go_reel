@@ -1,50 +1,68 @@
 import { useEffect, useMemo } from 'react';
 import { Box, Text } from '@mantine/core';
-import { useVideoStore, usePlayerStore, useNavigationStore, usePlaylistStore, useHistoryStore, VideoFile } from '../stores';
+import {
+    useVideoStore,
+    usePlaylistStore,
+    useHistoryStore
+} from '../stores';
+import { useNavigationStore } from '../stores/navigationStore';
+
 import { VideoGrid } from '../components/Video/VideoGrid';
+import { JoinedVideo } from '../../../shared/models';
 
 export function HistoryPage() {
     // 1. 获取历史记录路径列表 & 加载动作
     const historyPaths = useHistoryStore((state) => state.historyPaths);
     const loadHistory = useHistoryStore((state) => state.loadHistory);
 
-    // 2. 获取全量视频数据（作为仓库）
-    const allVideos = useVideoStore((state) => state.videos);
-    const loadVideos = useVideoStore((state) => state.loadVideos);
-    const toggleLike = useVideoStore((state) => state.toggleLike);
-    const toggleElite = useVideoStore((state) => state.toggleElite);
+    // 2. 获取视频库数据与更新方法
+    const videoMap = useVideoStore((state) => state.videos);
+    const updateAnnotation = useVideoStore((state) => state.updateAnnotation);
+    const initStore = useVideoStore((state) => state.initStore);
 
     // 3. 导航与播放控制
-    const setCurrentVideo = usePlayerStore((state) => state.setCurrentVideo);
+    const setCurrentVideoPath = usePlaylistStore((state) => state.setCurrentPath);
     const setView = useNavigationStore((state) => state.setView);
-    const setCurrentVideoId = usePlaylistStore((state) => state.setCurrentVideo);
+    const setCurrentPlaylistPath = usePlaylistStore((state) => state.setCurrentPath);
 
     // 4. 【核心逻辑】将路径列表转换为视频对象列表
-    // 当 historyPaths 变化（有新播放）或 allVideos 变化（元数据加载完）时自动重新计算
     const historyVideos = useMemo(() => {
-        if (!allVideos.length) return [];
-
         return historyPaths
-            .map(path => allVideos.find(v => v.path === path))
-            .filter((v): v is VideoFile => v !== undefined); // 过滤掉已删除或未扫描到的视频
-    }, [historyPaths, allVideos]);
+            .map(path => videoMap[path])
+            .filter((v): v is JoinedVideo => v !== undefined);
+    }, [historyPaths, videoMap]);
 
-    // 初始化：加载历史记录和视频库
+    // 初始化加载
     useEffect(() => {
         loadHistory();
-        loadVideos();
-    }, [loadHistory, loadVideos]);
+        // 如果视频库尚未初始化，则初始化
+        if (Object.keys(videoMap).length === 0) {
+            initStore();
+        }
+    }, [loadHistory, initStore, videoMap]);
 
-    const handlePlay = (video: VideoFile) => {
-        // 设置文件路径给播放器
-        setCurrentVideo(video.path);
-        // 设置 Hash ID 给播放列表逻辑
-        setCurrentVideoId(video.hash);
+    const handlePlay = (video: JoinedVideo) => {
+        // 使用 path 切换播放器
+        setCurrentVideoPath(video.path);
+        // 更新播放列表当前活跃项
+        setCurrentPlaylistPath(video.path);
         // 切换视图
         setView('player');
+    };
 
-        // 注意：这里不需要手动调用 addToHistory，
-        // 因为 VideoPlayer 组件内部已经监听了 currentVideoPath 变化并自动写入 historyStore
+    const handleToggleLike = (video: JoinedVideo) => {
+        const currentLike = video.annotation?.like_count ?? 0;
+        // 简单的开关逻辑：如果 > 0 则取消(0)，否则设为 1
+        updateAnnotation(video.path, {
+            like_count: currentLike > 0 ? 0 : 1
+        });
+    };
+
+    const handleToggleElite = (video: JoinedVideo) => {
+        const currentFavorite = !!video.annotation?.is_favorite;
+        updateAnnotation(video.path, {
+            is_favorite: !currentFavorite
+        });
     };
 
     return (
@@ -59,8 +77,8 @@ export function HistoryPage() {
             <VideoGrid
                 videos={historyVideos}
                 onPlay={handlePlay}
-                onToggleLike={(v) => toggleLike(v.hash)}
-                onToggleElite={(v) => toggleElite(v.hash)}
+                onToggleLike={handleToggleLike}
+                onToggleElite={handleToggleElite}
                 emptyMessage="暂无播放记录，快去观看视频吧！"
             />
         </Box>

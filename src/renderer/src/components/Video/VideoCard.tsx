@@ -1,29 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Box, Image, Text, ActionIcon, Group, Skeleton } from '@mantine/core';
 import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } from '@tabler/icons-react';
-import { VideoFile } from '../../stores';
+// 使用 JoinedVideo 类型
+import { JoinedVideo } from '../../../../shared/models';
 
 interface VideoCardProps {
-    video: VideoFile;
-    onPlay: (video: VideoFile) => void;
-    onToggleLike?: (video: VideoFile) => void;
-    onToggleElite?: (video: VideoFile) => void;
+    video: JoinedVideo;
+    onPlay: (video: JoinedVideo) => void;
+    // 这里的回调参数类型同步修改
+    onToggleLike?: (video: JoinedVideo) => void;
+    onToggleElite?: (video: JoinedVideo) => void;
 }
 
 export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoCardProps) {
-    // 状态：封面图 URL
     const [coverUrl, setCoverUrl] = useState<string>('');
-    // 状态：元数据 (时长/尺寸)，如果 VideoFile 中没有，则需异步获取
-    const [metaData, setMetaData] = useState<{ duration: number; size?: number }>({
-        duration: (video as any).duration || 0, // 尝试从已有对象读取
-        size: (video as any).size || 0
+    // JoinedVideo 本身有 size，这里主要存储异步获取的 duration
+    const [metaData, setMetaData] = useState<{ duration: number }>({
+        duration: 0
     });
     const [isLoadingCover, setIsLoadingCover] = useState(true);
 
     // 从路径派生文件名
     const filename = useMemo(() => {
-        return video.path.replace(/\\/g, '/').split('/').pop() || video.hash;
-    }, [video.path, video.hash]);
+        return video.path.replace(/\\/g, '/').split('/').pop() || 'Unknown Video';
+    }, [video.path]);
+
+    // 计算状态（映射到新的数据结构）
+    const isLiked = (video.annotation?.like_count ?? 0) > 0;
+    const isFavorite = !!video.annotation?.is_favorite;
 
     // 加载封面和元数据
     useEffect(() => {
@@ -32,19 +36,17 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
 
         const loadData = async () => {
             try {
-                // 1. 获取封面 (IPC)
+                // 1. 获取封面 - 依据你的 window.api 定义: getCover(fielPath: string)
                 if (window.api?.getCover) {
-                    const url = await window.api.getCover(video.hash, video.path);
+                    const url = await window.api.getCover(video.path);
                     if (isMounted) setCoverUrl(url);
                 }
 
-                // 2. 获取元数据 (如果 VideoFile 里缺数据)
-                // 注意：如果列表很长，每个卡片都调用 getVideoMetadata 可能会有性能压力
-                // 建议后期在 scanner 阶段就存入 duration
+                // 2. 获取时长 (如果需要异步获取)
                 if (metaData.duration === 0 && window.api?.getVideoMetadata) {
                     const meta = await window.api.getVideoMetadata(video.path);
                     if (isMounted) {
-                        setMetaData(prev => ({ ...prev, duration: meta.duration }));
+                        setMetaData({ duration: meta.duration });
                     }
                 }
             } catch (error) {
@@ -59,7 +61,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
         return () => {
             isMounted = false;
         };
-    }, [video.hash, video.path, filename]); // metaData.duration 不放依赖里防止循环
+    }, [video.path, filename]);
 
     const formatDuration = (seconds: number) => {
         if (!seconds) return '0:00';
@@ -71,6 +73,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
     const formatSize = (bytes?: number) => {
         if (!bytes) return '';
         const mb = bytes / (1024 * 1024);
+        if (mb > 1024) return `${(mb / 1024).toFixed(2)} GB`;
         return `${mb.toFixed(1)} MB`;
     };
 
@@ -92,16 +95,16 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 position: 'relative',
                 borderRadius: 8,
                 overflow: 'hidden',
-                border: '2px solid #2C2E33', // Mantine dark theme default border colorish
+                border: '2px solid #2C2E33',
                 transition: 'all 0.2s ease',
                 cursor: 'pointer',
-                backgroundColor: '#1A1B1E', // Mantine dark.7
+                backgroundColor: '#1A1B1E',
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column'
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--mantine-color-green-filled)';
+                e.currentTarget.style.borderColor = 'var(--mantine-color-blue-filled)';
                 e.currentTarget.style.transform = 'translateY(-4px)';
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
             }}
@@ -113,7 +116,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
             onClick={() => onPlay(video)}
         >
             {/* Thumbnail Section */}
-            <Box style={{ position: 'relative', paddingTop: '56.25%' /* 16:9 Aspect Ratio */ }}>
+            <Box style={{ position: 'relative', paddingTop: '56.25%' }}>
                 <Box style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                     {isLoadingCover ? (
                         <Skeleton height="100%" radius={0} />
@@ -130,13 +133,9 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
 
                 {/* Play overlay */}
                 <Box
-                    className="play-overlay"
                     style={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        top: 0, left: 0, right: 0, bottom: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -154,8 +153,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 <Box
                     style={{
                         position: 'absolute',
-                        bottom: 6,
-                        right: 6,
+                        bottom: 6, right: 6,
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
                         color: '#fff',
                         padding: '2px 6px',
@@ -169,12 +167,11 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 </Box>
 
                 {/* Elite badge */}
-                {video.elite && (
+                {isFavorite && (
                     <Box
                         style={{
                             position: 'absolute',
-                            top: 6,
-                            left: 6,
+                            top: 6, left: 6,
                             backgroundColor: 'rgba(255, 215, 0, 0.95)',
                             color: '#000',
                             padding: '2px 8px',
@@ -197,7 +194,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                     style={{
                         marginBottom: 8,
                         lineHeight: 1.3,
-                        height: '2.6em', // Limit to 2 lines usually, or just use lineClamp
+                        height: '2.6em',
                         overflow: 'hidden',
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -212,40 +209,34 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 <Group justify="space-between" align="end" wrap="nowrap">
                     <Box style={{ minWidth: 0 }}>
                         <Text size="xs" c="dimmed" truncate>
-                            {formatDate(video.createdAt)}
-                            {metaData.size ? ` • ${formatSize(metaData.size)}` : ''}
+                            {/* JoinedVideo 中包含 createdAt 和 size */}
+                            {formatDate(video.mtime || video.createdAt)}
+                            {video.size ? ` • ${formatSize(video.size)}` : ''}
                         </Text>
-
-                        {/* 兼容处理：只有当 VideoFile 扩展了 lastPlayedAt 时才显示 */}
-                        {(video as any).lastPlayedAt && (
-                            <Text size="xs" c="dimmed" truncate>
-                                上次播放: {formatDate((video as any).lastPlayedAt)}
-                            </Text>
-                        )}
                     </Box>
 
                     <Group gap={4} style={{ flexShrink: 0 }}>
                         <ActionIcon
                             variant="subtle"
                             size="sm"
-                            color={video.liked ? 'red' : 'gray'}
+                            color={isLiked ? 'red' : 'gray'}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleLike?.(video);
                             }}
                         >
-                            {video.liked ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+                            {isLiked ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
                         </ActionIcon>
                         <ActionIcon
                             variant="subtle"
                             size="sm"
-                            color={video.elite ? 'yellow' : 'gray'}
+                            color={isFavorite ? 'yellow' : 'gray'}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleElite?.(video);
                             }}
                         >
-                            {video.elite ? <IconStarFilled size={18} /> : <IconStar size={18} />}
+                            {isFavorite ? <IconStarFilled size={18} /> : <IconStar size={18} />}
                         </ActionIcon>
                     </Group>
                 </Group>

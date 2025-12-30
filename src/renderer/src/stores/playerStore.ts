@@ -28,7 +28,7 @@ interface PlayerState {
   setFramerate: (fps: number) => void;
   setPlaybackRate: (rate: number) => void;
 
-   setStepMode: (mode: 'frame' | 'second') => void; 
+  setStepMode: (mode: 'frame' | 'second') => void; 
 
   // 快捷操作
   togglePlay: () => void;
