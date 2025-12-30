@@ -19,6 +19,7 @@ import { ExportScreenshotDialog } from './Dialog/ExportScreenshotDialog';
 import { useVideoVisuals } from '../hooks/useVideoVisuals';
 import { useVideoData } from '../hooks/useVideoData';
 import { useVideoShortcuts } from '../hooks/useVideoShortcuts';
+import { useScreenshotExport } from '../hooks/useScreenshotExport';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
@@ -71,12 +72,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const [showExportDialog, setShowExportDialog] = useState(false);
 
     // 4. Custom Hooks Integration
-    const { transform, onVisualLoadedMetadata } = useVideoVisuals({
+    const { onVisualLoadedMetadata } = useVideoVisuals({
         videoRef,
         containerRef,
         rotation
     });
     const { currentVideoTags, setCurrentVideoTags } = useVideoData(videoRef);
+
 
     useImperativeHandle(ref, () => ({ videoElement: videoRef.current }));
 
@@ -190,7 +192,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                             width: '100%',
                             height: '100%',
                             objectFit: 'contain',
-                            transform: transform,
                             transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                             transformOrigin: 'center center'
                         }}

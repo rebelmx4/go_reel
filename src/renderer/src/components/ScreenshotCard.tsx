@@ -26,6 +26,8 @@ const formatMSTime = (ms: number) => {
     return `${paddedMinutes}:${paddedSeconds}`;
 };
 
+// ... 其他导入保持不变
+
 export function ScreenshotCard({
     screenshot,
     isActive,
@@ -34,7 +36,6 @@ export function ScreenshotCard({
     onSetCover,
     onDelete,
 }: ScreenshotCardProps) {
-    // 使用 state 来追踪鼠标是否悬停在卡片上
     const [isHovered, setIsHovered] = useState(false);
 
     return (
@@ -72,31 +73,38 @@ export function ScreenshotCard({
                 className="screenshot-card-image"
             />
 
-            {/* 【修改】改造底部栏，使其成为一个 flex 容器 */}
+            {/* 修改后的底部栏：去掉了 backgroundColor */}
             <Box style={{
                 position: 'absolute', bottom: 0, left: 0,
-                boxSizing: 'border-box', // 确保 padding 不会影响宽度计算
+                boxSizing: 'border-box',
                 width: '100%',
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                backgroundColor: 'transparent', // 【修改】这里改为透明
                 color: 'white',
                 fontSize: '12px',
-                padding: '4px 8px', // 调整内边距
+                padding: '4px 8px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between', // 核心：将子元素推向两端
+                justifyContent: 'space-between',
+                // 添加文字阴影，确保在浅色图片上也能看清时间
+                textShadow: '0px 1px 3px rgba(0,0,0,0.8)',
+                pointerEvents: 'none', // 允许点击穿透到底部，除非是内部的按钮
             }}>
-                {/* 时间戳（左对齐） */}
-                <span>{formatMSTime(screenshot.timestamp)}</span>
+                {/* 时间戳 */}
+                <span style={{ fontWeight: 500 }}>{formatMSTime(screenshot.timestamp)}</span>
 
-                {/* 仅在悬停时显示的图标按钮容器（右对齐） */}
+                {/* 图标容器 */}
                 {isHovered && (
-                    <Box style={{ display: 'flex', gap: '4px' }}>
+                    <Box style={{
+                        display: 'flex',
+                        gap: '4px',
+                        pointerEvents: 'auto' // 恢复按钮的可点击性
+                    }}>
                         <ActionIcon
                             variant="filled"
                             size="sm"
                             color={isCover ? "green" : "blue"}
                             onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
-                            title={isCover ? "当前封面" : "设为封面"} // 添加 tooltip 提示
+                            title={isCover ? "当前封面" : "设为封面"}
                         >
                             {isCover ? <IconCheck size={16} /> : <IconPhoto size={16} />}
                         </ActionIcon>
@@ -106,7 +114,7 @@ export function ScreenshotCard({
                             size="sm"
                             color="red"
                             onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
-                            title="删除" // 添加 tooltip 提示
+                            title="删除"
                         >
                             <IconTrash size={16} />
                         </ActionIcon>

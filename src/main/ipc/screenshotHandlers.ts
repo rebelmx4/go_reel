@@ -14,7 +14,7 @@ import { withHash } from '../utils/handlerHelper';
 export function registerScreenshotHandlers() {
 
   // 保存一张手动截图
-  ipcMain.handle('save-manual-screenshot-by-path', async (_, filePath: string, timestamp: number) => {
+  ipcMain.handle('save-manual-screenshot', async (_, filePath: string, timestamp: number) => {
     return withHash(filePath, (hash) => screenshotManager.createManualScreenshot(hash, filePath, timestamp));
   });
 
