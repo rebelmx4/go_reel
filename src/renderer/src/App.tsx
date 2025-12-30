@@ -1,123 +1,146 @@
 import { useEffect } from 'react';
 import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
-import { useNavigationStore, usePlayerStore, useRefreshStore, usePlaylistStore } from './stores';
-import { MainLayout, ToastContainer, PathConfigurationScreen, VideoPlayer } from './components';
-import { TagSearchPage, HistoryPage, NewestPage, SearchPage, LikedPage, ElitePage, SettingsPage } from './pages';
+
+// 导入新的 Store 结构
+import {
+  useNavigationStore,
+  usePlayerStore,
+  useRefreshStore,
+  usePlaylistStore,
+  useVideoStore
+} from './stores';
+
+import {
+  MainLayout,
+  ToastContainer,
+  VideoPlayer
+} from './components';
+
+import {
+  TagSearchPage,
+  HistoryPage,
+  NewestPage,
+  SearchPage,
+  LikedPage,
+  ElitePage,
+  SettingsPage
+} from './pages';
+
 import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
 import { RecordingIndicator } from './components/RecordingIndicator';
-
-// 1. 导入 keyBindingManager 的单例实例
 import { keyBindingManager } from './utils/keyBindingManager';
 
 function App() {
+  // Navigation
   const currentView = useNavigationStore((state) => state.currentView);
   const setView = useNavigationStore((state) => state.setView);
-  const setCurrentVideo = usePlayerStore((state) => state.setCurrentVideo);
+
+  // Video & Playlist
+  const initVideoStore = useVideoStore((state) => state.initStore);
+  const refreshVideos = useVideoStore((state) => state.refreshVideos);
+  const setPlaylistMode = usePlaylistStore((state) => state.setMode);
+  const setCurrentPath = usePlaylistStore((state) => state.setCurrentPath);
+
+  // Player Settings
   const setVolume = usePlayerStore((state) => state.setVolume);
   const setSkipFrameConfig = usePlayerStore((state) => state.setSkipFrameConfig);
   const setSkipDuration = usePlayerStore((state) => state.setSkipDuration);
-  const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
-  const setPlaylistMode = usePlaylistStore((state) => state.setMode);
 
-  // useEffect 1: 应用启动时加载数据和配置
+  // Refresh Progress UI
+  const { startRefresh, finishRefresh } = useRefreshStore();
+
+  /**
+   * Effect 1: 应用启动初始化
+   */
   useEffect(() => {
     const loadStartup = async () => {
       try {
-        const result = await window.api.getStartupResult();
+        // 1. 初始化视频数据中心 (内部已包含 getStartupResult)
+        await initVideoStore();
 
-        // 加载初始视频
-        if (result.initialVideo) {
-          setCurrentVideo(result.initialVideo.path);
-          if (result.videoList) {
-            setPlaylistMode('random');
-            setPlaylist(result.playlists.all);
-          }
-        }
-
-        // 加载所有设置
+        // 2. 加载全局设置
         const settings = await window.api.loadSettings();
 
-        // 2. 使用加载的设置来初始化快捷键管理器
-        // 这是关键的第一步，它告诉管理器所有的快捷键规则
+        // 3. 初始化快捷键
         if (settings.key_bindings) {
           keyBindingManager.initialize(settings.key_bindings);
         }
 
-        // 恢复音量
+        // 4. 恢复播放器设置
         if (settings.playback?.global_volume !== undefined) {
           setVolume(settings.playback.global_volume);
         }
+        // if (settings.skip_frame) {
+        //   setSkipFrameConfig(settings.skip_frame.rules);
+        //   setSkipDuration(settings.skip_frame.skip_duration);
+        // }
 
-        // 加载跳帧预览配置
-        if (settings.skip_frame) {
-          setSkipFrameConfig(settings.skip_frame.rules);
-          setSkipDuration(settings.skip_frame.skip_duration);
-        }
+        // 5. 设置默认播放模式
+        setPlaylistMode('all');
 
-        // 切换到播放器视图
+        // 如果想在启动时自动播放第一个视频，可以取消下面注释
+        const firstPath = useVideoStore.getState().videoPaths[0];
+        if (firstPath) setCurrentPath(firstPath);
+
+        // 6. 进入播放器视图
         setView('player');
 
       } catch (error) {
-        console.error('Failed to load startup result:', error);
-        setView('configuration');
+        console.error('应用初始化失败:', error);
+        setView('player');
       }
     };
 
     loadStartup();
-    // 依赖项为空数组，确保此 effect 仅在应用启动时运行一次
-  }, [setView, setCurrentVideo, setVolume, setSkipFrameConfig, setSkipDuration, setPlaylist, setPlaylistMode]);
+  }, [
+    initVideoStore, setVolume, setSkipFrameConfig,
+    setSkipDuration, setPlaylistMode, setView
+  ]);
 
-  // useEffect 2: 设置快捷键处理器和事件监听
+  /**
+   * Effect 2: 全局事件监听 (快捷键 & 刷新)
+   */
   useEffect(() => {
-    // TODO: Load key bindings from settings
-    // For now, register basic navigation shortcuts
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // F5 refresh handler
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // 1. 处理 F5 刷新逻辑
       if (event.key === 'F5') {
         event.preventDefault();
         const isRefreshing = useRefreshStore.getState().progress.isRefreshing;
         if (!isRefreshing) {
-          const startRefresh = useRefreshStore.getState().startRefresh;
-          const updateProgress = useRefreshStore.getState().updateProgress;
-          const finishRefresh = useRefreshStore.getState().finishRefresh;
-
           startRefresh();
-
-          // TODO: Implement actual file scanning via Electron IPC
-          setTimeout(() => updateProgress(50, 100, 'E:\\Videos\\Sample'), 1000);
-          setTimeout(() => updateProgress(100, 100, '完成'), 2500);
-          setTimeout(() => finishRefresh(), 3000);
+          // 调用真正的后端刷新接口
+          refreshVideos().finally(() => {
+            finishRefresh();
+          });
         }
         return;
       }
 
+      // 2. 派发给快捷键管理器
       keyBindingManager.handleKeyPress(event);
     };
 
-    // 4. 注册所有动作对应的处理器函数
+    // 3. 注册导航快捷键处理器
     keyBindingManager.registerHandler('list_history', () => setView('history'));
     keyBindingManager.registerHandler('list_newest', () => setView('newest'));
     keyBindingManager.registerHandler('list_search', () => setView('search'));
     keyBindingManager.registerHandler('list_liked', () => setView('liked'));
     keyBindingManager.registerHandler('list_elite', () => setView('elite'));
     keyBindingManager.registerHandler('back_to_player', () => setView('player'));
-    // 在这里可以注册更多的处理器，例如播放控制等
+    keyBindingManager.registerHandler('open_settings', () => setView('settings'));
 
-    // 5. 添加全局事件监听器
-    window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener('keydown', handleKeyDown);
 
-    // 6. 返回一个清理函数，在组件卸载时移除监听器和处理器，防止内存泄漏
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('keydown', handleKeyDown);
       keyBindingManager.clearHandlers();
     };
-  }, [setView]); // setView 是依赖项，因为处理器函数闭包了它
+  }, [setView, startRefresh, finishRefresh, refreshVideos]);
 
-  // 渲染当前视图
+  // 渲染逻辑
   const renderView = () => {
     switch (currentView) {
-      case 'configuration': return <PathConfigurationScreen />;
       case 'player': return <VideoPlayer />;
       case 'history': return <HistoryPage />;
       case 'newest': return <NewestPage />;
@@ -125,8 +148,8 @@ function App() {
       case 'liked': return <LikedPage />;
       case 'elite': return <ElitePage />;
       case 'tag-search': return <TagSearchPage />;
-      case 'settings': return <SettingsPage />; // 确保这里是 SettingsPage
-      default: return <div style={{ padding: 20 }}>未知视图</div>;
+      case 'settings': return <SettingsPage />;
+      default: return <VideoPlayer />;
     }
   };
 

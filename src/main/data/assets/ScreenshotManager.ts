@@ -96,18 +96,20 @@ export class ScreenshotManager extends BaseAssetManager {
   
   public async loadScreenshots(hash: string, filePath: string): Promise<Screenshot[]> {
     try {
-      const files = await this.listHashBasedFiles(hash);
+      let files = await this.listHashBasedFiles(hash);
       const screenshots: Screenshot[] = [];
       
       // ✨ 关键逻辑：如果发现没有截图，自动触发生成，但不阻塞当前返回
       if (files.length === 0) {
-        console.log(`[ScreenshotManager] No screenshots for ${hash}, triggering auto-generation...`);
-        // 异步执行，不 await，直接让它在后台跑
-        this.generateAutoScreenshots(hash, filePath).catch(err => {
-            console.error('[ScreenshotManager] Background auto-gen failed:', err);
-        });
-        return []; // 第一次返回空
+      console.log(`[ScreenshotManager] Generating screenshots for ${hash}...`);
+      const success = await this.generateAutoScreenshots(hash, filePath);
+      if (success) {
+        // 生成成功后重新获取文件列表
+        files = await this.listHashBasedFiles(hash);
+      } else {
+        return []; // 生成失败
       }
+    }
       
       for (const file of files) {
         const match = file.match(/^(\d+)_(m|a)\.webp$/);

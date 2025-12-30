@@ -1,22 +1,24 @@
+// src/renderer/src/components/Dialog/ExportScreenshotDialog.tsx
+
 import { Modal, Button, Box, Text, Group, ScrollArea, SimpleGrid, UnstyledButton } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { IconCheck } from '@tabler/icons-react';
 import { useToastStore } from '../../stores';
-import { Screenshot } from '../../stores/screenshotStore'; // 假设你的 Store 定义在这里，或者从 VideoPlayer 引入接口
+import { Screenshot } from '../../stores/screenshotStore';
 
 interface ExportScreenshotDialogProps {
     opened: boolean;
     onClose: () => void;
     screenshots: Screenshot[];
-    videoHash: string | null;  // 传入 Hash
-    initialRotation: number | null; // null 表示未设置过
+    videoPath: string | null;       // 修改：使用路径作为唯一标识
+    initialRotation: number | null; // 初始旋转角度 (来自 Annotation.screenshot_rotation)
 }
 
 export function ExportScreenshotDialog({
     opened,
     onClose,
     screenshots,
-    videoHash,
+    videoPath,
     initialRotation
 }: ExportScreenshotDialogProps) {
     // 默认选中 0，如果有历史记录则选中历史记录
@@ -27,33 +29,40 @@ export function ExportScreenshotDialog({
     // 当弹窗打开时，初始化选中状态
     useEffect(() => {
         if (opened) {
-            setSelectedRotation((initialRotation ?? 0) as 0 | 90 | 180 | 270);
+            setSelectedRotation(((initialRotation ?? 0) % 360) as 0 | 90 | 180 | 270);
         }
     }, [opened, initialRotation]);
 
-    // 获取第一张截图用于顶部 4 个按钮的预览
+    // 获取第一张截图用于顶部预览
     const firstScreenshot = screenshots.length > 0 ? screenshots[0] : null;
 
     // 旋转选项
     const rotationOptions: Array<0 | 90 | 180 | 270> = [0, 90, 180, 270];
 
+    /**
+     * 执行导出逻辑
+     */
     const handleConfirm = async () => {
-        if (!videoHash) return;
+        if (!videoPath) return;
 
         setLoading(true);
         try {
+            // 1. 保存该视频的截图旋转偏好到注解 (通过路径发起)
+            // 后端 withHash 会自动处理哈希转换
+            await window.api.updateAnnotation(videoPath, {
+                screenshot_rotation: selectedRotation
+            });
 
-            // 2. 保存旋转配置
-            await window.api.updateAnnotation(videoHash, { screenshot_rotation: selectedRotation });
-
-            // 3. 执行导出
             showToast({ message: '配置已保存，正在导出...', type: 'info' });
-            await window.api.exportScreenshots(videoHash, selectedRotation);
+
+            // 2. 执行物理导出逻辑
+            // 后端 exportScreenshots 内部会根据路径查找所有截图并按角度旋转后写出到导出目录
+            await window.api.exportScreenshots(videoPath, selectedRotation);
 
             showToast({ message: '截图导出成功', type: 'success' });
-            onClose(); // 成功后关闭
+            onClose();
         } catch (error) {
-            console.error(error);
+            console.error('[ExportDialog] Failed:', error);
             showToast({ message: '导出失败', type: 'error' });
         } finally {
             setLoading(false);
@@ -115,7 +124,6 @@ export function ExportScreenshotDialog({
                                 <Box style={{
                                     width: '100%',
                                     aspectRatio: '16/9',
-                                    // backgroundColor: '#000', // <--- 修改点 1：移除这里的黑底
                                     borderRadius: 4,
                                     overflow: 'hidden',
                                     display: 'flex',
@@ -127,7 +135,7 @@ export function ExportScreenshotDialog({
                                             src={firstScreenshot.path}
                                             alt={`${rot}°`}
                                             style={{
-                                                maxWidth: '100%', // 稍微放大一点以更好地填充空间
+                                                maxWidth: '100%',
                                                 maxHeight: '100%',
                                                 // 仅仅在视觉上旋转预览，不改变原图
                                                 transform: `rotate(${rot}deg)`,
@@ -135,7 +143,7 @@ export function ExportScreenshotDialog({
                                             }}
                                         />
                                     ) : (
-                                        <Text size="xs" c="dimmed">无预览</Text>
+                                        <Text size="xs" c="dimmed">无预览数据</Text>
                                     )}
                                 </Box>
                                 <Text size="sm">{rot}°</Text>
@@ -159,7 +167,6 @@ export function ExportScreenshotDialog({
                                     <Box
                                         key={s.filename}
                                         style={{
-                                            // backgroundColor: '#000', // <--- 修改点 2：移除这里的黑底
                                             borderRadius: 4,
                                             overflow: 'hidden',
                                             padding: 4,
@@ -188,8 +195,8 @@ export function ExportScreenshotDialog({
 
                 {/* 3. 底部：操作按钮 */}
                 <Group justify="flex-end" mt="md">
-                    <Button variant="default" onClick={onClose}>取消</Button>
-                    <Button onClick={handleConfirm} loading={loading}>
+                    <Button variant="default" onClick={onClose} disabled={loading}>取消</Button>
+                    <Button onClick={handleConfirm} loading={loading} disabled={!videoPath}>
                         确认导出
                     </Button>
                 </Group>

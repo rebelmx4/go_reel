@@ -19,7 +19,7 @@ export function registerScreenshotHandlers() {
   });
 
   // 加载视频的所有截图
-  ipcMain.handle('load-screenshots-by-path', async (_, filePath: string) => {
+  ipcMain.handle('load-screenshots', async (_, filePath: string) => {
     return withHash(filePath, (hash) => screenshotManager.loadScreenshots(hash, filePath));
   });
   

@@ -15,6 +15,7 @@ interface PlayerState {
   
   // 帧控制技术参数
   stepMode: 'frame' | 'second';
+  skipFrameMode: boolean; 
   framerate: number;
   
   // Setters
@@ -23,8 +24,11 @@ interface PlayerState {
   setCurrentTime: (t: number) => void;
   setDuration: (d: number) => void;
   setRotation: (r: number) => void;
+  setSkipFrameMode: (enabled: boolean) => void;   
   setFramerate: (fps: number) => void;
   setPlaybackRate: (rate: number) => void;
+
+   setStepMode: (mode: 'frame' | 'second') => void; 
 
   // 快捷操作
   togglePlay: () => void;
@@ -42,12 +46,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   rotation: 0,
   stepMode: 'frame',
   framerate: 30,
+  skipFrameMode: false, // 初始化
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
   setRotation: (rotation) => set({ rotation }),
+  setStepMode: (mode) => set({ stepMode: mode }),
+  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }), // 补回此方法
   setFramerate: (framerate) => set({ framerate }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
 
