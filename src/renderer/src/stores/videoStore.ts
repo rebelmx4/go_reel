@@ -1,6 +1,7 @@
 // src/stores/videoStore.ts
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { JoinedVideo, Annotation } from '../../../shared/models';
 
 /**
@@ -144,14 +145,28 @@ export const useVideoItem = (path: string) => useVideoStore((s) => s.videos[path
 
 // 获取点赞列表路径
 export const useLikedPaths = () => {
-  return useVideoStore((s) => 
-    s.videoPaths.filter(path => (s.videos[path].annotation?.like_count ?? 0) > 0)
+  return useVideoStore(
+    useShallow((s) => 
+      s.videoPaths.filter(path => (s.videos[path].annotation?.like_count ?? 0) > 0)
+    )
   );
 };
 
 // 获取精品列表路径
 export const useElitePaths = () => {
-  return useVideoStore((s) => 
-    s.videoPaths.filter(path => s.videos[path].annotation?.is_favorite)
+  return useVideoStore(
+    useShallow((s) => 
+      s.videoPaths.filter(path => s.videos[path].annotation?.is_favorite)
+    )
   );
 };
+
+/**
+ * 获取最新视频路径列表（前100个）
+ */
+export const useNewestPaths = () => {
+  return useVideoStore(
+    useShallow((s) => s.videoPaths.slice(0, 100))
+  );
+};
+

@@ -1,6 +1,7 @@
 // src/stores/playlistStore.ts
 import { create } from 'zustand';
 import { useVideoStore } from './videoStore';
+import { useHistoryStore } from './historyStore';
 
 type PlaylistMode = 'all' | 'liked' | 'elite' | 'search';
 
@@ -28,7 +29,15 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   searchQuery: '',
 
   setMode: (mode) => set({ mode }),
-  setCurrentPath: (path) => set({ currentPath: path }),
+    setCurrentPath: (path) => {
+    set({ currentPath: path });
+    
+    // 如果路径有效，则自动添加到历史记录
+    if (path) {
+      // 使用 getState() 获取 historyStore 的 action 而不触发订阅
+      useHistoryStore.getState().addToHistory(path);
+    }
+  },
   setSearchQuery: (query) => set({ searchQuery: query, mode: 'search' }),
 
   getCurrentQueue: () => {
