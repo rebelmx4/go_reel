@@ -56,14 +56,15 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     }
   },
 
-  next: (isRandom = false) => {
+  next: () => {
     const queue = get().getCurrentQueue();
     if (queue.length === 0) return;
 
     const currentPath = get().currentPath;
     let nextPath: string;
 
-    if (isRandom) {
+    const { mode } = get();
+    if (mode == 'all') {
       nextPath = queue[Math.floor(Math.random() * queue.length)];
     } else {
       const currentIndex = currentPath ? queue.indexOf(currentPath) : -1;

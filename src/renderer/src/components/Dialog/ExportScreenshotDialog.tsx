@@ -3,13 +3,11 @@
 import { Modal, Button, Box, Text, Group, ScrollArea, SimpleGrid, UnstyledButton } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { IconCheck } from '@tabler/icons-react';
-import { useToastStore } from '../../stores';
-import { Screenshot } from '../../stores/screenshotStore';
+import { useToastStore, useScreenshotStore } from '../../stores';
 
 interface ExportScreenshotDialogProps {
     opened: boolean;
     onClose: () => void;
-    screenshots: Screenshot[];
     videoPath: string | null;       // 修改：使用路径作为唯一标识
     initialRotation: number | null; // 初始旋转角度 (来自 Annotation.screenshot_rotation)
 }
@@ -17,7 +15,6 @@ interface ExportScreenshotDialogProps {
 export function ExportScreenshotDialog({
     opened,
     onClose,
-    screenshots,
     videoPath,
     initialRotation
 }: ExportScreenshotDialogProps) {
@@ -25,6 +22,8 @@ export function ExportScreenshotDialog({
     const [selectedRotation, setSelectedRotation] = useState<0 | 90 | 180 | 270>(0);
     const [loading, setLoading] = useState(false);
     const showToast = useToastStore((state) => state.showToast);
+    const screenshots = useScreenshotStore((state) => state.screenshots);
+
 
     // 当弹窗打开时，初始化选中状态
     useEffect(() => {

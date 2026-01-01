@@ -115,6 +115,15 @@ export class KeyBindingManager {
   public handleKeyPress(event: KeyboardEvent): boolean {
     if (!this.bindings) return false;
 
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return false;
+    }
+
+    // 2. 核心修改：拦截长按重复触发 (解决你不停截图的问题)
+    if (event.repeat) {
+      return false;
+    }
+
     const keyString = this.eventToKeyString(event);
 
     // 1. 尝试在当前上下文中查找并执行动作
@@ -123,6 +132,7 @@ export class KeyBindingManager {
       const action = contextMap.get(keyString);
       if (action && this.executeHandler(action)) {
         event.preventDefault(); // 阻止事件的默认行为 (如浏览器后退)
+        event.stopPropagation(); // 防止事件继续冒泡
         return true;
       }
     }
@@ -134,6 +144,7 @@ export class KeyBindingManager {
         const action = globalMap.get(keyString);
         if (action && this.executeHandler(action)) {
           event.preventDefault();
+          event.stopPropagation(); // 防止事件继续冒泡
           return true;
         }
       }

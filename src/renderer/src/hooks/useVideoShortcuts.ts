@@ -1,5 +1,5 @@
 // src/components/VideoPlayer/hooks/useVideoShortcuts.ts
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ShortcutHandlers {
     togglePlayPause: () => void;
@@ -11,50 +11,61 @@ interface ShortcutHandlers {
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
+    const handlersRef = useRef(handlers);
+
+    // 每次渲染只更新 Ref，不触发任何 Effect
     useEffect(() => {
+        handlersRef.current = handlers;
+    }, [handlers]);
+
+
+    useEffect(() => {
+        console.log("绑定监听器 (Add Event Listener)");
+
         const handleKeyDown = (e: KeyboardEvent) => {
             // 忽略输入框中的按键
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
                 return;
             }
 
+            // 2. 核心修改：如果按键是处于“长按重复触发”状态，直接返回
+            if (e.repeat) {
+                return;
+            }
+
+            const h = handlersRef.current; // 永远拿最新的函数集
+
             switch (e.key.toLowerCase()) {
                 case ' ':
                     e.preventDefault();
-                    handlers.togglePlayPause();
+                    h.togglePlayPause();
                     break;
                 case 'r':
                     e.preventDefault();
-                    handlers.rotateVideo();
+                    h.rotateVideo();
                     break;
                 case 'a':
                     e.preventDefault();
-                    handlers.stepFrame(-1);
+                    h.stepFrame(-1);
                     break;
                 case 'd':
                     e.preventDefault();
-                    handlers.stepFrame(1);
-                    break;
-                case 'e':
-                    if (e.ctrlKey || e.altKey) 
-                        break              
-                    e.preventDefault();
-                    handlers.takeScreenshot();
+                    h.stepFrame(1);
                     break;
                 case 'g':
                     if (e.shiftKey) {
                         e.preventDefault();
-                        handlers.toggleTagDialog();
+                        h.toggleTagDialog();
                     }
                     break;
                 case 'pagedown':
                     e.preventDefault();
-                    handlers.playNextVideo();
+                    h.playNextVideo();
                     break;
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handlers]);
+    }, []);
 }

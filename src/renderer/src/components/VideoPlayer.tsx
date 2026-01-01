@@ -44,26 +44,34 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // 2. Stores State
-    // 从 PlaylistStore 获取当前路径
-    const currentPath = usePlaylistStore((state) => state.currentPath);
-    const { next: playNext } = usePlaylistStore();
+    console.log("重建了 播放器 ");
+
+    // 从 PlaylistStore 获取
+    const currentPath = usePlaylistStore(state => state.currentPath);
+    const playNext = usePlaylistStore(state => state.next);
 
     // 播放器物理状态
-    const {
-        isPlaying, volume, rotation,
-        stepMode, framerate,
-        setPlaying, setCurrentTime, setDuration, setRotation, reset: resetPlayer
-    } = usePlayerStore();
+    const isPlaying = usePlayerStore(state => state.isPlaying);
+    const volume = usePlayerStore(state => state.volume);
+    const rotation = usePlayerStore(state => state.rotation);
+    const stepMode = usePlayerStore(state => state.stepMode);
+    const framerate = usePlayerStore(state => state.framerate);
+
+    const setPlaying = usePlayerStore(state => state.setPlaying);
+    const setCurrentTime = usePlayerStore(state => state.setCurrentTime);
+    const setDuration = usePlayerStore(state => state.setDuration);
+    const setRotation = usePlayerStore(state => state.setRotation);
+    const resetPlayer = usePlayerStore(state => state.reset);
 
     const showToast = useToastStore((state) => state.showToast);
     const updateVideoAnnotation = useVideoStore((state) => state.updateAnnotation);
 
     // 截图状态
-    const {
-        isCropMode, setCropMode, screenshots,
-        loadScreenshots, captureManual, clear: clearScreenshots
-    } = useScreenshotStore();
+    const captureManual = useScreenshotStore(state => state.captureManual);
+    const isCropMode = useScreenshotStore(state => state.isCropMode);
+    const setCropMode = useScreenshotStore(state => state.setCropMode);
+    const loadScreenshots = useScreenshotStore(state => state.loadScreenshots);
+    const clearScreenshots = useScreenshotStore(state => state.clear);
 
     // 3. UI State
     const [showTagDialog, setShowTagDialog] = useState(false);
@@ -125,6 +133,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     // 截图逻辑：使用 Store 封装的 captureManual
     const takeRawScreenshot = useCallback(async () => {
         if (!videoRef.current || !currentPath) return;
+        console.log("--- 触发截图动作 ---"); // 看看这个打印几次
         const success = await captureManual(currentPath, videoRef.current.currentTime);
         if (success) {
             showToast({ message: '截图成功', type: 'success' });
@@ -220,7 +229,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                 <ExportScreenshotDialog
                     opened={showExportDialog}
                     onClose={() => setShowExportDialog(false)}
-                    screenshots={screenshots}
                     videoPath={currentPath} // 注意这里也改为传 Path
                     initialRotation={rotation}
                 />
