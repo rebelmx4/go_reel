@@ -36,14 +36,6 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             const h = handlersRef.current; // 永远拿最新的函数集
 
             switch (e.key.toLowerCase()) {
-                case ' ':
-                    e.preventDefault();
-                    h.togglePlayPause();
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    h.rotateVideo();
-                    break;
                 case 'a':
                     e.preventDefault();
                     h.stepFrame(-1);

@@ -56,8 +56,8 @@ export function ScreenshotCard({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '100px',
-                width: `${100 * 16 / 9}px`
+                height: '280px',
+                width: `${280 * 16 / 9}px`
             }}
         >
             <img

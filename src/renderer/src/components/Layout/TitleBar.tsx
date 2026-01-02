@@ -22,7 +22,6 @@ const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
 export function TitleBar() {
     const currentPath = usePlaylistStore((s) => s.currentPath);
     const getCurrentQueue = usePlaylistStore((s) => s.getCurrentQueue);
-    const duration = usePlayerStore((state) => state.duration);
 
     const currentView = useNavigationStore((state) => state.currentView);
     const setView = useNavigationStore((state) => state.setView);
@@ -39,15 +38,7 @@ export function TitleBar() {
         const displayIndex = currentIndex !== -1 ? currentIndex + 1 : 1;
         const filename = currentPath.split(/[\\/]/).pop() || '';
 
-        const formatDuration = (seconds: number) => {
-            if (!seconds || seconds <= 0) return '00:00';
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
-        };
-
-        return `[${displayIndex}/${total}] ${filename} (${formatDuration(duration)})`;
+        return `[${displayIndex}/${total}] ${filename}`;
     };
 
     const handleTabChange = (value: string | null) => {

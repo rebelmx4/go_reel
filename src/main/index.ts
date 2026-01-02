@@ -3,25 +3,28 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { startupService, RefreshService, VideoExportService,  StartupResult } from './services';
-import { settingsManager, screenshotManager, annotationManager, HistoryManager } from './data';
-import { registerWindowHandlers } from './ipc/windowHandlers';
-import { registerMetadataHandler } from './ipc/MetadataHandler';
-import { registerScreenshotHandlers } from './ipc/screenshotHandlers';
-import { registerCoverHandlers } from './ipc/coverHandlers';
-import { registerSettingsHandlers } from './ipc/settingsHandlers';
-import { registerAnnotationHandlers } from './ipc/AnnotationHandlers';
-import { registerTagHandlers } from './ipc/tagHandlers';
-import { registerTagCoverHandlers } from './ipc/tagCoverHandlers';
-import { calculateFastHash } from './utils/hash'
-import { setupFfmpeg } from './utils/ffmpeg-setup';
+import { startupService, RefreshService, VideoExportService } from './services';
+import { settingsManager, annotationManager } from './data';
+import {
+  registerWindowHandlers,
+  registerMetadataHandler,
+  registerScreenshotHandlers,
+  registerCoverHandlers,
+  registerSettingsHandlers,
+  registerAnnotationHandlers,
+  registerTagHandlers,
+  registerTagCoverHandlers,
+  registerFileHandlers
+} from './ipc';
+
+
 import { registerHistoryHandlers } from './ipc/historyHandlers';
+import { calculateFastHash } from './utils/hash'
 
 let refreshService: RefreshService | null = null;
 let videoExportService: VideoExportService | null = null;
 
 
-setupFfmpeg()
 
 log.info('Initializing startup service...');
 
@@ -138,6 +141,7 @@ function setupIpcHandlers() {
   registerTagHandlers();
   registerTagCoverHandlers();
   registerHistoryHandlers();
+  registerFileHandlers();
   
   // Get startup result
   ipcMain.handle('get-startup-result', async () => {

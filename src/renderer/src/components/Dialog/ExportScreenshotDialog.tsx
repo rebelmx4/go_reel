@@ -8,54 +8,48 @@ import { useToastStore, useScreenshotStore } from '../../stores';
 interface ExportScreenshotDialogProps {
     opened: boolean;
     onClose: () => void;
-    videoPath: string | null;       // 修改：使用路径作为唯一标识
-    initialRotation: number | null; // 初始旋转角度 (来自 Annotation.screenshot_rotation)
+    videoPath: string | null;
+    /** 
+     * 外部传入的默认角度。
+     * 外部逻辑：如果有存过的值就传存过的值，没有就传根据宽高计算的 0 或 90。
+     */
+    defaultRotation: number;
 }
 
 export function ExportScreenshotDialog({
     opened,
     onClose,
     videoPath,
-    initialRotation
+    defaultRotation
 }: ExportScreenshotDialogProps) {
-    // 默认选中 0，如果有历史记录则选中历史记录
     const [selectedRotation, setSelectedRotation] = useState<0 | 90 | 180 | 270>(0);
     const [loading, setLoading] = useState(false);
+
     const showToast = useToastStore((state) => state.showToast);
     const screenshots = useScreenshotStore((state) => state.screenshots);
-
-
-    // 当弹窗打开时，初始化选中状态
-    useEffect(() => {
-        if (opened) {
-            setSelectedRotation(((initialRotation ?? 0) % 360) as 0 | 90 | 180 | 270);
-        }
-    }, [opened, initialRotation]);
-
-    // 获取第一张截图用于顶部预览
     const firstScreenshot = screenshots.length > 0 ? screenshots[0] : null;
 
-    // 旋转选项
-    const rotationOptions: Array<0 | 90 | 180 | 270> = [0, 90, 180, 270];
+    // 每次打开弹窗，将选中项同步为外部传入的默认值
+    useEffect(() => {
+        if (opened) {
+            setSelectedRotation((defaultRotation % 360) as any);
+        }
+    }, [opened, defaultRotation]);
 
-    /**
-     * 执行导出逻辑
-     */
     const handleConfirm = async () => {
         if (!videoPath) return;
-
         setLoading(true);
         try {
-            // 1. 保存该视频的截图旋转偏好到注解 (通过路径发起)
-            // 后端 withHash 会自动处理哈希转换
-            await window.api.updateAnnotation(videoPath, {
-                screenshot_rotation: selectedRotation
-            });
+            // 如果用户选的角度和传进来的角度不一致，说明发生了更改，需要更新数据库
+            if (selectedRotation !== (defaultRotation % 360)) {
+                await window.api.updateAnnotation(videoPath, {
+                    screenshot_rotation: selectedRotation
+                });
+            }
 
-            showToast({ message: '配置已保存，正在导出...', type: 'info' });
+            showToast({ message: '正在导出...', type: 'info' });
 
-            // 2. 执行物理导出逻辑
-            // 后端 exportScreenshots 内部会根据路径查找所有截图并按角度旋转后写出到导出目录
+            // 执行物理导出
             await window.api.exportScreenshots(videoPath, selectedRotation);
 
             showToast({ message: '截图导出成功', type: 'success' });
@@ -68,6 +62,8 @@ export function ExportScreenshotDialog({
         }
     };
 
+    const rotationOptions: Array<0 | 90 | 180 | 270> = [0, 90, 180, 270];
+
     return (
         <Modal
             opened={opened}
@@ -75,15 +71,12 @@ export function ExportScreenshotDialog({
             title="导出截图配置"
             size="xl"
             centered
-            overlayProps={{
-                backgroundOpacity: 0.55,
-                blur: 3,
-            }}
+            overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
         >
             <Box style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* 1. 顶部：旋转选择区 */}
+                {/* 1. 旋转选择区 */}
                 <Box>
-                    <Text size="sm" fw={500} mb="xs">选择导出旋转角度 (预览基于第一张截图)</Text>
+                    <Text size="sm" fw={500} mb="xs">选择导出旋转角度</Text>
                     <SimpleGrid cols={4} spacing="md">
                         {rotationOptions.map((rot) => (
                             <UnstyledButton
@@ -98,51 +91,27 @@ export function ExportScreenshotDialog({
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     gap: 8,
-                                    transition: 'all 0.2s',
                                     position: 'relative'
                                 }}
                             >
                                 {selectedRotation === rot && (
-                                    <Box style={{
-                                        position: 'absolute',
-                                        top: 4,
-                                        right: 4,
-                                        backgroundColor: 'var(--mantine-color-blue-6)',
-                                        borderRadius: '50%',
-                                        width: 20,
-                                        height: 20,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        zIndex: 2
-                                    }}>
+                                    <Box style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'var(--mantine-color-blue-6)', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <IconCheck size={14} color="white" />
                                     </Box>
                                 )}
 
-                                <Box style={{
-                                    width: '100%',
-                                    aspectRatio: '16/9',
-                                    borderRadius: 4,
-                                    overflow: 'hidden',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    {firstScreenshot ? (
+                                <Box style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: 4, overflow: 'hidden' }}>
+                                    {firstScreenshot && (
                                         <img
                                             src={firstScreenshot.path}
-                                            alt={`${rot}°`}
                                             style={{
-                                                maxWidth: '100%',
-                                                maxHeight: '100%',
-                                                // 仅仅在视觉上旋转预览，不改变原图
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
                                                 transform: `rotate(${rot}deg)`,
-                                                transition: 'transform 0.3s ease'
+                                                transition: 'transform 0.2s ease'
                                             }}
                                         />
-                                    ) : (
-                                        <Text size="xs" c="dimmed">无预览数据</Text>
                                     )}
                                 </Box>
                                 <Text size="sm">{rot}°</Text>
@@ -151,38 +120,21 @@ export function ExportScreenshotDialog({
                     </SimpleGrid>
                 </Box>
 
-                {/* 2. 中部：全量预览滚动区 */}
-                <Box style={{ flex: 1, minHeight: 0 }}>
-                    <Text size="sm" fw={500} mb="xs">导出预览 ({screenshots.length} 张)</Text>
-                    <Box style={{
-                        backgroundColor: 'var(--mantine-color-dark-8)',
-                        borderRadius: 8,
-                        border: '1px solid var(--mantine-color-dark-4)',
-                        padding: 10
-                    }}>
+                {/* 2. 预览区 */}
+                <Box style={{ flex: 1 }}>
+                    <Text size="sm" fw={500} mb="xs">预览 ({screenshots.length} 张)</Text>
+                    <Box style={{ backgroundColor: 'var(--mantine-color-dark-8)', borderRadius: 8, padding: 10 }}>
                         <ScrollArea h={300} type="always">
                             <SimpleGrid cols={4} spacing="sm">
                                 {screenshots.map((s) => (
-                                    <Box
-                                        key={s.filename}
-                                        style={{
-                                            borderRadius: 4,
-                                            overflow: 'hidden',
-                                            padding: 4,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            aspectRatio: '16/9'
-                                        }}
-                                    >
+                                    <Box key={s.filename} style={{ aspectRatio: '1/1', background: '#111', borderRadius: 4, overflow: 'hidden' }}>
                                         <img
                                             src={s.path}
-                                            alt={s.filename}
                                             style={{
-                                                maxWidth: '100%',
-                                                maxHeight: '100%',
-                                                transform: `rotate(${selectedRotation}deg)`,
-                                                transition: 'transform 0.3s ease'
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
+                                                transform: `rotate(${selectedRotation}deg)`
                                             }}
                                         />
                                     </Box>
@@ -192,7 +144,6 @@ export function ExportScreenshotDialog({
                     </Box>
                 </Box>
 
-                {/* 3. 底部：操作按钮 */}
                 <Group justify="flex-end" mt="md">
                     <Button variant="default" onClick={onClose} disabled={loading}>取消</Button>
                     <Button onClick={handleConfirm} loading={loading} disabled={!videoPath}>
@@ -200,6 +151,6 @@ export function ExportScreenshotDialog({
                     </Button>
                 </Group>
             </Box>
-        </Modal >
+        </Modal>
     );
 }

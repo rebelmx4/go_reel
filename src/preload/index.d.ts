@@ -63,7 +63,12 @@ declare global {
       windowClose: () => Promise<void>
       windowResize: (width: number, height: number) => Promise<void>
       getScreenSize: () => Promise<{ width: number; height: number }>
-      
+
+       //  File staging 
+      moveToTrash: (filePath: string) => Promise<string>;
+      moveToEdited: (filePath: string) => Promise<string>;
+      moveToTranscoded: (filePath: string) => Promise<string>;
+
       // Screenshot Management
       saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>
       loadScreenshots: (fielPath: string) => Promise<Screenshot[]>

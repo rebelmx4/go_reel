@@ -3,7 +3,7 @@ import { usePlayerStore, useHistoryStore } from '../stores';
 
 // 【修改】使用 RefObject<HTMLVideoElement | null> 类型
 export function useVideoData(videoRef: RefObject<HTMLVideoElement | null>) {
-    const currentVideoPath = usePlayerStore((state) => state.currentVideoPath);
+    const currentVideoPath = usePlayerStore((state) => state.currentPath);
     const setFramerate = usePlayerStore((state) => state.setFramerate);
     const setRotation = usePlayerStore((state) => state.setRotation);
     

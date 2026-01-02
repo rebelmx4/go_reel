@@ -155,7 +155,7 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                 onMouseUp={handleMouseUpOrLeave}
                 onMouseLeave={handleMouseUpOrLeave}
                 style={{
-                    height: 120,
+                    height: 300,
                     backgroundColor: 'rgba(26, 26, 26, 0.8)',
                     borderRadius: 8,
                     display: 'flex',
