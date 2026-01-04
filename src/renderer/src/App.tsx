@@ -5,9 +5,7 @@ import '@mantine/core/styles.css';
 // 导入新的 Store 结构
 import {
   useNavigationStore,
-  usePlayerStore,
   useRefreshStore,
-  usePlaylistStore,
   useVideoStore
 } from './stores';
 
@@ -29,7 +27,7 @@ import {
 
 import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
 import { RecordingIndicator } from './components/RecordingIndicator';
-import { keyBindingManager } from './utils/keyBindingManager';
+import { keyBindingManager } from './utils/KeyBindingManager';
 
 function App() {
   // Navigation
@@ -37,66 +35,10 @@ function App() {
   const setView = useNavigationStore((state) => state.setView);
 
   // Video & Playlist
-  const initVideoStore = useVideoStore((state) => state.initStore);
   const refreshVideos = useVideoStore((state) => state.refreshVideos);
-  const setPlaylistMode = usePlaylistStore((state) => state.setMode);
-  const setCurrentPath = usePlaylistStore((state) => state.setCurrentPath);
-
-  // Player Settings
-  const setVolume = usePlayerStore((state) => state.setVolume);
-  const setSkipFrameConfig = usePlayerStore((state) => state.setSkipFrameConfig);
-  const setSkipDuration = usePlayerStore((state) => state.setSkipDuration);
 
   // Refresh Progress UI
   const { startRefresh, finishRefresh } = useRefreshStore();
-
-  /**
-   * Effect 1: 应用启动初始化
-   */
-  useEffect(() => {
-    const loadStartup = async () => {
-      try {
-        // 1. 初始化视频数据中心 (内部已包含 getStartupResult)
-        await initVideoStore();
-
-        // 2. 加载全局设置
-        const settings = await window.api.loadSettings();
-
-        // 3. 初始化快捷键
-        if (settings.key_bindings) {
-          keyBindingManager.initialize(settings.key_bindings);
-        }
-
-        // 4. 恢复播放器设置
-        if (settings.playback?.global_volume !== undefined) {
-          setVolume(settings.playback.global_volume);
-        }
-        // if (settings.skip_frame) {
-        //   setSkipFrameConfig(settings.skip_frame.rules);
-        //   setSkipDuration(settings.skip_frame.skip_duration);
-        // }
-
-        // 5. 设置默认播放模式
-        setPlaylistMode('all');
-
-        // 如果想在启动时自动播放第一个视频，可以取消下面注释
-        const firstPath = useVideoStore.getState().videoPaths[0];
-        if (firstPath) setCurrentPath(firstPath);
-
-        // 6. 进入播放器视图
-        setView('player');
-
-      } catch (error) {
-        console.error('应用初始化失败:', error);
-        setView('player');
-      }
-    };
-
-    loadStartup();
-  }, [
-    initVideoStore, setVolume, setSkipFrameConfig,
-    setSkipDuration, setPlaylistMode, setView
-  ]);
 
   /**
    * Effect 2: 全局事件监听 (快捷键 & 刷新)

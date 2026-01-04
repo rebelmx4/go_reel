@@ -33,7 +33,7 @@ interface VideoState {
 export const useVideoStore = create<VideoState>((set, get) => ({
   videos: {},
   videoPaths: [],
-  isLoading: false,
+  isLoading: true,
 
   /**
    * 初始化 Store
