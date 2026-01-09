@@ -11,9 +11,11 @@ import {
 
 import {
   MainLayout,
-  ToastContainer,
-  VideoPlayer
+  ToastContainer
 } from './components';
+
+import { VideoPlayer } from './player/VideoPlayer';
+
 
 import {
   TagSearchPage,
@@ -26,7 +28,7 @@ import {
 } from './pages';
 
 import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
-import { RecordingIndicator } from './components/RecordingIndicator';
+import { RecordingIndicator } from './player/RecordingIndicator';
 import { keyBindingManager } from './utils/KeyBindingManager';
 
 function App() {

@@ -10,10 +10,10 @@ import {
     useVideoFileRegistryStore, // 修改为 RegistryStore
 } from '../stores';
 import { VideoContext } from '../contexts';
-import { AssignTagDialog } from './Dialog/AssignTagDialog';
-import { CreateTagDialog } from './Dialog/CreateTagDialog';
+import { AssignTagDialog } from '../components/Dialog/AssignTagDialog';
+import { CreateTagDialog } from '../components/Dialog/CreateTagDialog';
 import { PlayerControls } from './PlayerControls';
-import { ExportScreenshotDialog } from './Dialog/ExportScreenshotDialog';
+import { ExportScreenshotDialog } from '../components/Dialog/ExportScreenshotDialog';
 
 // 引入重构后的 Hooks
 import { useVideoVisuals } from '../hooks/useVideoVisuals';
