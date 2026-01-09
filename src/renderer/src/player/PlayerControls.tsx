@@ -110,11 +110,11 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
         const playerHandlers = {
             step_forward: stepForward,
             step_backward: stepBackward,
-            volume_up: volumeUp,     // 使用 Store 的内置方法，无报错
-            volume_down: volumeDown, // 使用 Store 的内置方法，无报错
+            volume_up: volumeUp,
+            volume_down: volumeDown,
             rotate_video: onRotate,
             screenshot: onScreenshot,
-            favorite: handleToggleFavorite, // 确保使用 schema 中的 key
+            favorite: handleToggleFavorite,
         };
 
         keyBindingManager.registerHandlers(playerHandlers);
