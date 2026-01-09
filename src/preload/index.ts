@@ -24,12 +24,12 @@ const api = {
   getScreenSize: () => ipcRenderer.invoke('get-screen-size'),
 
   // File staging
-moveToTrash: (filePath: string) =>
-  ipcRenderer.invoke('move-file-to-trash', filePath),
-moveToEdited: (filePath: string) =>
-  ipcRenderer.invoke('move-file-to-edited', filePath),
-moveToTranscoded: (filePath: string) =>
-  ipcRenderer.invoke('move-file-to-transcoded', filePath),
+  moveToTrash: (filePath: string) =>
+    ipcRenderer.invoke('move-file-to-trash', filePath),
+  moveToEdited: (filePath: string) =>
+    ipcRenderer.invoke('move-file-to-edited', filePath),
+  moveToTranscoded: (filePath: string) =>
+    ipcRenderer.invoke('move-file-to-transcoded', filePath),
   
   // Screenshot Management
   saveManualScreenshot: (filePath: string, timestamp: number) =>

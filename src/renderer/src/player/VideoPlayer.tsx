@@ -105,6 +105,19 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         if (success) showToast({ message: '截图成功', type: 'success' });
     }, [currentPath, captureManual, showToast]);
 
+    const handleSoftDelete = useCallback(async () => {
+        if (!currentPath) return;
+
+        const success = await window.api.moveToTrash(currentPath);
+
+        if (success) {
+            showToast({ message: '文件已移至待删除队列', type: 'success' });
+            playNext();
+        } else {
+            showToast({ message: '操作失败', type: 'error' });
+        }
+    }, [currentPath, playNext, showToast]);
+
     // 快捷键监听
     useVideoShortcuts({
         togglePlayPause: () => setPlaying(!isPlaying),
@@ -119,6 +132,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         takeScreenshot: () => isCropMode ? setCropMode(false) : takeRawScreenshot(),
         toggleTagDialog: () => setShowTagDialog(true),
         playNextVideo: () => playNext(),
+        softDelete: handleSoftDelete, // 注入处理函数
     });
 
     // --- 6. 生命周期与事件 ---
@@ -190,6 +204,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         onScreenshot={() => isCropMode ? setCropMode(false) : takeRawScreenshot()}
                         onNext={() => playNext()}
                         onRotate={rotateVideo}
+                        onDelete={handleSoftDelete}
                     />
                 </Box>
 

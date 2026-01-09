@@ -1,10 +1,9 @@
 // src/components/player/PlayerControls.tsx
 
-import { Group, Text, ActionIcon, Tooltip, Box, Button, Slider } from '@mantine/core';
+import { Group, ActionIcon, Tooltip, Box, Button, Slider } from '@mantine/core';
 import {
-    IconVolume, IconVolume2, IconVolume3,
     IconPlayerSkipForward, IconCamera, IconArrowRight,
-    IconColumns3, IconScissors, IconRotateClockwise,
+    IconColumns3, IconTrash, IconRotateClockwise,
     IconStar, IconStarFilled
 } from '@tabler/icons-react';
 import {
@@ -39,9 +38,10 @@ interface PlayerControlsProps {
     onScreenshot: () => void;
     onNext: () => void;
     onRotate: () => void;
+    onDelete: () => void;
 }
 
-export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: PlayerControlsProps) {
+export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDelete }: PlayerControlsProps) {
     // --- 1. Store 数据订阅 ---
     // 状态值
     const volume = usePlayerStore(state => state.volume);
@@ -208,6 +208,16 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                             disabled={!currentPath}
                         >
                             {isFavorite ? <IconStarFilled size={20} /> : <IconStar size={20} />}
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="软删除 (移动到回收站)">
+                        <ActionIcon
+                            variant="subtle"
+                            size="lg"
+                            color="red" // 使用红色表示危险操作
+                            onClick={onDelete}
+                        >
+                            <IconTrash size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>

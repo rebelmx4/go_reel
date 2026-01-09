@@ -11,6 +11,7 @@ interface ShortcutHandlers {
     takeScreenshot: () => void; // 智能判断是 crop 还是 raw
     toggleTagDialog: () => void;
     playNextVideo: () => void;
+    softDelete: () => void; 
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
@@ -42,6 +43,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
             // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
             play_next: () => handlersRef.current.playNextVideo(), 
+            soft_delete: () => handlersRef.current.softDelete(),
         };
 
         const actionKeys = Object.keys(actionMap);
