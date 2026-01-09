@@ -9,7 +9,7 @@ import {
 import {
     usePlayerStore,
     useScreenshotStore,
-    useVideoFileRegistryStore, // 【修改】改用新的注册表 Store
+    useVideoFileRegistryStore,
     usePlaylistStore,
     useToastStore
 } from '../stores';
@@ -18,7 +18,7 @@ import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
 import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 import { AppAction } from '../../../shared/settings.schema';
-import { PlaybackTimeLabel } from './PlaybackTimeLabel'; // 引入新组件
+import { PlaybackTimeLabel } from './PlaybackTimeLabel';
 
 
 /**
