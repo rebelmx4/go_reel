@@ -18,6 +18,8 @@ import { RefObject, useEffect, useState, useRef, useCallback } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
 import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
+import { AppAction } from '../../../shared/settings.schema';
+
 
 /**
  * 防抖 Hook 用于持久化设置
@@ -42,7 +44,8 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
     // --- 1. Store 数据订阅 ---
     const {
         currentTime, duration, volume, rotation, stepMode, skipFrameMode,
-        setVolume, setStepMode, setSkipFrameMode, stepForward, stepBackward, togglePlay
+        setVolume, setStepMode, setSkipFrameMode, stepForward, stepBackward,
+        togglePlay, volumeUp, volumeDown // <--- 引入新方法
     } = usePlayerStore();
 
     const currentPath = usePlaylistStore(state => state.currentPath);
@@ -95,25 +98,23 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
 
     // 快捷键注册 (保持不变)
     useEffect(() => {
-        keyBindingManager.registerHandlers({
-            'toggle_play': togglePlay,
-            'step_forward': stepForward,
-            'step_backward': stepBackward,
-            'volume_up': () => setVolume(volume + 5),
-            'volume_down': () => setVolume(volume - 5),
-            'rotate_video': onRotate,
-            'screenshot': onScreenshot,
-            'toggle_favorite': handleToggleFavorite,
-        });
+        const playerHandlers = {
+            step_forward: stepForward,
+            step_backward: stepBackward,
+            volume_up: volumeUp,     // 使用 Store 的内置方法，无报错
+            volume_down: volumeDown, // 使用 Store 的内置方法，无报错
+            rotate_video: onRotate,
+            screenshot: onScreenshot,
+            favorite: handleToggleFavorite, // 确保使用 schema 中的 key
+        };
+
+        keyBindingManager.registerHandlers(playerHandlers);
 
         return () => {
-            keyBindingManager.unregisterHandlers([
-                'toggle_play', 'step_forward', 'step_backward',
-                'volume_up', 'volume_down', 'rotate_video',
-                'screenshot', 'toggle_favorite'
-            ]);
+            keyBindingManager.unregisterHandlers(Object.keys(playerHandlers) as AppAction[]);
         };
-    }, [onScreenshot, onRotate, setVolume, volume, stepForward, stepBackward, togglePlay, handleToggleFavorite]);
+        // 注意：依赖项非常干净，只有函数引用
+    }, [onScreenshot, onRotate, volumeUp, volumeDown, stepForward, stepBackward, handleToggleFavorite]);
 
     // --- 4. 辅助函数 ---
     const formatTime = (timeInSeconds: number) => {

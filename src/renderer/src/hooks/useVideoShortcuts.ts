@@ -1,6 +1,8 @@
 // src/components/VideoPlayer/hooks/useVideoShortcuts.ts
 import { useEffect, useRef } from 'react';
 import { keyBindingManager } from '../utils/KeyBindingManager';
+import { AppAction } from '../../../shared/settings.schema';
+
 
 interface ShortcutHandlers {
     togglePlayPause: () => void;
@@ -24,22 +26,22 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
         // 定义 动作名称 (settings.json 中的 key) -> 执行函数 的映射
         const actionMap: Record<string, () => void> = {
             // --- 播放控制 (play_control) ---
-            'toggle_play': () => handlersRef.current.togglePlayPause(),
-            'step_backward': () => handlersRef.current.stepFrame(-1),
-            'step_forward': () => handlersRef.current.stepFrame(1),
-            'rotate_video': () => handlersRef.current.rotateVideo(),
+            toggle_play: () => handlersRef.current.togglePlayPause(),
+            step_backward: () => handlersRef.current.stepFrame(-1),
+            step_forward: () => handlersRef.current.stepFrame(1),
+            rotate_video: () => handlersRef.current.rotateVideo(),
             
             // --- 截图 (capture) ---
             // 注意：这里只处理普通截图 (E键)。
             // 导出截图(Ctrl+E/Alt+E) 已经在 useScreenshotExport 中处理了
-            'screenshot': () => handlersRef.current.takeScreenshot(),
+            screenshot: () => handlersRef.current.takeScreenshot(),
 
             // --- 标签 (edit_tag) ---
-            'open_assign_tag_dialog': () => handlersRef.current.toggleTagDialog(),
+            open_assign_tag_dialog: () => handlersRef.current.toggleTagDialog(),
 
             // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
             // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
-            'play_next': () => handlersRef.current.playNextVideo(), 
+            play_next: () => handlersRef.current.playNextVideo(), 
         };
 
         const actionKeys = Object.keys(actionMap);
@@ -51,7 +53,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
         // 组件卸载时批量注销
         return () => {
             console.log(`[useVideoShortcuts] 注销动作: ${actionKeys.join(', ')}`);
-            keyBindingManager.unregisterHandlers(Object.keys(actionMap));
+            keyBindingManager.unregisterHandlers(Object.keys(actionMap) as AppAction[]);
         };
     }, []);
 }

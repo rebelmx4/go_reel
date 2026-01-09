@@ -1,51 +1,11 @@
 import { BaseJsonManager } from './BaseJsonManager';
 import path from 'path';
-
-/**
- * 应用程序设置的完整类型定义
- * @interface AppSettings
- */
-export interface AppSettings {
-  // 路径相关设置
-  paths: {
-    video_source: string; // 视频源文件根目录
-    staged_path: string; // "暂存区" 目录，用于存放待删除或已编辑的视频
-    screenshot_export_path: string; // 截图导出目录
-  };
-  // 播放相关设置
-  playback: {
-    global_volume: number; // 全局音量 (0-100)
-    like_decay_rate: number; // "喜欢" 分数的衰减系数
-  };
-  // 跳帧预览设置
-  skip_frame: {
-    skip_duration: number; // 每帧悬停的秒数
-    rules: {
-      [key: string]: number; // 视频时长阈值 -> 生成的预览分段数量
-    };
-  };
-  // 快捷键绑定
-  key_bindings: {
-    // 全局快捷键
-    global: {
-      view_nav: Record<string, string>; // 视图导航
-      play_control: Record<string, string>; // 播放控制
-      capture: Record<string, string>; // 截图与录制
-      interact: Record<string, string>; // 交互操作 (喜欢/收藏)
-      edit_tag: Record<string, string>; // 标签编辑
-      system: Record<string, string>; // 系统操作
-    };
-    // "分配标签" 对话框内的快捷键
-    dialog_assign_tag: {
-      quick_assign_tags: Record<string, string>; // 快速分配标签槽位
-      system: Record<string, string>; // 对话框系统操作
-    };
-  };
-}
+// 导入新的类型定义 (注意：根据你截图中的文件名是 'ettings.schema.ts'，这里先按这个写)
+import { AppSettings } from '../../../shared/settings.schema'; 
 
 /**
  * 默认设置
- * 当设置文件不存在或损坏时，将使用此对象
+ * 根据新的 AppSettings 结构进行了调整
  */
 const DEFAULT_SETTINGS: AppSettings = {
   paths: {
@@ -56,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   playback: {
     global_volume: 80,
     like_decay_rate: 0.2,
+    default_rate: 1.0, // 新增
   },
   skip_frame: {
     skip_duration: 2,
@@ -72,9 +33,9 @@ const DEFAULT_SETTINGS: AppSettings = {
         list_history: '1',
         list_newest: '2',
         list_search: '3',
-        list_random: '4',
         list_liked: '5',
         list_elite: '6',
+        back_to_player: 'Esc', // 从 system 移动到了这里
       },
       play_control: {
         toggle_play: 'Space',
@@ -108,7 +69,7 @@ const DEFAULT_SETTINGS: AppSettings = {
       system: {
         refresh: 'F5',
         soft_delete: 'Ctrl+Delete',
-        back_to_player: 'Esc',
+        open_settings: 'Ctrl+,', // 新增字段
       },
     },
     dialog_assign_tag: {
@@ -134,30 +95,27 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 /**
  * 设置管理器类
- * 继承自 BaseJsonManager，用于管理 settings.json 文件
+ * 继承自 BaseJsonManager，逻辑保持不变
  */
 export class SettingsManager extends BaseJsonManager<AppSettings> {
   constructor() {
-    // 调用父类构造函数，指定文件名和默认设置
     super('settings.json', DEFAULT_SETTINGS);
   }
 
-   /**
-   * [新增] 返回当前所有设置的数据副本
-   * @returns {AppSettings}
+  /**
+   * 返回当前所有设置的数据副本
    */
   public getData(): AppSettings {
     return this.data;
   }
 
-  // --- 路径相关 Getters/Setters ---
+  // --- 路径相关 Getters/Setters (逻辑未变) ---
 
   public getVideoSourcePath(): string {
     return this.data.paths.video_source;
   }
 
   public setVideoSourcePath(path: string): void {
-    // 使用 set 方法更新配置，这会触发写入文件
     this.set({ paths: { ...this.data.paths, video_source: path } });
   }
 
@@ -169,18 +127,10 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     this.set({ paths: { ...this.data.paths, staged_path: path } });
   }
 
-  /**
-   * 获取 "待删除" 文件夹的完整路径 (软删除)
-   * @returns {string} 派生出的路径
-   */
   public getTrashPath(): string {
     return path.join(this.data.paths.staged_path, '待删除');
   }
 
-  /**
-   * 获取 "已编辑" 文件夹的完整路径
-   * @returns {string} 派生出的路径
-   */
   public getEditedPath(): string {
     return path.join(this.data.paths.staged_path, '已编辑');
   }
@@ -193,7 +143,7 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     this.set({ paths: { ...this.data.paths, screenshot_export_path: path } });
   }
 
-  // --- 播放相关 Getters/Setters ---
+  // --- 播放相关 Getters/Setters (逻辑未变) ---
 
   public getGlobalVolume(): number {
     return this.data.playback.global_volume;
@@ -211,7 +161,7 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     this.set({ playback: { ...this.data.playback, like_decay_rate: rate } });
   }
 
-  // --- 跳帧预览 Getters/Setters ---
+  // --- 跳帧预览 Getters/Setters (逻辑未变) ---
 
   public getSkipFrameDuration(): number {
     return this.data.skip_frame.skip_duration;
@@ -229,12 +179,8 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     this.set({ skip_frame: { ...this.data.skip_frame, rules } });
   }
 
-  // --- 快捷键 Getters ---
+  // --- 快捷键 Getters (逻辑未变) ---
 
-  /**
-   * 获取所有快捷键绑定
-   * @returns {AppSettings['key_bindings']}
-   */
   public getKeyBindings(): AppSettings['key_bindings'] {
     return this.data.key_bindings;
   }
@@ -247,17 +193,9 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     return this.data.key_bindings.dialog_assign_tag;
   }
 
-  /**
-   * [新增] 一次性更新整个快捷键设置对象
-   * @param {AppSettings['key_bindings']} bindings - 新的快捷键配置对象
-   */
   public setKeyBindings(bindings: AppSettings['key_bindings']): void {
     this.set({ key_bindings: bindings });
   }
 }
 
-/**
- * 创建并导出一个 settingsManager 单例
- * 在整个应用程序中共享此实例，以确保数据一致性
- */
 export const settingsManager = new SettingsManager();

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToastStore, useVideoFileRegistryStore  } from '../stores';
 import { keyBindingManager } from '../utils/KeyBindingManager'; // 引入管理器
+import { AppAction } from '../../../shared/settings.schema';
+
 
 export function useScreenshotExport(
     currentVideoPath: string | null
@@ -36,9 +38,9 @@ export function useScreenshotExport(
         // 定义动作处理器
         const handlers = {
             // 对应 Ctrl + E 的动作名 (需在 settings.json 中配置映射)
-            'export_screenshot': () => handleSmartExport(false),
+            export_screenshot: () => handleSmartExport(false),
             // 对应 Alt + E 的动作名
-            'export_screenshot_with_dialog': () => handleSmartExport(true)
+            export_screenshot_with_dialog: () => handleSmartExport(true)
         };
 
 
@@ -47,7 +49,7 @@ export function useScreenshotExport(
 
         // 清理时注销
         return () => {
-            keyBindingManager.unregisterHandlers(Object.keys(handlers));
+            keyBindingManager.unregisterHandlers(Object.keys(handlers) as AppAction[]);
         };
     }, [handleSmartExport]);
 

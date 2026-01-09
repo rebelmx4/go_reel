@@ -1,4 +1,6 @@
 // src/shared/types.ts
+import { AppSettings } from './settings.schema'; 
+
 
 // 纯净的接口定义
 export interface Annotation {
@@ -22,5 +24,5 @@ export interface VideoFile {
 export interface StartupResult {
   videoList: VideoFile[];
   history: string[];
-  settings: any;
+  settings: AppSettings;
 }

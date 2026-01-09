@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
+import { AppAction } from '../../shared/settings.schema';
 
 // 导入新的 Store 结构
 import {
@@ -43,17 +44,24 @@ function App() {
    * Effect 2: 全局事件监听 (快捷键 & 刷新)
    */
   useEffect(() => {
-    keyBindingManager.registerHandler('list_history', () => setView('history'));
-    keyBindingManager.registerHandler('list_newest', () => setView('newest'));
-    keyBindingManager.registerHandler('list_search', () => setView('search'));
-    keyBindingManager.registerHandler('list_liked', () => setView('liked'));
-    keyBindingManager.registerHandler('list_elite', () => setView('elite'));
-    keyBindingManager.registerHandler('back_to_player', () => setView('player'));
-    keyBindingManager.registerHandler('open_settings', () => setView('settings'));
+    // 定义要注册的动作映射
+    const navHandlers = {
+      list_history: () => setView('history'),
+      list_newest: () => setView('newest'),
+      list_search: () => setView('search'),
+      list_liked: () => setView('liked'),
+      list_elite: () => setView('elite'),
+      back_to_player: () => setView('player'),
+      open_settings: () => setView('settings'),
+    };
 
+    // 1. 使用批量注册
+    keyBindingManager.registerHandlers(navHandlers);
 
     return () => {
-      keyBindingManager.clearHandlers();
+      // 2. 建议注销特定的处理器，而不是 clearHandlers()
+      // 这样可以避免在复杂的组件树中意外删掉其他地方注册的快捷键
+      keyBindingManager.unregisterHandlers(Object.keys(navHandlers) as AppAction[]);
     };
   }, [setView, startRefresh, finishRefresh]);
 

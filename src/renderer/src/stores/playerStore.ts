@@ -22,6 +22,8 @@ interface PlayerState {
   setPlaying: (playing: boolean) => void;
   setVolume: (v: number) => void;
   setCurrentTime: (t: number) => void;
+  volumeUp: () => void;
+  volumeDown: () => void;
   setDuration: (d: number) => void;
   setRotation: (r: number) => void;
   setSkipFrameMode: (enabled: boolean) => void;   
@@ -50,6 +52,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
+   volumeUp: () => {
+    const { volume } = get();
+    set({ volume: Math.min(volume + 5, 100) });
+  },
+  volumeDown: () => {
+    const { volume } = get();
+    set({ volume: Math.max(volume - 5, 0) });
+  },
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
   setRotation: (rotation) => set({ rotation }),
