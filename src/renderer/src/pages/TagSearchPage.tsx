@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Box, TextInput, Text, CloseButton } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { useTagStore, Tag, useVideoStore } from '../stores';
+import { useTagStore, Tag } from '../stores';
 import { TagFilterGrid } from '../components/Tag/TagFilterGrid';
 
 export function TagSearchPage() {
@@ -28,21 +28,21 @@ export function TagSearchPage() {
 
     // Search videos by tags (AND logic)
     const searchResults = (() => {
-        if (selectedTags.length === 0) return [];
+        // if (selectedTags.length === 0) return [];
 
-        // Get all videos from videoStore
-        const videos = useVideoStore.getState().videos;
+        // // Get all videos from videoStore
+        // const videos = useVideoStore.getState().videos;
 
-        // Filter videos that have ALL selected tags
-        const selectedTagIds = selectedTags.map(t => t.id);
+        // // Filter videos that have ALL selected tags
+        // const selectedTagIds = selectedTags.map(t => t.id);
 
-        return videos.filter(video => {
-            // Check if video has tags metadata
-            if (!video.tags || video.tags.length === 0) return false;
+        // return videos.filter(video => {
+        //     // Check if video has tags metadata
+        //     if (!video.tags || video.tags.length === 0) return false;
 
-            // Check if video contains ALL selected tags (AND logic)
-            return selectedTagIds.every(tagId => video.tags.includes(tagId));
-        });
+        //     // Check if video contains ALL selected tags (AND logic)
+        //     return selectedTagIds.every(tagId => video.tags.includes(tagId));
+        // });
     })();
 
     return (

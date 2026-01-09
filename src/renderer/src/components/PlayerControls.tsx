@@ -10,7 +10,7 @@ import {
 import {
     usePlayerStore,
     useScreenshotStore,
-    useVideoStore,
+    useVideoFileRegistryStore, // 【修改】改用新的注册表 Store
     usePlaylistStore,
     useToastStore
 } from '../stores';
@@ -20,7 +20,7 @@ import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 
 /**
- * 防抖 useEffect Hook
+ * 防抖 Hook 用于持久化设置
  */
 function useDebouncedEffect(callback: () => void, delay: number, deps: React.DependencyList) {
     const timeoutRef = useRef<number | null>(null);
@@ -45,23 +45,22 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
         setVolume, setStepMode, setSkipFrameMode, stepForward, stepBackward, togglePlay
     } = usePlayerStore();
 
-    // 从 PlaylistStore 获取当前路径
     const currentPath = usePlaylistStore(state => state.currentPath);
 
-    // 从 VideoStore 获取当前视频的具体数据
-    const videoData = useVideoStore(useCallback(state =>
+    // 【核心修改】直接从注册表中获取当前视频档案
+    const videoFile = useVideoFileRegistryStore(useCallback(state =>
         currentPath ? state.videos[currentPath] : null, [currentPath]
     ));
-    const updateAnnotation = useVideoStore(state => state.updateAnnotation);
+    const updateAnnotation = useVideoFileRegistryStore(state => state.updateAnnotation);
 
     const { isCropMode, setCropMode } = useScreenshotStore();
     const showToast = useToastStore(state => state.showToast);
 
-    // --- 2. 状态计算 ---
-    const isFavorite = videoData?.annotation?.is_favorite || false;
+    // --- 2. 状态派生 (不再需要 useState) ---
+    const isFavorite = videoFile?.annotation?.is_favorite || false;
     const [keyMap, setKeyMap] = useState<Record<string, string>>({});
 
-    // 加载快捷键配置
+    // 加载快捷键配置 (逻辑不变)
     useEffect(() => {
         const bindings = keyBindingManager.getBindings();
         if (bindings) {
@@ -77,48 +76,42 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
 
     // --- 3. 业务逻辑处理器 ---
 
-    /**
-     * 处理收藏切换
-     * 前端不再关心 Hash，直接通过 Path 发起请求
-     */
     const handleToggleFavorite = useCallback(async () => {
         if (!currentPath) return;
 
         const newFavoriteState = !isFavorite;
         try {
+            // 直接调用档案库的乐观更新方法
             await updateAnnotation(currentPath, { is_favorite: newFavoriteState });
             showToast({
                 message: newFavoriteState ? '已加入精品' : '已移出精品',
                 type: 'success'
             });
         } catch (error) {
+            // 失败时 Registry 内部会自动回滚，这里只需弹窗
             showToast({ message: '操作失败', type: 'error' });
         }
     }, [currentPath, isFavorite, updateAnnotation, showToast]);
 
-    // 快捷键注册
+    // 快捷键注册 (保持不变)
     useEffect(() => {
-        const handleVolumeUp = () => setVolume(volume + 5);
-        const handleVolumeDown = () => setVolume(volume - 5);
-
-        keyBindingManager.registerHandler('toggle_play', togglePlay);
-        keyBindingManager.registerHandler('step_forward', stepForward);
-        keyBindingManager.registerHandler('step_backward', stepBackward);
-        keyBindingManager.registerHandler('volume_up', handleVolumeUp);
-        keyBindingManager.registerHandler('volume_down', handleVolumeDown);
-        keyBindingManager.registerHandler('rotate_video', onRotate);
-        keyBindingManager.registerHandler('screenshot', onScreenshot);
-        keyBindingManager.registerHandler('toggle_favorite', handleToggleFavorite);
+        keyBindingManager.registerHandlers({
+            'toggle_play': togglePlay,
+            'step_forward': stepForward,
+            'step_backward': stepBackward,
+            'volume_up': () => setVolume(volume + 5),
+            'volume_down': () => setVolume(volume - 5),
+            'rotate_video': onRotate,
+            'screenshot': onScreenshot,
+            'toggle_favorite': handleToggleFavorite,
+        });
 
         return () => {
-            keyBindingManager.unregisterHandler('toggle_play');
-            keyBindingManager.unregisterHandler('step_forward');
-            keyBindingManager.unregisterHandler('step_backward');
-            keyBindingManager.unregisterHandler('volume_up');
-            keyBindingManager.unregisterHandler('volume_down');
-            keyBindingManager.unregisterHandler('rotate_video');
-            keyBindingManager.unregisterHandler('screenshot');
-            keyBindingManager.unregisterHandler('toggle_favorite');
+            keyBindingManager.unregisterHandlers([
+                'toggle_play', 'step_forward', 'step_backward',
+                'volume_up', 'volume_down', 'rotate_video',
+                'screenshot', 'toggle_favorite'
+            ]);
         };
     }, [onScreenshot, onRotate, setVolume, volume, stepForward, stepBackward, togglePlay, handleToggleFavorite]);
 
@@ -140,7 +133,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
         if (videoRef.current) videoRef.current.currentTime = timestampInMs / 1000;
     };
 
-    // 持久化音量设置
+    // 持久化音量
     useDebouncedEffect(() => {
         window.api.updateSettings({ playback: { global_volume: volume } });
     }, 1000, [volume]);
@@ -161,10 +154,8 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                 gap: 10
             }}
         >
-            {/* 截图轨道栏 */}
             <ScreenshotTrack onScreenshotClick={handleScreenshotSeek} />
 
-            {/* 进度条与时间显示 */}
             <Group gap="xs" style={{ width: '100%' }}>
                 <Text size="xs" c="dimmed" ff="monospace" style={{ minWidth: 45 }}>
                     {formatTime(currentTime)}
@@ -182,10 +173,9 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                 </Text>
             </Group>
 
-            {/* 主按钮控制栏 */}
             <Group justify="space-between">
                 <Group gap="sm">
-                    {/* 跳帧/步进模式 */}
+                    {/* 跳帧/步进 */}
                     <Tooltip label={getTooltipLabel(skipFrameMode ? "退出跳帧模式" : "进入跳帧模式", 'toggle_skip_frame_mode')}>
                         <ActionIcon
                             variant={skipFrameMode ? "filled" : "subtle"}
@@ -196,45 +186,27 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                         </ActionIcon>
                     </Tooltip>
 
-                    <Tooltip label={`当前步进单位: ${stepMode === 'frame' ? '1帧' : '1秒'} (点击切换)`}>
-                        <Button
-                            variant="light"
-                            color="gray"
-                            size="compact-xs"
-                            onClick={() => setStepMode(stepMode === 'frame' ? 'second' : 'frame')}
-                            style={{ fontSize: '10px' }}
-                        >
-                            {stepMode === 'frame' ? 'FRAME' : 'SEC'}
-                        </Button>
-                    </Tooltip>
+                    <Button
+                        variant="light" color="gray" size="compact-xs"
+                        onClick={() => setStepMode(stepMode === 'frame' ? 'second' : 'frame')}
+                        style={{ fontSize: '10px' }}
+                    >
+                        {stepMode === 'frame' ? 'FRAME' : 'SEC'}
+                    </Button>
 
-                    {/* 画面变换 */}
-                    <Tooltip label={getTooltipLabel(`旋转视频 (当前 ${rotation % 360}°)`, 'rotate_video')}>
+                    {/* 旋转 */}
+                    <Tooltip label={getTooltipLabel(`旋转视频`, 'rotate_video')}>
                         <ActionIcon variant="subtle" color="gray" onClick={onRotate}>
                             <IconRotateClockwise size={20} />
                         </ActionIcon>
                     </Tooltip>
 
-                    {/* 截图功能组 */}
-                    <Group gap={4}>
-                        <Tooltip label={getTooltipLabel("普通截图", 'screenshot')}>
-                            <ActionIcon variant="subtle" color="gray" onClick={onScreenshot}>
-                                <IconCamera size={20} />
-                            </ActionIcon>
-                        </Tooltip>
+                    {/* 截图 */}
+                    <ActionIcon variant="subtle" color="gray" onClick={onScreenshot}>
+                        <IconCamera size={20} />
+                    </ActionIcon>
 
-                        <Tooltip label={getTooltipLabel(isCropMode ? "取消框选" : "框选截图", 'toggle_crop_mode')}>
-                            <ActionIcon
-                                variant={isCropMode ? "filled" : "subtle"}
-                                color={isCropMode ? "green" : "gray"}
-                                onClick={() => setCropMode(!isCropMode)}
-                            >
-                                <IconScissors size={20} />
-                            </ActionIcon>
-                        </Tooltip>
-                    </Group>
-
-                    {/* 精品收藏 */}
+                    {/* 收藏按钮 - 响应式更新 */}
                     <Tooltip label={getTooltipLabel(isFavorite ? "移出精品" : "加入精品", 'toggle_favorite')}>
                         <ActionIcon
                             variant="subtle"
@@ -247,25 +219,13 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
                     </Tooltip>
                 </Group>
 
-                {/* 右侧：音量与下一首 */}
                 <Group gap="xl">
                     <Group gap="xs">
-                        {volume === 0 ? <IconVolume3 size={18} /> : volume < 50 ? <IconVolume2 size={18} /> : <IconVolume size={18} />}
-                        <Slider
-                            value={volume}
-                            onChange={setVolume}
-                            style={{ width: 100 }}
-                            size="xs"
-                            color="blue"
-                            label={(v) => `${v}%`}
-                        />
+                        <Slider value={volume} onChange={setVolume} style={{ width: 100 }} size="xs" color="blue" />
                     </Group>
-
-                    <Tooltip label={getTooltipLabel("下一个视频", 'play_next')}>
-                        <ActionIcon variant="subtle" color="gray" size="lg" onClick={onNext}>
-                            <IconPlayerSkipForward size={22} />
-                        </ActionIcon>
-                    </Tooltip>
+                    <ActionIcon variant="subtle" color="gray" size="lg" onClick={onNext}>
+                        <IconPlayerSkipForward size={22} />
+                    </ActionIcon>
                 </Group>
             </Group>
         </Box>

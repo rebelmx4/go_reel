@@ -100,16 +100,16 @@ export class ScreenshotManager extends BaseAssetManager {
       const screenshots: Screenshot[] = [];
       
       // ✨ 关键逻辑：如果发现没有截图，自动触发生成，但不阻塞当前返回
-      if (files.length === 0) {
-      console.log(`[ScreenshotManager] Generating screenshots for ${hash}...`);
-      const success = await this.generateAutoScreenshots(hash, filePath);
-      if (success) {
-        // 生成成功后重新获取文件列表
-        files = await this.listHashBasedFiles(hash);
-      } else {
-        return []; // 生成失败
-      }
-    }
+    //   if (files.length === 0) {
+    //   console.log(`[ScreenshotManager] Generating screenshots for ${hash}...`);
+    //   const success = await this.generateAutoScreenshots(hash, filePath);
+    //   if (success) {
+    //     // 生成成功后重新获取文件列表
+    //     files = await this.listHashBasedFiles(hash);
+    //   } else {
+    //     return []; // 生成失败
+    //   }
+    // }
       
       for (const file of files) {
         const match = file.match(/^(\d+)_(m|a)\.webp$/);

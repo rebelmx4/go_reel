@@ -5,8 +5,7 @@ import '@mantine/core/styles.css';
 // 导入新的 Store 结构
 import {
   useNavigationStore,
-  useRefreshStore,
-  useVideoStore
+  useRefreshStore
 } from './stores';
 
 import {
@@ -19,8 +18,8 @@ import {
   TagSearchPage,
   HistoryPage,
   NewestPage,
-  SearchPage,
-  LikedPage,
+  // SearchPage,
+  // LikedPage,
   ElitePage,
   SettingsPage
 } from './pages';
@@ -35,7 +34,7 @@ function App() {
   const setView = useNavigationStore((state) => state.setView);
 
   // Video & Playlist
-  const refreshVideos = useVideoStore((state) => state.refreshVideos);
+  // const refreshVideos = useVideoStore((state) => state.refreshVideos);
 
   // Refresh Progress UI
   const { startRefresh, finishRefresh } = useRefreshStore();
@@ -45,19 +44,19 @@ function App() {
    */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // 1. 处理 F5 刷新逻辑
-      if (event.key === 'F5') {
-        event.preventDefault();
-        const isRefreshing = useRefreshStore.getState().progress.isRefreshing;
-        if (!isRefreshing) {
-          startRefresh();
-          // 调用真正的后端刷新接口
-          refreshVideos().finally(() => {
-            finishRefresh();
-          });
-        }
-        return;
-      }
+      //   // 1. 处理 F5 刷新逻辑
+      //   if (event.key === 'F5') {
+      //     event.preventDefault();
+      //     const isRefreshing = useRefreshStore.getState().progress.isRefreshing;
+      //     if (!isRefreshing) {
+      //       startRefresh();
+      //       // 调用真正的后端刷新接口
+      //       refreshVideos().finally(() => {
+      //         finishRefresh();
+      //       });
+      //     }
+      //     return;
+      //   }
 
       // 2. 派发给快捷键管理器
       keyBindingManager.handleKeyPress(event);
@@ -75,10 +74,10 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      // window.removeEventListener('keydown', handleKeyDown);
       keyBindingManager.clearHandlers();
     };
-  }, [setView, startRefresh, finishRefresh, refreshVideos]);
+  }, [setView, startRefresh, finishRefresh]);
 
   // 渲染逻辑
   const renderView = () => {
@@ -86,8 +85,8 @@ function App() {
       case 'player': return <VideoPlayer />;
       case 'history': return <HistoryPage />;
       case 'newest': return <NewestPage />;
-      case 'search': return <SearchPage />;
-      case 'liked': return <LikedPage />;
+      // case 'search': return <SearchPage />;
+      // case 'liked': return <LikedPage />;
       case 'elite': return <ElitePage />;
       case 'tag-search': return <TagSearchPage />;
       case 'settings': return <SettingsPage />;

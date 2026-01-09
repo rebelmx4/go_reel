@@ -1,86 +1,173 @@
 // src/stores/playlistStore.ts
-import { create } from 'zustand';
-import { useVideoStore } from './videoStore';
-import { useHistoryStore } from './historyStore';
 
-type PlaylistMode = 'all' | 'liked' | 'elite' | 'search';
+import { create } from 'zustand';
+import { 
+  useVideoFileRegistryStore, 
+  selectLikedPaths, 
+  selectElitePaths, 
+  selectSearchPaths 
+} from './videoFileRegistryStore';
+
+export type PlaylistMode = 'all' | 'liked' | 'elite' | 'search';
 
 interface PlaylistState {
-  mode: PlaylistMode;
+  // --- 状态 ---
   currentPath: string | null;
+  mode: PlaylistMode;
+  historyPaths: string[]; // 历史足迹存储在此
   searchQuery: string;
 
-  // Actions
+  // --- 基础 Actions ---
   setMode: (mode: PlaylistMode) => void;
-  setCurrentPath: (path: string | null) => void;
   setSearchQuery: (query: string) => void;
-
-  // 核心逻辑：获取当前活跃的播放列表（纯路径数组）
-  getCurrentQueue: () => string[];
+  setHistoryPaths: (paths: string[]) => void; // 供 bootstrap 初始化
   
-  // 导航
-  next: (isRandom?: boolean) => void;
+  /** 
+   * 跳转播放 (核心方法)
+   * @param path 目标路径
+   * @param targetMode 切换到的模式 (例如从历史进入时传 'all')
+   */
+  jumpTo: (path: string, targetMode?: PlaylistMode) => void;
+
+  /** 直接设置当前路径（会自动触发历史记录更新） */
+  setCurrentPath: (path: string | null) => void;
+
+  // --- 导航 Actions ---
+  next: () => void;
   prev: () => void;
+
+  // --- 内部辅助方法 (私有) ---
+  _internalUpdateHistory: (path: string) => void;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
-  mode: 'all',
   currentPath: null,
+  mode: 'all',
+  historyPaths: [],
   searchQuery: '',
 
+  // --- 基础设置 ---
   setMode: (mode) => set({ mode }),
-    setCurrentPath: (path) => {
+  
+  setSearchQuery: (query) => set({ 
+    searchQuery: query, 
+    mode: 'search' // 搜索时自动切换到搜索模式
+  }),
+
+  setHistoryPaths: (paths) => set({ historyPaths: paths }),
+
+  setCurrentPath: (path) => {
+    if (!path) {
+      set({ currentPath: null });
+      return;
+    }
     set({ currentPath: path });
-    
-    // 如果路径有效，则自动添加到历史记录
-    if (path) {
-      // 使用 getState() 获取 historyStore 的 action 而不触发订阅
-      useHistoryStore.getState().addToHistory(path);
-    }
+    get()._internalUpdateHistory(path);
   },
-  setSearchQuery: (query) => set({ searchQuery: query, mode: 'search' }),
 
-  getCurrentQueue: () => {
-    const { mode, searchQuery } = get();
-    const videoState = useVideoStore.getState();
-
-    switch (mode) {
-      case 'liked':
-        return videoState.videoPaths.filter(p => (videoState.videos[p].annotation?.like_count ?? 0) > 0);
-      case 'elite':
-        return videoState.videoPaths.filter(p => videoState.videos[p].annotation?.is_favorite);
-      case 'search':
-        return videoState.videoPaths.filter(p => p.toLowerCase().includes(searchQuery.toLowerCase()));
-      default:
-        return videoState.videoPaths;
-    }
+  /**
+   * 响应你的需求：从历史/列表跳转
+   * 自动处理：切换视频 + 切换播放模式 + 记录历史
+   */
+  jumpTo: (path, targetMode) => {
+    set((state) => ({
+      currentPath: path,
+      mode: targetMode ?? state.mode
+    }));
+    get()._internalUpdateHistory(path);
   },
+
+  // --- 导航逻辑 ---
 
   next: () => {
-    const queue = get().getCurrentQueue();
+    const { mode, currentPath, searchQuery } = get();
+    const registry = useVideoFileRegistryStore.getState();
+    
+    // 1. 获取当前模式下的队列
+    let queue: string[] = [];
+    switch (mode) {
+      case 'liked': queue = selectLikedPaths(registry); break;
+      case 'elite': queue = selectElitePaths(registry); break;
+      case 'search': queue = selectSearchPaths(registry, searchQuery); break;
+      default: queue = registry.videoPaths; // 'all' 模式
+    }
+
     if (queue.length === 0) return;
 
-    const currentPath = get().currentPath;
+    // 2. 根据模式决定“下一首”的算法
     let nextPath: string;
-
-    const { mode } = get();
-    if (mode == 'all') {
+    if (mode === 'all') {
+      // 全部模式下：本质是随机模式
       nextPath = queue[Math.floor(Math.random() * queue.length)];
     } else {
+      // 筛选模式下：顺序循环
       const currentIndex = currentPath ? queue.indexOf(currentPath) : -1;
-      nextPath = queue[(currentIndex + 1) % queue.length];
+      const nextIndex = (currentIndex + 1) % queue.length;
+      nextPath = queue[nextIndex];
     }
 
     set({ currentPath: nextPath });
+    get()._internalUpdateHistory(nextPath);
   },
 
   prev: () => {
-    const queue = get().getCurrentQueue();
-    const currentPath = get().currentPath;
+    const { mode, currentPath, searchQuery } = get();
+    const registry = useVideoFileRegistryStore.getState();
+    
+    let queue: string[] = [];
+    switch (mode) {
+      case 'liked': queue = selectLikedPaths(registry); break;
+      case 'elite': queue = selectElitePaths(registry); break;
+      case 'search': queue = selectSearchPaths(registry, searchQuery); break;
+      default: queue = registry.videoPaths;
+    }
+
     if (queue.length === 0 || !currentPath) return;
 
     const currentIndex = queue.indexOf(currentPath);
+    // (currentIndex - 1 + length) % length 确保循环到末尾
     const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-    set({ currentPath: queue[prevIndex] });
+    const prevPath = queue[prevIndex];
+
+    set({ currentPath: prevPath });
+    get()._internalUpdateHistory(prevPath);
+  },
+
+  /**
+   * 内部私有方法：处理历史记录更新
+   * 包含：UI 乐观更新 + 后端 IPC 持久化
+   */
+  _internalUpdateHistory: (path: string) => {
+    const { historyPaths } = get();
+    
+    // 1. 构造新数组：去重并置顶
+    const newHistory = [
+      path, 
+      ...historyPaths.filter(p => p !== path)
+    ].slice(0, 100); // 只保留最近100条
+
+    // 2. 更新本地状态
+    set({ historyPaths: newHistory });
+
+    // 3. 异步通知后端持久化
+    window.api.addHistory(path).catch(err => {
+      console.error('[Playlist] Failed to sync history to backend:', err);
+    });
   }
 }));
+
+/**
+ * --- 选择器 ---
+ */
+
+/** 获取当前的播放模式 */
+export const usePlaylistMode = () => usePlaylistStore(s => s.mode);
+
+/** 获取当前的搜索词 */
+export const useSearchQuery = () => usePlaylistStore(s => s.searchQuery);
+
+/** 获取历史路径列表 (供历史页面渲染使用) */
+export const useHistoryPaths = () => usePlaylistStore(s => s.historyPaths);
+
+/** 获取当前播放的路径 */
+export const useCurrentPath = () => usePlaylistStore(s => s.currentPath);

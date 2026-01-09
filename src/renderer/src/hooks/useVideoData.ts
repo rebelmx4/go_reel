@@ -1,58 +1,53 @@
-import { useState, useEffect, RefObject } from 'react';
-import { usePlayerStore, useHistoryStore } from '../stores';
+// src/renderer/src/hooks/useVideoData.ts
 
-// 【修改】使用 RefObject<HTMLVideoElement | null> 类型
+import { useEffect, RefObject } from 'react';
+import { usePlayerStore, useVideoFileRegistryStore, usePlaylistStore } from '../stores';
+
+/**
+ * 视频数据同步 Hook
+ * 职责：
+ * 1. 当视频路径变化时，从 Registry 同步注解信息（如旋转）到播放器
+ * 2. 异步获取视频的物理帧率（FPS）
+ */
 export function useVideoData(videoRef: RefObject<HTMLVideoElement | null>) {
-    const currentVideoPath = usePlayerStore((state) => state.currentPath);
-    const setFramerate = usePlayerStore((state) => state.setFramerate);
-    const setRotation = usePlayerStore((state) => state.setRotation);
-    
-    const [currentVideoTags, setCurrentVideoTags] = useState<number[]>([]);
+  // 从各个 Store 获取所需的 Action 和数据
+  const currentPath = usePlaylistStore((state) => state.currentPath);
+  const setFramerate = usePlayerStore((state) => state.setFramerate);
+  const setRotation = usePlayerStore((state) => state.setRotation);
 
-    // 1. 视频源加载与元数据读取
-    useEffect(() => {
-        if (videoRef.current && currentVideoPath) {
-            const normalizedPath = currentVideoPath.replace(/\\/g, '/');
-            videoRef.current.src = `file://${normalizedPath}`;
-            videoRef.current.load();
+  // 获取当前视频在注册表中的档案
+  const videoFile = useVideoFileRegistryStore((s) => 
+    currentPath ? s.videos[currentPath] : null
+  );
 
-            const loadMetadata = async () => {
-                try {
-                    // 加载帧率
-                    const metadata = await window.api.getVideoMetadata(currentVideoPath);
-                    setFramerate(metadata.framerate);
+  useEffect(() => {
+    if (!currentPath || !videoRef.current) return;
 
-                    // 加载 Hash 和 旋转角度
-                    const hash = await window.api.calculateVideoHash(currentVideoPath);
-                    if (hash) {
-                        const annotation = await window.api.getAnnotation(hash);
-                        const savedRotation = (annotation?.rotation ?? 0) as 0 | 90 | 180 | 270;
-                        setRotation(savedRotation);
-                    }
-                } catch (error) {
-                    console.error("Failed to load video metadata:", error);
-                }
-            };
-            loadMetadata();
+    // --- 1. 同步旋转角度 ---
+    const savedRotation = videoFile?.annotation?.rotation ?? 0;
+    setRotation(savedRotation);
+
+    // --- 2. 获取物理帧率 ---
+    // 帧率通常需要 ffmpeg 实时读取，如果 Registry 里没存，则在这里获取一次
+    const loadTechnicalMetadata = async () => {
+      try {
+        const metadata = await window.api.getVideoMetadata(currentPath);
+        if (metadata.framerate) {
+          setFramerate(metadata.framerate);
         }
-    }, [currentVideoPath, setFramerate, setRotation, videoRef]);
-
-    // 2. 加载 Tags
-    useEffect(() => {
-        if (currentVideoPath && window.api?.loadVideoTags) {
-            window.api.loadVideoTags(currentVideoPath).then(setCurrentVideoTags);
-        }
-    }, [currentVideoPath]);
-
-    // 3. 记录历史
-    useEffect(() => {
-        if (currentVideoPath) {
-            useHistoryStore.getState().addToHistory(currentVideoPath);
-        }
-    }, [currentVideoPath]);
-
-    return { 
-        currentVideoTags, 
-        setCurrentVideoTags 
+      } catch (error) {
+        console.error("[useVideoData] Failed to load framerate:", error);
+        setFramerate(30); // 容错处理
+      }
     };
+
+    loadTechnicalMetadata();
+
+    // --- 3. 强制重新加载视频源 ---
+    // 虽然 <video src={...} /> 会处理切换，但调用 load() 可以确保内部状态重置
+    videoRef.current.load();
+
+  }, [currentPath, videoFile?.annotation?.rotation, setRotation, setFramerate, videoRef]);
+
+  return { videoFile };
 }

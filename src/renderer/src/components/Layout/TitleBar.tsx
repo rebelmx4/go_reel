@@ -1,13 +1,19 @@
-// src/components/layout/TitleBar.tsx
+// src/renderer/src/components/layout/TitleBar.tsx
 
 import { Box, Group, Text, ActionIcon, Tabs, Tooltip } from '@mantine/core';
 import { IconMinus, IconSquare, IconX } from '@tabler/icons-react';
+import { useMemo } from 'react';
 import {
-    usePlayerStore,
     usePlaylistStore,
     useNavigationStore,
-    ViewType
+    useVideoFileRegistryStore,
+    selectLikedPaths,
+    selectElitePaths,
+    selectSearchPaths
 } from '../../stores';
+
+// 定义视图类型（确保与 navigationStore 中的定义一致）
+type ViewType = 'player' | 'elite' | 'liked' | 'history' | 'newest' | 'search' | 'settings';
 
 const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
     { value: 'player', label: '播放器', shortcut: 'Esc' },
@@ -20,30 +26,49 @@ const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
 ];
 
 export function TitleBar() {
-    const currentPath = usePlaylistStore((s) => s.currentPath);
-    const getCurrentQueue = usePlaylistStore((s) => s.getCurrentQueue);
+    // --- 1. Store 数据订阅 ---
 
+    // 播放状态
+    const currentPath = usePlaylistStore((s) => s.currentPath);
+    const mode = usePlaylistStore((s) => s.mode);
+    const searchQuery = usePlaylistStore((s) => s.searchQuery);
+
+    // 档案库数据 (用于计算标题中的数量)
+    const registry = useVideoFileRegistryStore();
+
+    // 视图导航
     const currentView = useNavigationStore((state) => state.currentView);
     const setView = useNavigationStore((state) => state.setView);
 
-    const handleMinimize = () => window.api.windowMinimize();
-    const handleMaximize = () => window.api.windowMaximize();
-    const handleClose = () => window.api.windowClose();
+    // --- 2. 逻辑计算 ---
 
-    const getVideoTitle = () => {
+    /**
+     * 动态生成标题：[当前索引/总数] 文件名
+     */
+    const videoTitle = useMemo(() => {
         if (!currentPath) return 'GoReel - 片遇';
-        const queue = getCurrentQueue();
+
+        // 根据当前的播放模式(mode)确定计算队列
+        let queue: string[] = [];
+        switch (mode) {
+            case 'liked': queue = selectLikedPaths(registry); break;
+            case 'elite': queue = selectElitePaths(registry); break;
+            case 'search': queue = selectSearchPaths(registry, searchQuery); break;
+            default: queue = registry.videoPaths; // 'all' 模式
+        }
+
         const total = queue.length;
         const currentIndex = queue.indexOf(currentPath);
-        const displayIndex = currentIndex !== -1 ? currentIndex + 1 : 1;
+        const displayIndex = currentIndex !== -1 ? currentIndex + 1 : '?';
         const filename = currentPath.split(/[\\/]/).pop() || '';
 
         return `[${displayIndex}/${total}] ${filename}`;
-    };
+    }, [currentPath, mode, registry, searchQuery]);
 
-    const handleTabChange = (value: string | null) => {
-        if (value) setView(value as ViewType);
-    };
+    // --- 3. 原生窗口控制 ---
+    const handleMinimize = () => window.api.windowMinimize();
+    const handleMaximize = () => window.api.windowMaximize();
+    const handleClose = () => window.api.windowClose();
 
     return (
         <Box
@@ -58,11 +83,11 @@ export function TitleBar() {
                 userSelect: 'none',
             }}
         >
+            {/* 左侧：标签页导航 */}
             <Box style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
                 <Tabs
                     value={currentView}
-                    onChange={handleTabChange}
-                    // 1. 这里移除了报错的 &[data-active]
+                    onChange={(val) => val && setView(val as ViewType)}
                     styles={{
                         root: { height: 32 },
                         list: { borderBottom: 'none', height: 32 },
@@ -91,6 +116,7 @@ export function TitleBar() {
                 </Tabs>
             </Box>
 
+            {/* 中间：视频标题展示 */}
             <Text
                 size="xs"
                 fw={500}
@@ -105,9 +131,10 @@ export function TitleBar() {
                     pointerEvents: 'none',
                 }}
             >
-                {getVideoTitle()}
+                {videoTitle}
             </Text>
 
+            {/* 右侧：窗口控制按钮 */}
             <Group gap={0} style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
                 <ActionIcon variant="subtle" color="gray" radius={0} w={38} h={32} onClick={handleMinimize}>
                     <IconMinus size={16} />
@@ -128,21 +155,15 @@ export function TitleBar() {
                 </ActionIcon>
             </Group>
 
-            {/* 2. 将 CSS 逻辑移动到这里 */}
             <style>{`
-                /* 基础 Tab 样式 */
                 .mantine-Tabs-tab {
                     border-bottom: 2px solid transparent;
                     transition: all 0.2s ease;
                 }
-
-                /* 激活状态的 Tab 样式 (解决报错的关键) */
                 .mantine-Tabs-tab[data-active] {
                     border-bottom-color: var(--mantine-color-blue-filled);
                     color: var(--mantine-color-white);
                 }
-
-                /* 关闭按钮悬浮效果 */
                 .titlebar-close-button:hover {
                     background-color: var(--mantine-color-red-8) !important;
                     color: white !important;

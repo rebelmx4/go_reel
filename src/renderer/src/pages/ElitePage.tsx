@@ -1,67 +1,51 @@
-import { useEffect, useMemo } from 'react';
+// src/renderer/src/pages/ElitePage.tsx
+
+import { useEffect } from 'react';
 import { Box, Text } from '@mantine/core';
 import {
-    useVideoStore,
+    useVideoFileRegistryStore, // 新的档案库 Store
+    useEliteFiles,              // 直接获取精品视频对象的 Hook
     usePlaylistStore,
-    useNavigationStore,
-    useElitePaths // 使用 videoStore.ts 中导出的选择器
+    useNavigationStore
 } from '../stores';
 import { VideoGrid } from '../components/Video/VideoGrid';
-import { JoinedVideo } from '../../../shared/models';
+import { VideoFile } from '../../../shared/models';
 
 export function ElitePage() {
-    // 1. 获取精品视频数据
-    const elitePaths = useElitePaths();
-    const videoMap = useVideoStore((state) => state.videos);
-    const updateAnnotation = useVideoStore((state) => state.updateAnnotation);
-    const initStore = useVideoStore((state) => state.initStore);
+    // 1. 直接获取精品视频列表
+    const eliteVideos = useEliteFiles();
 
-    // 2. 播放与列表控制
+    // 2. 获取 Store Actions
+    const updateAnnotation = useVideoFileRegistryStore((state) => state.updateAnnotation);
+    const jumpTo = usePlaylistStore((state) => state.jumpTo);
     const setPlaylistMode = usePlaylistStore((state) => state.setMode);
-    const setCurrentPath = usePlaylistStore((state) => state.setCurrentPath);
-
-    // 3. 导航与播放器控制
     const setView = useNavigationStore((state) => state.setView);
-    const setCurrentVideo = usePlaylistStore((state) => state.setCurrentPath);
 
-    // 4. 将路径映射为完整的视频对象
-    const eliteVideos = useMemo(() => {
-        return elitePaths
-            .map(path => videoMap[path])
-            .filter((v): v is JoinedVideo => v !== undefined);
-    }, [elitePaths, videoMap]);
-
-    // 初始化：确保数据加载并设置播放列表模式
+    // 3. 页面进入时的逻辑
     useEffect(() => {
-        if (Object.keys(videoMap).length === 0) {
-            initStore();
-        }
-        // 进入页面时，将全局播放模式设为 'elite'
-        // 这样在精品页面点击播放后，点击“下一首”也只会在精品中循环
+        // 当用户浏览精品页面时，将播放模式预设为 'elite'
+        // 这样即使不点击视频直接切回播放器，按“下一首”也会在精品里循环
         setPlaylistMode('elite');
-    }, [initStore, setPlaylistMode, videoMap]);
+    }, [setPlaylistMode]);
 
-    const handlePlay = (video: JoinedVideo) => {
-        // 1. 设置当前播放路径（内部会自动触发 historyStore.addToHistory）
-        setCurrentPath(video.path);
-
-        // 2. 同步给播放器（如果 PlayerStore 需要手动设置）
-        if (setCurrentVideo) {
-            setCurrentVideo(video.path);
-        }
-
-        // 3. 切换视图
+    const handlePlay = (video: VideoFile) => {
+        /**
+         * 逻辑执行：
+         * 1. 调用 jumpTo：切换到该视频，并确保模式为 'elite'
+         * 2. 切换到播放器视图
+         */
+        jumpTo(video.path, 'elite');
         setView('player');
     };
 
-    const handleToggleLike = (video: JoinedVideo) => {
+    const handleToggleLike = (video: VideoFile) => {
         const currentLike = video.annotation?.like_count ?? 0;
         updateAnnotation(video.path, {
             like_count: currentLike > 0 ? 0 : 1
         });
     };
 
-    const handleToggleElite = (video: JoinedVideo) => {
+    const handleToggleElite = (video: VideoFile) => {
         const currentFavorite = !!video.annotation?.is_favorite;
         updateAnnotation(video.path, {
             is_favorite: !currentFavorite

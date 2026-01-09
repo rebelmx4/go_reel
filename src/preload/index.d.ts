@@ -6,7 +6,7 @@ import type { FileProfile } from '../main/data/json/FileProfileManager';
 
 import type { 
   Annotation, 
-  JoinedVideo, 
+  VideoFile, 
   StartupResult 
 } from '../shared/models'; 
 

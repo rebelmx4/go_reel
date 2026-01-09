@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Box, Image, Text, ActionIcon, Group, Skeleton } from '@mantine/core';
 import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } from '@tabler/icons-react';
-// 使用 JoinedVideo 类型
-import { JoinedVideo } from '../../../../shared/models';
+// 使用 VideoFile 类型
+import { VideoFile } from '../../../../shared/models';
 
 interface VideoCardProps {
-    video: JoinedVideo;
-    onPlay: (video: JoinedVideo) => void;
+    video: VideoFile;
+    onPlay: (video: VideoFile) => void;
     // 这里的回调参数类型同步修改
-    onToggleLike?: (video: JoinedVideo) => void;
-    onToggleElite?: (video: JoinedVideo) => void;
+    onToggleLike?: (video: VideoFile) => void;
+    onToggleElite?: (video: VideoFile) => void;
 }
 
 export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoCardProps) {
     const [coverUrl, setCoverUrl] = useState<string>('');
-    // JoinedVideo 本身有 size，这里主要存储异步获取的 duration
+    // VideoFile 本身有 size，这里主要存储异步获取的 duration
     const [metaData, setMetaData] = useState<{ duration: number }>({
         duration: 0
     });
@@ -209,7 +209,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 <Group justify="space-between" align="end" wrap="nowrap">
                     <Box style={{ minWidth: 0 }}>
                         <Text size="xs" c="dimmed" truncate>
-                            {/* JoinedVideo 中包含 createdAt 和 size */}
+                            {/* VideoFile 中包含 createdAt 和 size */}
                             {formatDate(video.mtime || video.createdAt)}
                             {video.size ? ` • ${formatSize(video.size)}` : ''}
                         </Text>

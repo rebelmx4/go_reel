@@ -82,7 +82,8 @@ const DEFAULT_SETTINGS: AppSettings = {
         step_forward: 'D',
         volume_up: 'W',
         volume_down: 'S',
-        rotate_video: 'Alt+R',
+        rotate_video: 'R',
+        play_next: "PageDown"
       },
       capture: {
         screenshot: 'E',

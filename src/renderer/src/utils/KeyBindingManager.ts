@@ -99,12 +99,34 @@ export class KeyBindingManager {
     this.handlers.set(action, handler);
   }
 
+   /**
+   * 批量注册动作处理器
+   * @param handlersMap 动作名与处理函数的映射对象
+   * 示例: { toggle_play: () => ..., step_forward: () => ... }
+   */
+  public registerHandlers(handlersMap: Record<string, ActionHandler>): void {
+    Object.entries(handlersMap).forEach(([action, handler]) => {
+      this.registerHandler(action, handler);
+    });
+  }
+
   /**
    * 移除一个已注册的动作处理器。
    * @param action 要注销的动作名称。
    */
   public unregisterHandler(action: string): void {
     this.handlers.delete(action);
+  }
+
+  /**
+   * 批量注销动作处理器
+   * @param actions 动作名数组
+   * 示例: ['toggle_play', 'step_forward']
+   */
+  public unregisterHandlers(actions: string[]): void {
+    actions.forEach((action) => {
+      this.unregisterHandler(action);
+    });
   }
 
   /**

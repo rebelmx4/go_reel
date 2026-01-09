@@ -10,7 +10,7 @@ export interface Annotation {
 }
 
 
-export interface JoinedVideo {
+export interface VideoFile {
   path: string;
   createdAt: number; 
   mtime: number;     
@@ -20,7 +20,7 @@ export interface JoinedVideo {
 
 
 export interface StartupResult {
-  videoList: JoinedVideo[];
+  videoList: VideoFile[];
   history: string[];
   settings: any;
 }

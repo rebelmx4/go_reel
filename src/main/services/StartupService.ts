@@ -4,7 +4,7 @@ import { annotationManager } from '../data/json/AnnotationManager';
 import { fileProfileManager } from '../data/json/FileProfileManager'; // 注意：FileProfile 接口已在 manager 中定义
 import { historyManager } from '../data/json/HistoryManager';
 import { scanVideoFiles } from '../utils/fileScanner';
-import { StartupResult, JoinedVideo } from '../../shared/models';// 引入共享类型
+import { StartupResult, VideoFile } from '../../shared/models';// 引入共享类型
 
 
 export class StartupService {
@@ -36,8 +36,8 @@ export class StartupService {
 
     // 3. 并行处理：获取档案并挂载元数据
     // 使用 Promise.all 处理 map 中的异步 getProfile 调用
-    const videoList: JoinedVideo[] = await Promise.all(scannedFiles.map(async (file) => {
-      const video: JoinedVideo = {
+    const videoList: VideoFile[] = await Promise.all(scannedFiles.map(async (file) => {
+      const video: VideoFile = {
         path: file.path,
         createdAt: file.createdAt,
         mtime: file.mtime,
