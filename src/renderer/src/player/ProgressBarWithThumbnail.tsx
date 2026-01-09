@@ -1,16 +1,14 @@
 import { useRef, useEffect, useState } from 'react';
 import { Box } from '@mantine/core';
+import { usePlayerStore } from '../stores'; // 直接引入 store
+
 
 interface ProgressBarWithThumbnailProps {
-    currentTime: number;
-    duration: number;
     videoPath: string | null;
     onSeek: (time: number) => void;
 }
 
 export function ProgressBarWithThumbnail({
-    currentTime,
-    duration,
     videoPath,
     onSeek
 }: ProgressBarWithThumbnailProps) {
@@ -22,6 +20,9 @@ export function ProgressBarWithThumbnail({
     const [thumbnailPosition, setThumbnailPosition] = useState(0);
     const [thumbnailTime, setThumbnailTime] = useState(0);
     const [isSeeking, setIsSeeking] = useState(false);
+
+    const currentTime = usePlayerStore(state => state.currentTime);
+    const duration = usePlayerStore(state => state.duration);
 
     // Load ghost video when video path changes
     useEffect(() => {

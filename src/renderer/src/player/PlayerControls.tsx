@@ -19,6 +19,7 @@ import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
 import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 import { AppAction } from '../../../shared/settings.schema';
+import { PlaybackTimeLabel } from './PlaybackTimeLabel'; // 引入新组件
 
 
 /**
@@ -42,18 +43,26 @@ interface PlayerControlsProps {
 
 export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: PlayerControlsProps) {
     // --- 1. Store 数据订阅 ---
-    const {
-        currentTime, duration, volume, rotation, stepMode, skipFrameMode,
-        setVolume, setStepMode, setSkipFrameMode, stepForward, stepBackward,
-        togglePlay, volumeUp, volumeDown // <--- 引入新方法
-    } = usePlayerStore();
+    // 状态值
+    const volume = usePlayerStore(state => state.volume);
+    const stepMode = usePlayerStore(state => state.stepMode);
+    const skipFrameMode = usePlayerStore(state => state.skipFrameMode);
+
+    // 方法 (Actions 通常是静态的，不会触发重绘)
+    const setVolume = usePlayerStore(state => state.setVolume);
+    const setStepMode = usePlayerStore(state => state.setStepMode);
+    const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
+    const stepForward = usePlayerStore(state => state.stepForward);
+    const stepBackward = usePlayerStore(state => state.stepBackward);
+    const volumeUp = usePlayerStore(state => state.volumeUp);
+    const volumeDown = usePlayerStore(state => state.volumeDown);
 
     const currentPath = usePlaylistStore(state => state.currentPath);
 
-    // 【核心修改】直接从注册表中获取当前视频档案
     const videoFile = useVideoFileRegistryStore(useCallback(state =>
         currentPath ? state.videos[currentPath] : null, [currentPath]
     ));
+
     const updateAnnotation = useVideoFileRegistryStore(state => state.updateAnnotation);
 
     const { isCropMode, setCropMode } = useScreenshotStore();
@@ -116,16 +125,6 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
         // 注意：依赖项非常干净，只有函数引用
     }, [onScreenshot, onRotate, volumeUp, volumeDown, stepForward, stepBackward, handleToggleFavorite]);
 
-    // --- 4. 辅助函数 ---
-    const formatTime = (timeInSeconds: number) => {
-        const h = Math.floor(timeInSeconds / 3600);
-        const m = Math.floor((timeInSeconds % 3600) / 60);
-        const s = Math.floor(timeInSeconds % 60);
-        return h > 0
-            ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-            : `${m}:${s.toString().padStart(2, '0')}`;
-    };
-
     const handleSeek = (value: number) => {
         if (videoRef.current) videoRef.current.currentTime = value;
     };
@@ -158,20 +157,13 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate }: Pla
             <ScreenshotTrack onScreenshotClick={handleScreenshotSeek} />
 
             <Group gap="xs" style={{ width: '100%' }}>
-                <Text size="xs" c="dimmed" ff="monospace" style={{ minWidth: 45 }}>
-                    {formatTime(currentTime)}
-                </Text>
                 <Box style={{ flex: 1 }}>
                     <ProgressBarWithThumbnail
-                        currentTime={currentTime}
-                        duration={duration}
                         videoPath={currentPath || ''}
                         onSeek={handleSeek}
                     />
                 </Box>
-                <Text size="xs" c="dimmed" ff="monospace" style={{ minWidth: 45 }}>
-                    {formatTime(duration)}
-                </Text>
+                <PlaybackTimeLabel />
             </Group>
 
             <Group justify="space-between">
