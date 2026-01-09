@@ -43,26 +43,6 @@ function App() {
    * Effect 2: 全局事件监听 (快捷键 & 刷新)
    */
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      //   // 1. 处理 F5 刷新逻辑
-      //   if (event.key === 'F5') {
-      //     event.preventDefault();
-      //     const isRefreshing = useRefreshStore.getState().progress.isRefreshing;
-      //     if (!isRefreshing) {
-      //       startRefresh();
-      //       // 调用真正的后端刷新接口
-      //       refreshVideos().finally(() => {
-      //         finishRefresh();
-      //       });
-      //     }
-      //     return;
-      //   }
-
-      // 2. 派发给快捷键管理器
-      keyBindingManager.handleKeyPress(event);
-    };
-
-    // 3. 注册导航快捷键处理器
     keyBindingManager.registerHandler('list_history', () => setView('history'));
     keyBindingManager.registerHandler('list_newest', () => setView('newest'));
     keyBindingManager.registerHandler('list_search', () => setView('search'));
@@ -71,10 +51,8 @@ function App() {
     keyBindingManager.registerHandler('back_to_player', () => setView('player'));
     keyBindingManager.registerHandler('open_settings', () => setView('settings'));
 
-    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      // window.removeEventListener('keydown', handleKeyDown);
       keyBindingManager.clearHandlers();
     };
   }, [setView, startRefresh, finishRefresh]);

@@ -44,13 +44,32 @@ export class KeyBindingManager {
   // 一个用于高效查找的嵌套 Map：上下文 -> (规范化快捷键 -> 动作)
   private keyToAction: Map<string, Map<string, string>> = new Map();
 
+   constructor() {
+    // 绑定上下文，确保 handleKeyPress 中的 this 永远指向实例
+    this.handleKeyPress = this.handleKeyPress.bind(this);
+  }
+
   /**
-   * 使用快捷键配置初始化管理器。
-   * 此方法应在应用启动时调用一次。
-   * @param bindings 来自设置的快捷键配置。
+   * 启动管理器：加载配置并开始监听全局事件
+   * @param settings 完整的设置对象 (包含 key_bindings)
    */
-  public initialize(bindings: KeyBindings): void {
-    this.updateBindings(bindings);
+  public bootstrap(bindings: KeyBindings): void {
+    // 1. 加载配置
+      this.updateBindings(bindings);
+
+    // 2. 挂载全局监听器 (单例模式下只执行这一次)
+    // 注意：因为 bootstrap 只在 main.tsx 执行一次，所以这里不需要 remove
+    window.addEventListener('keydown', this.handleKeyPress);
+    
+    console.log('KeyBindingManager: Bootstrapped and listening.');
+  }
+
+  /**
+   * (可选) 如果你需要支持热重载或完全销毁应用，提供这个方法
+   */
+  public destroy(): void {
+    window.removeEventListener('keydown', this.handleKeyPress);
+    this.handlers.clear();
   }
 
    /**

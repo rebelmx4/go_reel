@@ -2,7 +2,7 @@ import './assets/main.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { useVideoStore, usePlayerStore, usePlaylistStore, useNavigationStore, useVideoFileRegistryStore } from './stores';
+import { usePlayerStore, usePlaylistStore, useNavigationStore, useVideoFileRegistryStore } from './stores';
 import { keyBindingManager } from './utils/KeyBindingManager';
 import App from './App'
 
@@ -43,7 +43,7 @@ const bootstrap = async () => {
     if (settings) {
       // 配置快捷键管理器
       if (settings.key_bindings) {
-        keyBindingManager.initialize(settings.key_bindings);
+        keyBindingManager.bootstrap(settings.key_bindings);
       }
 
       // 恢复播放器全局设置
