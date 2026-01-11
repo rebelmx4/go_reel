@@ -1,3 +1,4 @@
+import { useIntersection } from '@mantine/hooks';
 import { useState, useEffect, useMemo } from 'react';
 import { Box, Image, Text, ActionIcon, Group, Skeleton, Tooltip } from '@mantine/core';
 import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } from '@tabler/icons-react';
@@ -31,8 +32,23 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
     const isLiked = (video.annotation?.like_count ?? 0) > 0;
     const isFavorite = !!video.annotation?.is_favorite;
 
+    const { ref, entry } = useIntersection({
+        root: null, // 默认相对于视口
+        threshold: 0.1, // 只要露出 10% 就算可见
+    });
+
+    const [hasBeenVisible, setHasBeenVisible] = useState(false);
+
+    useEffect(() => {
+        if (entry?.isIntersecting) {
+            setHasBeenVisible(true);
+        }
+    }, [entry?.isIntersecting]);
+
     // 加载封面和元数据
     useEffect(() => {
+        if (!hasBeenVisible) return;
+
         let isMounted = true;
         setIsLoadingCover(true);
 
@@ -63,7 +79,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
         return () => {
             isMounted = false;
         };
-    }, [video.path, filename]);
+    }, [video.path, filename, hasBeenVisible]);
 
     const formatDuration = (seconds: number) => {
         if (!seconds) return '0:00';
@@ -94,6 +110,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
     return (
         <Box
             className="video-card"
+            ref={ref}
             style={{
                 position: 'relative',
                 borderRadius: 8,
