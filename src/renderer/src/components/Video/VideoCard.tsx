@@ -5,6 +5,7 @@ import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } 
 import { IconFolderOpen, IconTrash } from '@tabler/icons-react';
 import { VideoFile } from '../../../../shared/models';
 import { useFileActions } from '../../hooks/useFileActions';
+import { formatRelativeTime, formatFileSize, formatDuration } from '../../utils/format';
 
 
 interface VideoCardProps {
@@ -86,25 +87,6 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const formatSize = (bytes?: number) => {
-        if (!bytes) return '';
-        const mb = bytes / (1024 * 1024);
-        if (mb > 1024) return `${(mb / 1024).toFixed(2)} GB`;
-        return `${mb.toFixed(1)} MB`;
-    };
-
-    const formatDate = (timestamp: number) => {
-        if (!timestamp) return '';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) return '今天';
-        if (diffDays === 1) return '昨天';
-        if (diffDays < 7) return `${diffDays}天前`;
-        return date.toLocaleDateString('zh-CN');
     };
 
     return (
@@ -256,8 +238,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                     <Box style={{ minWidth: 0 }}>
                         <Text size="xs" c="dimmed" truncate>
                             {/* VideoFile 中包含 createdAt 和 size */}
-                            {formatDate(video.mtime || video.createdAt)}
-                            {video.size ? ` • ${formatSize(video.size)}` : ''}
+                            <Text>{formatRelativeTime(video.mtime)} • {formatFileSize(video.size)}</Text>
                         </Text>
                     </Box>
 
