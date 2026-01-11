@@ -69,6 +69,7 @@ declare global {
       moveToEdited: (filePath: string) => Promise<string>;
       moveToTranscoded: (filePath: string) => Promise<string>;
       showInExplorer: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      openVideoSourceDir: () => Promise<{ success: boolean; error?: string }>;
 
       // Screenshot Management
       saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>

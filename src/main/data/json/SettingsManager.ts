@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: AppSettings = {
         refresh: 'F5',
         soft_delete: 'Ctrl+Delete',
         open_settings: 'Ctrl+,', // 新增字段
+        open_video_dir: 'Ctrl+Shift+O', 
       },
     },
     dialog_assign_tag: {
@@ -92,6 +93,12 @@ const DEFAULT_SETTINGS: AppSettings = {
     },
   },
 };
+
+const SUB_DIRS = {
+  TRASH: '待删除',
+  EDITED: '已编辑',
+  TRANSCODED: '已转码'
+} as const;
 
 /**
  * 设置管理器类
@@ -127,12 +134,17 @@ export class SettingsManager extends BaseJsonManager<AppSettings> {
     this.set({ paths: { ...this.data.paths, staged_path: path } });
   }
 
+
   public getTrashPath(): string {
-    return path.join(this.data.paths.staged_path, '待删除');
+    return path.join(this.getStagedPath(), SUB_DIRS.TRASH);
   }
 
   public getEditedPath(): string {
-    return path.join(this.data.paths.staged_path, '已编辑');
+    return path.join(this.getStagedPath(), SUB_DIRS.EDITED);
+  }
+
+  public getTranscodedPath(): string {
+    return path.join(this.getStagedPath(), SUB_DIRS.TRANSCODED);
   }
 
   public getScreenshotExportPath(): string {

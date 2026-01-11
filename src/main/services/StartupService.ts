@@ -5,6 +5,7 @@ import { fileProfileManager } from '../data/json/FileProfileManager'; // 注意�
 import { historyManager } from '../data/json/HistoryManager';
 import { scanVideoFiles } from '../utils/fileScanner';
 import { StartupResult, VideoFile } from '../../shared/models';// 引入共享类型
+import { ipcMain } from 'electron';
 
 
 export class StartupService {
@@ -80,6 +81,12 @@ export class StartupService {
   public getLastResult(): StartupResult | null {
     return this.lastResult;
   }
+}
+
+export function registerStartupServiceHandlers() {
+  ipcMain.handle('get-startup-result', async () => {
+      return startupService.getLastResult();
+    });
 }
 
 export const startupService = new StartupService();

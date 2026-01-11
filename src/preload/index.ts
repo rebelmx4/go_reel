@@ -32,6 +32,8 @@ const api = {
     ipcRenderer.invoke('move-file-to-transcoded', filePath),
   showInExplorer: (filePath: string) => 
     ipcRenderer.invoke('show-in-explorer', filePath),
+  openVideoSourceDir: () => 
+    ipcRenderer.invoke('open-video-source-dir'), 
   
   // Screenshot Management
   saveManualScreenshot: (filePath: string, timestamp: number) =>
@@ -42,7 +44,7 @@ const api = {
     ipcRenderer.invoke('load-screenshots', filePath),
   deleteScreenshot: (filePath: string, filename: string) =>
     ipcRenderer.invoke('delete-screenshot', filePath, filename),
-   exportScreenshots: (filePath: string, rotation: number) =>
+  exportScreenshots: (filePath: string, rotation: number) =>
     ipcRenderer.invoke('export-screenshots', filePath, rotation),
   
   // Cover Management

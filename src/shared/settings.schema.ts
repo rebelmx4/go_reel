@@ -49,6 +49,7 @@ export interface SystemActions {
   refresh: string;
   soft_delete: string;
   open_settings: string;
+  open_video_dir: string,
 }
 
 /**

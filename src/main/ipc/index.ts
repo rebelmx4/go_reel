@@ -7,4 +7,3 @@ export { registerAnnotationHandlers } from './AnnotationHandlers';
 export { registerTagHandlers } from './tagHandlers';
 export { registerTagCoverHandlers } from './tagCoverHandlers';
 export { registerHistoryHandlers } from './historyHandlers';
-export { registerFileHandlers } from './fileHandlers';

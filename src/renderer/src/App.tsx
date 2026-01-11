@@ -55,6 +55,11 @@ function App() {
       list_elite: () => setView('elite'),
       back_to_player: () => setView('player'),
       open_settings: () => setView('settings'),
+      open_video_dir: () => {
+        window.api.openVideoSourceDir().then(res => {
+          if (!res.success) console.error('无法打开目录:', res.error);
+        });
+      },
     };
 
     // 1. 使用批量注册

@@ -1,9 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { startupService, RefreshService, VideoExportService } from './services';
+import { startupService, RefreshService, VideoExportService, registerFileSytemHandlers,  registerStartupServiceHandlers } from './services';
 import { settingsManager, annotationManager } from './data';
 import {
   registerWindowHandlers,
@@ -14,7 +14,6 @@ import {
   registerAnnotationHandlers,
   registerTagHandlers,
   registerTagCoverHandlers,
-  registerFileHandlers
 } from './ipc';
 
 
@@ -141,13 +140,9 @@ function setupIpcHandlers() {
   registerTagHandlers();
   registerTagCoverHandlers();
   registerHistoryHandlers();
-  registerFileHandlers();
+  registerFileSytemHandlers();
+  registerStartupServiceHandlers();
   
-  // Get startup result
-  ipcMain.handle('get-startup-result', async () => {
-    return startupService.getLastResult();
-  });
-
 
   // Select directory
   ipcMain.handle('select-directory', async () => {
