@@ -30,6 +30,8 @@ const api = {
     ipcRenderer.invoke('move-file-to-edited', filePath),
   moveToTranscoded: (filePath: string) =>
     ipcRenderer.invoke('move-file-to-transcoded', filePath),
+  showInExplorer: (filePath: string) => 
+    ipcRenderer.invoke('show-in-explorer', filePath),
   
   // Screenshot Management
   saveManualScreenshot: (filePath: string, timestamp: number) =>

@@ -8,7 +8,7 @@ import {
   selectSearchPaths 
 } from './videoFileRegistryStore';
 
-export type PlaylistMode = 'all' | 'liked' | 'elite' | 'search';
+export type PlaylistMode = 'all' | 'liked' | 'elite' | 'newest' | 'search';
 
 interface PlaylistState {
   // --- 状态 ---

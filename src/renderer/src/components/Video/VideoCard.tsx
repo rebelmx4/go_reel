@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Box, Image, Text, ActionIcon, Group, Skeleton } from '@mantine/core';
+import { Box, Image, Text, ActionIcon, Group, Skeleton, Tooltip } from '@mantine/core';
 import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } from '@tabler/icons-react';
-// 使用 VideoFile 类型
+import { IconFolderOpen, IconTrash } from '@tabler/icons-react';
 import { VideoFile } from '../../../../shared/models';
+import { useFileActions } from '../../hooks/useFileActions';
+
 
 interface VideoCardProps {
     video: VideoFile;
@@ -14,7 +16,7 @@ interface VideoCardProps {
 
 export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoCardProps) {
     const [coverUrl, setCoverUrl] = useState<string>('');
-    // VideoFile 本身有 size，这里主要存储异步获取的 duration
+    const { handleShowInExplorer, handleDelete } = useFileActions();
     const [metaData, setMetaData] = useState<{ duration: number }>({
         duration: 0
     });
@@ -91,6 +93,7 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
 
     return (
         <Box
+            className="video-card"
             style={{
                 position: 'relative',
                 borderRadius: 8,
@@ -165,6 +168,32 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
                 >
                     {formatDuration(metaData.duration)}
                 </Box>
+
+                {/* 管理操作按钮：固定在右上角，仅在鼠标移入卡片时可能更显眼 */}
+                <Group
+                    gap={4}
+                    style={{
+                        position: 'absolute', top: 5, right: 5, zIndex: 10,
+                        backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2
+                    }}
+                >
+                    <Tooltip label="打开所在文件夹" position="bottom">
+                        <ActionIcon
+                            variant="subtle" color="gray.3" size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleShowInExplorer(video.path); }}
+                        >
+                            <IconFolderOpen size={16} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="移至待删除" position="bottom">
+                        <ActionIcon
+                            variant="subtle" color="red.5" size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(video); }}
+                        >
+                            <IconTrash size={16} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
 
                 {/* Elite badge */}
                 {isFavorite && (

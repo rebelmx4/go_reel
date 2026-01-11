@@ -68,6 +68,7 @@ declare global {
       moveToTrash: (filePath: string) => Promise<string>;
       moveToEdited: (filePath: string) => Promise<string>;
       moveToTranscoded: (filePath: string) => Promise<string>;
+      showInExplorer: (filePath: string) => Promise<{ success: boolean; error?: string }>;
 
       // Screenshot Management
       saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>

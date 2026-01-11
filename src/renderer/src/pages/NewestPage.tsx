@@ -10,6 +10,7 @@ import {
 import { VideoGrid } from '../components/Video/VideoGrid';
 import { VideoFile } from '../../../shared/models';
 
+
 export function NewestPage() {
     // 1. 直接获取前 100 个视频对象列表
     // 这个 Hook 内部已经处理了 useShallow 和路径映射，且 bootstrap 已保证数据到位
@@ -22,13 +23,14 @@ export function NewestPage() {
 
     // --- 交互处理 ---
 
+
     const handlePlay = (video: VideoFile) => {
         /**
          * 逻辑统一：
          * 1. 使用 jumpTo 切换到目标视频，并设为 'all' 播放模式
          * 2. 切换页面到播放器
          */
-        jumpTo(video.path, 'all');
+        jumpTo(video.path, 'newest');
         setView('player');
     };
 

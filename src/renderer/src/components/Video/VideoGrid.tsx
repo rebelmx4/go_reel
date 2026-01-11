@@ -1,5 +1,5 @@
 import { Box, Text } from '@mantine/core';
-import { VideoFile } from '../../stores';
+import { VideoFile } from '../../../../shared/models';
 import { VideoCard } from './VideoCard';
 
 interface VideoGridProps {
@@ -44,7 +44,7 @@ export function VideoGrid({
         >
             {videos.map(video => (
                 <VideoCard
-                    key={video.hash}
+                    key={video.path}
                     video={video}
                     onPlay={onPlay}
                     onToggleLike={onToggleLike}

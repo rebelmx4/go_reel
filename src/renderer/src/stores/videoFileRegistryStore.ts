@@ -31,6 +31,8 @@ interface VideoFileRegistryState {
 
   /** 辅助方法：非 Hook 环境下获取单个文件 */
   getVideoByPath: (path: string) => VideoFile | undefined;
+
+  removeVideo: (path: string) => void;
 }
 
 export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, get) => ({
@@ -104,6 +106,19 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
   },
 
   getVideoByPath: (path) => get().videos[path],
+
+   removeVideo: (path) => {
+    set((state) => {
+      const newVideos = { ...state.videos };
+      delete newVideos[path];
+      const newPaths = state.videoPaths.filter(p => p !== path);
+      
+      return {
+        videos: newVideos,
+        videoPaths: newPaths
+      };
+    });
+  },
 }));
 
 /**

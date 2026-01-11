@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs  from 'fs-extra';
 import { settingsManager } from '../json/SettingsManager';
 import log from 'electron-log';
+import { shell } from 'electron';
 
 export class FileManager {
   /** 内部工具：确保目录存在 */
@@ -78,6 +79,21 @@ export class FileManager {
   public async moveToTranscoded(filePath: string): Promise<string> {
     return this.moveTo(filePath, '已转码');
   }
+
+  /**
+   * 在操作系统的资源管理器中打开路径并选中文件
+   */
+  public async  showInExplorer(filePath: string): Promise<void> {
+    try {
+      // showItemInFolder 会打开文件夹并高亮显示该文件
+      shell.showItemInFolder(filePath);
+      log.info(`[FileManager] showInExplorer: ${filePath}`);
+    } catch (err) {
+      log.error(`[FileManager] showInExplorer failed: ${filePath}`, err);
+      throw err;
+    }
+  }
+
 }
 
 export const fileManager = new FileManager();

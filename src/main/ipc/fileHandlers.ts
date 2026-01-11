@@ -41,4 +41,14 @@ export function registerFileHandlers() {
       return { success: false, error: err.message };
     }
   });
+
+  ipcMain.handle('show-in-explorer', async (_, filePath: string) => {
+    try {
+      await fileManager.showInExplorer(filePath);
+      return { success: true };
+    } catch (err: any) {
+      log.error('[IPC] show-in-explorer failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
 }
