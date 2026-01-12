@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { BaseAssetManager } from './BaseAssetManager';
 import { settingsManager }  from '../json/SettingsManager';
 import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator'; 
+import { videoMetadataManager } from '../json/VideoMetadataManager';
 
 export interface Screenshot {
   filename: string;
@@ -27,9 +28,25 @@ export class ScreenshotManager extends BaseAssetManager {
     const dir = this.getHashBasedDir(hash);
     
     try {
-      // 1. 预先计算最终路径： {timestamp}_m.webp
-      const msTimestamp = Math.floor(timestampInSeconds * 1000);
-      const finalFilename = `${msTimestamp}_m.webp`;
+      
+       // 1. 获取视频元数据 (从缓存或 FFmpeg 提取)
+      const metadata = await videoMetadataManager.getVideoMetadata(videoPath);
+      
+      // 2. 计算补零长度
+      // 如果获取到了元数据，计算总时长的毫秒数有多少位
+      // 比如视频 120秒 -> 120000ms -> 6位
+      let padLength = 8; // 默认兜底 8 位 (约 2.7 小时)
+      if (metadata && metadata.duration > 0) {
+        const totalMs = Math.floor(metadata.duration * 1000);
+        padLength = totalMs.toString().length;
+      }
+
+      // 3. 格式化当前时间戳
+      const currentMs = Math.floor(timestampInSeconds * 1000);
+      // 使用 padStart 进行高位补零
+      const paddedTimestamp = currentMs.toString().padStart(padLength, '0');
+      
+      const finalFilename = `${paddedTimestamp}_m.webp`;
       const finalPath = path.join(dir, finalFilename);
 
       // 2. 直接告诉生成器生成这个文件
