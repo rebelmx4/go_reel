@@ -19,7 +19,7 @@ export async function getVideoCover(
   }
   
   // IPC will handle the three-tier logic
-  const coverPath = await window.api.getCover(videoHash, videoPath);
+  const coverPath = await window.api.getCover(videoPath);
   
   // If empty, generate default cover
   if (!coverPath) {

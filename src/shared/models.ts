@@ -26,3 +26,11 @@ export interface StartupResult {
   history: string[];
   settings: AppSettings;
 }
+
+
+export interface VideoMetadata {
+    duration: number; 
+    width: number;
+    height: number;
+    framerate: number;
+}

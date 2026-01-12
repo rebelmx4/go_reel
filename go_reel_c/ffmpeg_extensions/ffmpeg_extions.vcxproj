@@ -96,7 +96,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,7 +135,7 @@ echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -174,7 +174,7 @@ echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include;$(ProjectDir)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -214,7 +214,7 @@ echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ffmpeg-7.1.1-full_build-shared\include;$(ProjectDir)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -249,7 +249,8 @@ echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Screenshotter.h" />
+    <ClInclude Include="screen_shot\Screenshotter.h" />
+    <ClInclude Include="screen_shot\ScreenshotterInternal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -259,7 +260,10 @@ echo [Post-Build] Essential DLLs copied to ..\bin successfully.</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Screenshotter.cpp" />
+    <ClCompile Include="screen_shot\ScreenshotterBatch.cpp" />
+    <ClCompile Include="screen_shot\ScreenshotterInfo.cpp" />
+    <ClCompile Include="screen_shot\ScreenshotterSingle.cpp" />
+    <ClCompile Include="screen_shot\ScreenshotterUtils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

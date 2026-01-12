@@ -34,6 +34,6 @@ export function registerCoverHandlers() {
    */
   ipcMain.handle('set-manual-cover', async (_, filePath: string, screenshotPath: string): Promise<boolean> => {
     // 核心逻辑同样移入 coverManager
-    withHash(filePath, (hash) => coverManager.setManualCoverFromPath(hash, screenshotPath));
+    return withHash(filePath, (hash) => coverManager.setManualCoverFromPath(hash, screenshotPath));
   });
 }

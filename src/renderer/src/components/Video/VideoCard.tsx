@@ -16,11 +16,19 @@ interface VideoCardProps {
     onToggleElite?: (video: VideoFile) => void;
 }
 
+interface CardMetadata {
+    duration: number;
+    width: number;
+    height: number;
+}
+
 export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoCardProps) {
     const [coverUrl, setCoverUrl] = useState<string>('');
     const { handleShowInExplorer, handleDelete } = useFileActions();
-    const [metaData, setMetaData] = useState<{ duration: number }>({
-        duration: 0
+    const [metaData, setMetaData] = useState<CardMetadata>({
+        duration: 0,
+        width: 0,
+        height: 0
     });
     const [isLoadingCover, setIsLoadingCover] = useState(true);
 
@@ -56,16 +64,19 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
         const loadData = async () => {
             try {
                 // 1. 获取封面 - 依据你的 window.api 定义: getCover(fielPath: string)
-                if (window.api?.getCover) {
-                    const url = await window.api.getCover(video.path);
-                    if (isMounted) setCoverUrl(url);
-                }
+                const url = await window.api.getCover(video.path);
+                if (isMounted) setCoverUrl(url);
 
                 // 2. 获取时长 (如果需要异步获取)
                 if (metaData.duration === 0 && window.api?.getVideoMetadata) {
                     const meta = await window.api.getVideoMetadata(video.path);
                     if (isMounted) {
-                        setMetaData({ duration: meta.duration });
+                        // [修改] 一次性保存所有有用的信息
+                        setMetaData({
+                            duration: meta.duration,
+                            width: meta.width,
+                            height: meta.height
+                        });
                     }
                 }
             } catch (error) {
@@ -81,13 +92,6 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
             isMounted = false;
         };
     }, [video.path, filename, hasBeenVisible]);
-
-    const formatDuration = (seconds: number) => {
-        if (!seconds) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
 
     return (
         <Box

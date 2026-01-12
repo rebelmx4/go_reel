@@ -48,8 +48,8 @@ const api = {
     ipcRenderer.invoke('export-screenshots', filePath, rotation),
   
   // Cover Management
-  getCover: (filePath: string, videoPath: string) =>
-    ipcRenderer.invoke('get-cover', filePath, videoPath),
+  getCover: (filePath: string) =>
+    ipcRenderer.invoke('get-cover', filePath),
   setManualCover: (filePath: string, screenshotPath: string) =>
     ipcRenderer.invoke('set-manual-cover', screenshotPath, filePath),
   

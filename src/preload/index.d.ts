@@ -85,7 +85,7 @@ declare global {
       
       // Video Metadata
       calculateVideoHash: (filePath: string) => Promise<string | null>
-      getVideoMetadata: (videoPath: string) => Promise<{ duration: number; width: number; height: number; framerate: number }>
+      getVideoMetadata: (videoPath: string) => Promise<VideoMetadata>
 
       // annotation
       addAnnotation: (fielPath: string, annotation: Annotation) => Promise<{ success: boolean; error?: string }>

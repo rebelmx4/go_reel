@@ -2,6 +2,7 @@
 
 import { useEffect, RefObject } from 'react';
 import { usePlayerStore, useVideoFileRegistryStore, usePlaylistStore } from '../stores';
+import { VideoMetadata } from '../../../shared/models'
 
 /**
  * 视频数据同步 Hook
@@ -32,7 +33,7 @@ export function useVideoData(videoRef: RefObject<HTMLVideoElement | null>) {
     const loadTechnicalMetadata = async () => {
       try {
         const metadata = await window.api.getVideoMetadata(currentPath);
-        if (metadata.framerate) {
+        if (metadata && metadata.framerate) {
           setFramerate(metadata.framerate);
         }
       } catch (error) {

@@ -21,7 +21,10 @@
     <ClInclude Include="pch.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Screenshotter.h">
+    <ClInclude Include="screen_shot\Screenshotter.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="screen_shot\ScreenshotterInternal.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +35,16 @@
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Screenshotter.cpp">
+    <ClCompile Include="screen_shot\ScreenshotterBatch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="screen_shot\ScreenshotterInfo.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="screen_shot\ScreenshotterSingle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="screen_shot\ScreenshotterUtils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

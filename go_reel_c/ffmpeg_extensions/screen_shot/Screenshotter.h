@@ -1,4 +1,3 @@
-// --- START OF FILE Screenshotter.h ---
 #pragma once
 
 #include <cstdint> // 为了使用 int64_t
@@ -16,6 +15,18 @@ extern "C" {
 #else
 #define DLLEXPORT
 #endif
+
+
+  typedef struct {
+    long long duration_ms; // 时长 (毫秒)
+    int width;             // 宽度
+    int height;            // 高度
+    double framerate;      // 帧率 (FPS)
+    int success;           // 1 = 成功, 0 = 失败
+  } VideoInfoResult;
+
+
+  DLLEXPORT VideoInfoResult get_video_metadata(const char* video_path);
 
   /**
    * @brief [新增功能] 获取视频时长（毫秒）。
@@ -56,4 +67,3 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-// --- END OF FILE Screenshotter.h ---

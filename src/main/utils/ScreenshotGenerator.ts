@@ -1,7 +1,8 @@
 import * as path from 'path';
-import * as fs from 'fs'; // 用于同步检查文件是否存在
+import * as fs from 'fs'; 
 import { app } from 'electron';
 import koffi from 'koffi';
+import type { VideoMetadata}  from '../../shared/models'; 
 
 // ==========================================
 // 1. DLL 路径查找与加载 (核心修复)
@@ -39,6 +40,15 @@ try {
   throw error;
 }
 
+
+const VideoInfoResult = koffi.struct('VideoInfoResult', {
+    duration_ms: 'int64',
+    width: 'int',
+    height: 'int',
+    framerate: 'double',
+    success: 'int'
+});
+
 // ==========================================
 // 2. Koffi 函数绑定
 // ==========================================
@@ -48,10 +58,14 @@ const funcGenerateScreenshot = lib.func('int generate_screenshot(str video_path,
 const funcGeneratePercent = lib.func('int generate_screenshot_at_percentage(str video_path, double percentage, str output_path)');
 const funcGenerateBatch = lib.func('int generate_screenshots_for_video(str video_path, longlong* timestamps_ms, int count, str output_path_template)');
 const funcGenerateMultiVideos = lib.func('int generate_screenshots_for_videos(str* video_paths, int count, longlong timestamp_ms, str output_dir)');
+const funcGetVideoMetadata = lib.func('VideoInfoResult get_video_metadata(str video_path)');
 
 // ==========================================
 // 3. 业务类定义
 // ==========================================
+
+
+
 
 export interface ScreenshotOptions {
   outputDir: string;
@@ -71,6 +85,36 @@ export class ScreenshotGenerator {
         if (res < 0) return reject(new Error('Failed to get video duration via C++.'));
         resolve(res / 1000.0);
       });
+    });
+  }
+
+
+  // [新增] 获取完整元数据
+  public static async getVideoMetadata(videoPath: string): Promise<VideoMetadata> {
+    return new Promise((resolve, reject) => {
+        // Koffi 的 async 调用会自动在 worker 线程执行，不阻塞 UI
+        funcGetVideoMetadata.async(videoPath, (err: any, res: any) => {
+            if (err) {
+                console.error("C++ Error:", err);
+                // 出错时返回默认安全值
+                return resolve({ duration: 0, width: 0, height: 0, framerate: 0 });
+            }
+
+            // res 是 Koffi 解析后的 JS 对象
+            if (res.success === 1) {
+                resolve({
+                    // C++ 返回的是 ms (long long -> BigInt/Number)，除以 1000 转为秒
+                    // Koffi 默认处理 int64 可能为 BigInt，这里转 Number 比较安全
+                    duration: Number(res.duration_ms) / 1000,
+                    width: res.width,
+                    height: res.height,
+                    framerate: res.framerate
+                });
+            } else {
+                // C++ 内部打开失败
+                resolve({ duration: 0, width: 0, height: 0, framerate: 0 });
+            }
+        });
     });
   }
 
