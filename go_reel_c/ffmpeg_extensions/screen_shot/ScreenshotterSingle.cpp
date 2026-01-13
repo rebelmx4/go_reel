@@ -52,20 +52,19 @@ DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms
       if (avcodec_send_packet(codec_ctx, packet) == 0) {
         while (avcodec_receive_frame(codec_ctx, frame) == 0) {
           int64_t pts = av_rescale_q(frame->pts, format_ctx->streams[stream_idx]->time_base, { 1, 1000 });
-          if (false)
-          {
-            if (pts >= timestamp_ms) {
-              // --- 缩放逻辑开始 ---
-              int src_w = frame->width;
-              int src_h = frame->height;
-              int max_w = 540;
-              int max_h = 320;
+          
+          if (pts >= timestamp_ms) {
+            // --- 缩放逻辑开始 ---
+            int src_w = frame->width;
+            int src_h = frame->height;
+            int max_w = 540;
+            int max_h = 320;
 
-              // 判断是否需要缩放
-              if (src_w > max_w || src_h > max_h) {
-                double scale_w = (double)max_w / src_w;
-                double scale_h = (double)max_h / src_h;
-                double scale = std::min(scale_w, scale_h); // 等比例缩放因子
+            // 判断是否需要缩放
+            if (src_w > max_w || src_h > max_h) {
+              double scale_w = (double)max_w / src_w;
+              double scale_h = (double)max_h / src_h;
+              double scale = std::min(scale_w, scale_h); // 等比例缩放因子
 
                 int dst_w = (int)(src_w * scale);
                 int dst_h = (int)(src_h * scale);
@@ -96,13 +95,10 @@ DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms
                 // 无需缩放，直接保存
                 ret = save_frame_internal(frame, output_path);
               }
-              // --- 缩放逻辑结束 ---
-            }
-            else {
-              //// [修改] 调用通用保存函数
-              ret = save_frame_internal(frame, output_path);
               goto cleanup;
-            }
+
+              // --- 缩放逻辑结束 ---
+            
           }
           
         }
