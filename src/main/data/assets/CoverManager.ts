@@ -1,6 +1,7 @@
 // src/data/assets/CoverManager.ts
 
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { BaseAssetManager } from './BaseAssetManager';
 import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator';
 import { calculateFastHash } from '../../utils/hash';
@@ -19,6 +20,34 @@ export class CoverManager extends BaseAssetManager {
   private getManualCoverFilename(hash:string): string {
     return `${hash}.webp`;
   }
+
+    /**
+   * 获取基于 Hash 前两位的子目录路径
+   * 例如: /app/data/covers/ab
+   */
+  private getSubDir(hash: string): string {
+    const subDirName = hash.substring(0, 2) || '00';
+    // this.baseDir 是 BaseAssetManager 提供的基础路径
+    return path.join(this.baseDir, subDirName);
+  }
+
+  /**
+   * 获取文件在分级目录下的完整绝对路径
+   */
+  private getHierarchicalPath(hash: string, filename: string): string {
+    return path.join(this.getSubDir(hash), filename);
+  }
+
+  /**
+   * 确保子目录存在
+   */
+  private async ensureSubDir(hash: string): Promise<string> {
+    const dir = this.getSubDir(hash);
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+
 
   // ====================================================================
   // 核心业务逻辑
@@ -67,8 +96,11 @@ export class CoverManager extends BaseAssetManager {
   public async setManualCoverFromPath(hash: string, sourcePath: string): Promise<boolean> {
     const filename = this.getManualCoverFilename(hash);
     
-    // 获取目标文件的绝对路径
-    const targetPath = this.getFlatPath(filename);
+    // 1. 确保子目录存在
+    await this.ensureSubDir(hash);
+    
+    // 2. 获取分级后的目标路径
+    const targetPath = this.getHierarchicalPath(hash, filename);
     
     // 使用文件系统级别的拷贝，比读入 Buffer 再写入更快且省内存
     await fs.copyFile(sourcePath, targetPath);
@@ -85,13 +117,22 @@ export class CoverManager extends BaseAssetManager {
    */
   public async getCoverPath(hash: string): Promise<string | null> {
     // 1. 检查手动封面
-    const manualPath = await this.getAssetPath(this.getManualCoverFilename(hash));
-    if (manualPath) {
+    const manualPath = this.getHierarchicalPath(hash, this.getManualCoverFilename(hash));
+    try {
+      await fs.access(manualPath);
       return manualPath;
+    } catch {
+      // 不存在则继续
     }
 
     // 2. 检查默认封面
-    return this.getAssetPath(this.getDefaultCoverFilename(hash));
+    const defaultPath = this.getHierarchicalPath(hash, this.getDefaultCoverFilename(hash));
+    try {
+      await fs.access(defaultPath);
+      return defaultPath;
+    } catch {
+      return null;
+    }
   }
   
   /**
@@ -106,7 +147,7 @@ export class CoverManager extends BaseAssetManager {
 
       // 2. 预先构建最终的输出路径
       const finalFilename = this.getDefaultCoverFilename(hash);
-      const finalPath = this.getFlatPath(finalFilename);
+      const finalPath = this.getHierarchicalPath(hash, finalFilename);
       
       // 3. 直接调用生成器，输出到最终路径
       // ScreenshotGenerator 会自动处理目录创建（虽然 BaseAssetManager 应该已经创建了目录）

@@ -3,6 +3,7 @@ import { settingsManager } from '../data/json/SettingsManager';
 import { annotationManager } from '../data/json/AnnotationManager';
 import { fileProfileManager } from '../data/json/FileProfileManager'; // 注意：FileProfile 接口已在 manager 中定义
 import { historyManager } from '../data/json/HistoryManager';
+import { videoMetadataManager } from '../data/json/VideoMetadataManager';
 import { scanVideoFiles } from '../utils/fileScanner';
 import { StartupResult, VideoFile } from '../../shared/models';// 引入共享类型
 import { ipcMain } from 'electron';
@@ -20,7 +21,8 @@ export class StartupService {
       settingsManager.load(),
       fileProfileManager.init(),
       annotationManager.init(),
-      historyManager.load()
+      historyManager.load(),
+      videoMetadataManager.init()
     ]);
 
     log.info('=== Startup: Direct Physical Mapping ===');

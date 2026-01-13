@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "Screenshotter.h" // 包含 DLLEXPORT 定义
 #include "ScreenshotterInternal.h" // 包含 FFmpeg 头文件
 

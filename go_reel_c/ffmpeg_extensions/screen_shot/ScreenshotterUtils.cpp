@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "ScreenshotterInternal.h"
 #include <cstring> 
 

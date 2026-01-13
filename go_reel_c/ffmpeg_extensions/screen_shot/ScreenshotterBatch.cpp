@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "Screenshotter.h"
 #include "ScreenshotterInternal.h"
 #include <vector>

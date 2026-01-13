@@ -1,6 +1,4 @@
 #pragma once
-// 包含 FFmpeg 和标准库，方便其他 cpp 使用
-#include "pch.h"
 #include <string>
 
 extern "C" {
