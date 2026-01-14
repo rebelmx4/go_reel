@@ -11,15 +11,12 @@ import {
     useScreenshotStore,
     useVideoFileRegistryStore,
     usePlaylistStore,
-    useToastStore
 } from '../stores';
 import { RefObject, useEffect, useState, useRef, useCallback } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
 import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
-import { AppAction } from '../../../shared/settings.schema';
 import { PlaybackTimeLabel } from './PlaybackTimeLabel';
-
 
 /**
  * 防抖 Hook 用于持久化设置
@@ -39,9 +36,10 @@ interface PlayerControlsProps {
     onNext: () => void;
     onRotate: () => void;
     onDelete: () => void;
+    onToggleFavorite: () => void;
 }
 
-export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDelete }: PlayerControlsProps) {
+export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDelete, onToggleFavorite }: PlayerControlsProps) {
     // --- 1. Store 数据订阅 ---
     // 状态值
     const volume = usePlayerStore(state => state.volume);
@@ -52,8 +50,6 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
     const setVolume = usePlayerStore(state => state.setVolume);
     const setStepMode = usePlayerStore(state => state.setStepMode);
     const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
-    const stepForward = usePlayerStore(state => state.stepForward);
-    const stepBackward = usePlayerStore(state => state.stepBackward);
     const volumeUp = usePlayerStore(state => state.volumeUp);
     const volumeDown = usePlayerStore(state => state.volumeDown);
 
@@ -63,10 +59,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
         currentPath ? state.videos[currentPath] : null, [currentPath]
     ));
 
-    const updateAnnotation = useVideoFileRegistryStore(state => state.updateAnnotation);
-
     const { isCropMode, setCropMode } = useScreenshotStore();
-    const showToast = useToastStore(state => state.showToast);
 
     // --- 2. 状态派生 (不再需要 useState) ---
     const isFavorite = videoFile?.annotation?.is_favorite || false;
@@ -85,45 +78,6 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
             setKeyMap(map);
         }
     }, []);
-
-    // --- 3. 业务逻辑处理器 ---
-
-    const handleToggleFavorite = useCallback(async () => {
-        if (!currentPath) return;
-
-        const newFavoriteState = !isFavorite;
-        try {
-            // 直接调用档案库的乐观更新方法
-            await updateAnnotation(currentPath, { is_favorite: newFavoriteState });
-            showToast({
-                message: newFavoriteState ? '已加入精品' : '已移出精品',
-                type: 'success'
-            });
-        } catch (error) {
-            // 失败时 Registry 内部会自动回滚，这里只需弹窗
-            showToast({ message: '操作失败', type: 'error' });
-        }
-    }, [currentPath, isFavorite, updateAnnotation, showToast]);
-
-    // 快捷键注册 (保持不变)
-    useEffect(() => {
-        const playerHandlers = {
-            step_forward: stepForward,
-            step_backward: stepBackward,
-            volume_up: volumeUp,
-            volume_down: volumeDown,
-            rotate_video: onRotate,
-            screenshot: onScreenshot,
-            favorite: handleToggleFavorite,
-        };
-
-        keyBindingManager.registerHandlers(playerHandlers);
-
-        return () => {
-            keyBindingManager.unregisterHandlers(Object.keys(playerHandlers) as AppAction[]);
-        };
-        // 注意：依赖项非常干净，只有函数引用
-    }, [onScreenshot, onRotate, volumeUp, volumeDown, stepForward, stepBackward, handleToggleFavorite]);
 
     const handleSeek = (value: number) => {
         if (videoRef.current) videoRef.current.currentTime = value;
@@ -204,7 +158,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
                         <ActionIcon
                             variant="subtle"
                             color={isFavorite ? "yellow" : "gray"}
-                            onClick={handleToggleFavorite}
+                            onClick={onToggleFavorite}
                             disabled={!currentPath}
                         >
                             {isFavorite ? <IconStarFilled size={20} /> : <IconStar size={20} />}

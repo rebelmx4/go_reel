@@ -34,8 +34,6 @@ interface PlayerState {
 
   // 快捷操作
   togglePlay: () => void;
-  stepForward: () => void;
-  stepBackward: () => void;
   reset: () => void; // 切换视频时重置状态
 }
 
@@ -69,19 +67,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-
-  stepForward: () => {
-    const { currentTime, duration, stepMode, framerate } = get();
-    const step = stepMode === 'frame' ? 1 / framerate : 1;
-    set({ currentTime: Math.min(currentTime + step, duration) });
-  },
-
-  stepBackward: () => {
-    const { currentTime, stepMode, framerate } = get();
-    const step = stepMode === 'frame' ? 1 / framerate : 1;
-    set({ currentTime: Math.max(currentTime - step, 0) });
-  },
-
+  
   reset: () => set({
     currentTime: 0,
     duration: 0,

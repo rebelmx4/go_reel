@@ -118,6 +118,24 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         }
     }, [currentPath, playNext, showToast]);
 
+    const handleToggleFavorite = useCallback(async () => {
+        if (!currentPath) return;
+
+        // 从当前的 activeFile（档案数据）中获取当前的收藏状态
+        const isFavorite = activeFile?.annotation?.is_favorite || false;
+        const newFavoriteState = !isFavorite;
+
+        try {
+            await updateAnnotation(currentPath, { is_favorite: newFavoriteState });
+            showToast({
+                message: newFavoriteState ? '已加入精品' : '已移出精品',
+                type: 'success'
+            });
+        } catch (error) {
+            showToast({ message: '操作失败', type: 'error' });
+        }
+    }, [currentPath, activeFile, updateAnnotation, showToast]);
+
     // 快捷键监听
     useVideoShortcuts({
         togglePlayPause: () => setPlaying(!isPlaying),
@@ -132,7 +150,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         takeScreenshot: () => isCropMode ? setCropMode(false) : takeRawScreenshot(),
         toggleTagDialog: () => setShowTagDialog(true),
         playNextVideo: () => playNext(),
-        softDelete: handleSoftDelete, // 注入处理函数
+        softDelete: handleSoftDelete,
+        toggleFavorite: handleToggleFavorite
     });
 
     // --- 6. 生命周期与事件 ---
@@ -205,6 +224,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         onNext={() => playNext()}
                         onRotate={rotateVideo}
                         onDelete={handleSoftDelete}
+                        onToggleFavorite={handleToggleFavorite}
                     />
                 </Box>
 

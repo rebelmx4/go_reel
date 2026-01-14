@@ -9,7 +9,7 @@ move "E:\100_MyProjects\go_reel1\go_reel_c\ffmpeg-7.1.1-full_build-shared" "E:\1
 move "E:\100_MyProjects\go_reel1\go_reel_c\test_video" "E:\100_MyProjects\go_reel\go_reel_c\"
 
 :: 2. 移动 go_reel1 根目录下的内容
-move "E:\100_MyProjects\go_reel1\bin" "E:\100_MyProjects\go_reel\"
+robocopy "E:\100_MyProjects\go_reel1\bin" "E:\100_MyProjects\go_reel\bin" /e /move
 move "E:\100_MyProjects\go_reel1\node_modules" "E:\100_MyProjects\go_reel\"
 move "E:\100_MyProjects\go_reel1\out" "E:\100_MyProjects\go_reel\"
 

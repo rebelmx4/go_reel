@@ -12,26 +12,6 @@ export interface Screenshot {
 }
 
 /**
- * Capture raw screenshot from video element
- * Returns WebP data URL at original resolution
- */
-export function captureRawScreenshot(video: HTMLVideoElement): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Failed to get canvas context');
-  }
-  
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  
-  // Convert to WebP with quality 1.0 (100%)
-  return canvas.toDataURL('image/webp', 1.0);
-}
-
-/**
  * Capture screenshot with rotation applied
  * Used for export functionality
  */
@@ -60,43 +40,4 @@ export function captureRotatedScreenshot(
   ctx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
   
   return canvas.toDataURL('image/webp', 1.0);
-}
-
-
-/**
- * Load screenshots for a video
- */
-export async function loadScreenshots(videoHash: string): Promise<Screenshot[]> {
-  if (window.api?.loadScreenshots) {
-    return await window.api.loadScreenshots(videoHash);
-  }
-  return [];
-}
-
-/**
- * Delete screenshot
- */
-export async function deleteScreenshot(
-  videoHash: string,
-  filename: string
-): Promise<void> {
-  if (window.api?.deleteScreenshot) {
-    await window.api.deleteScreenshot(videoHash, filename);
-  }
-}
-
-/**
- * Parse screenshot filename
- */
-export function parseScreenshotFilename(filename: string): {
-  timestamp: number;
-  type: 'manual' | 'auto';
-} | null {
-  const match = filename.match(/^(\d+)_(m|a)\.webp$/);
-  if (!match) return null;
-  
-  return {
-    timestamp: parseInt(match[1], 10),
-    type: match[2] === 'm' ? 'manual' : 'auto'
-  };
 }

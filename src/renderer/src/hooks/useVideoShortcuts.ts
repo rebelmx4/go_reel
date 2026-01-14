@@ -8,10 +8,11 @@ interface ShortcutHandlers {
     togglePlayPause: () => void;
     rotateVideo: () => void;
     stepFrame: (dir: number) => void;
-    takeScreenshot: () => void; // 智能判断是 crop 还是 raw
+    takeScreenshot: () => void;
     toggleTagDialog: () => void;
     playNextVideo: () => void;
     softDelete: () => void; 
+    toggleFavorite: () => void; 
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
@@ -33,8 +34,6 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             rotate_video: () => handlersRef.current.rotateVideo(),
             
             // --- 截图 (capture) ---
-            // 注意：这里只处理普通截图 (E键)。
-            // 导出截图(Ctrl+E/Alt+E) 已经在 useScreenshotExport 中处理了
             screenshot: () => handlersRef.current.takeScreenshot(),
 
             // --- 标签 (edit_tag) ---
@@ -44,6 +43,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
             play_next: () => handlersRef.current.playNextVideo(), 
             soft_delete: () => handlersRef.current.softDelete(),
+            toggle_favorite: () => handlersRef.current.toggleFavorite(), 
         };
 
         const actionKeys = Object.keys(actionMap);
