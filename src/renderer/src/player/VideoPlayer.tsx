@@ -1,4 +1,3 @@
-// src/renderer/src/components/VideoPlayer.tsx
 
 import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import { Box, Center, Text } from '@mantine/core';
@@ -15,11 +14,7 @@ import { CreateTagDialog } from '../components/Dialog/CreateTagDialog';
 import { PlayerControls } from './PlayerControls';
 import { ExportScreenshotDialog } from '../components/Dialog/ExportScreenshotDialog';
 
-// 引入重构后的 Hooks
-import { useVideoVisuals } from '../hooks/useVideoVisuals';
-import { useVideoData } from '../hooks/useVideoData';
-import { useVideoShortcuts } from '../hooks/useVideoShortcuts';
-import { useScreenshotExport } from '../hooks/useScreenshotExport';
+import { useVideoVisuals, useVideoCrop, useVideoData, useScreenshotExport, useVideoShortcuts } from '../hooks';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
@@ -154,6 +149,20 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         toggleFavorite: handleToggleFavorite
     });
 
+    const onCropComplete = useCallback((base64: string) => {
+        setTagCoverImage(base64);
+        setShowCreateTagDialog(true);
+    }, []);
+
+    const { handleMouseDown, handleMouseMove, handleMouseUp, cropRect, isDragging } = useVideoCrop(
+        videoRef,
+        containerRef,
+        rotation,
+        isPlaying,
+        setPlaying,
+        onCropComplete
+    );
+
     // --- 6. 生命周期与事件 ---
 
     // 路径切换时的副作用
@@ -195,7 +204,18 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                 {/* 视频渲染区域 */}
                 <Box
                     ref={containerRef}
-                    style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    style={{
+                        flex: 1,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'crosshair' // 提示可框选
+                    }}
                 >
                     <video
                         ref={videoRef}
@@ -203,8 +223,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         style={{
                             width: '100%', height: '100%', objectFit: 'contain',
                             transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                            transformOrigin: 'center center'
+                            transformOrigin: 'center center',
+                            pointerEvents: 'auto' // 确保双击能穿透或直接触发
                         }}
+                        // --- 保留你原来的所有属性 ---
                         onPlay={() => setPlaying(true)}
                         onPause={() => setPlaying(false)}
                         onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
@@ -214,6 +236,21 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                         }}
                         onDoubleClick={() => setPlaying(!isPlaying)}
                     />
+
+                    {/* 框选矩形 UI 叠加层 */}
+                    {isDragging && cropRect && (
+                        <div style={{
+                            position: 'absolute',
+                            left: Math.min(cropRect.startX, cropRect.currX),
+                            top: Math.min(cropRect.startY, cropRect.currY),
+                            width: Math.abs(cropRect.currX - cropRect.startX),
+                            height: Math.abs(cropRect.currY - cropRect.startY),
+                            border: '1.5px solid #00ff00',
+                            backgroundColor: 'rgba(0, 255, 0, 0.15)',
+                            pointerEvents: 'none', // 不干扰鼠标
+                            zIndex: 100
+                        }} />
+                    )}
                 </Box>
 
                 {/* 底部控制栏 */}
