@@ -94,30 +94,21 @@ const api = {
   saveKeyBindings: (keyBindings: any) => ipcRenderer.invoke('save-key-bindings', keyBindings),
   loadSettings: () =>
     ipcRenderer.invoke('load-settings'),
-  updateSettings: (settings: any) => ipcRenderer.invoke('update-settings', settings), // 新增
+  updateSettings: (settings: any) => ipcRenderer.invoke('update-settings', settings), 
   openPathInExplorer: (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
   
-  // Tags
-  loadTags: () =>
-    ipcRenderer.invoke('load-tags'),
-  saveTags: (tagsData: any) =>
-    ipcRenderer.invoke('save-tags', tagsData),
-  loadPinnedTags: () =>
-    ipcRenderer.invoke('load-pinned-tags'),
-  savePinnedTags: (pinnedTags: Array<{ tagId: number; position: number }>) =>
-    ipcRenderer.invoke('save-pinned-tags', pinnedTags),
-  loadVideoTags: (videoPath: string) =>
-    ipcRenderer.invoke('load-video-tags', videoPath),
-  saveVideoTags: (videoPath: string, tagIds: number[]) =>
-    ipcRenderer.invoke('save-video-tags', videoPath, tagIds),
-  saveTagCover: (tagId: number, dataUrl: string) =>
-    ipcRenderer.invoke('save-tag-cover', tagId, dataUrl),
+  // Tags (New & Refactored)
+  addTag: (params) => ipcRenderer.invoke('add-tag', params),
+  replaceTagCover: (params) => ipcRenderer.invoke('replace-tag-cover', params),
+  loadTagLibrary: () => ipcRenderer.invoke('load-tag-library'),
+  saveTags: (tagsData) => ipcRenderer.invoke('save-tags', tagsData),
+  loadPinnedTags: () => ipcRenderer.invoke('load-pinned-tags'),
+  savePinnedTags: (pinnedTags) => ipcRenderer.invoke('save-pinned-tags', pinnedTags),
+  loadVideoTags: (filePath) => ipcRenderer.invoke('load-video-tags', filePath),
   
   // Video Export
   exportVideo: (videoPath: string, clips: any[]) =>
     ipcRenderer.invoke('export-video', videoPath, clips)
-
-  
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

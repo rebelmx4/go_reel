@@ -13,7 +13,6 @@ import {
   registerSettingsHandlers,
   registerAnnotationHandlers,
   registerTagHandlers,
-  registerTagCoverHandlers,
 } from './ipc';
 
 
@@ -138,7 +137,6 @@ function setupIpcHandlers() {
   registerSettingsHandlers();
   registerAnnotationHandlers();
   registerTagHandlers();
-  registerTagCoverHandlers();
   registerHistoryHandlers();
   registerFileSytemHandlers();
   registerStartupServiceHandlers();

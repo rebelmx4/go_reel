@@ -54,50 +54,54 @@ DLLEXPORT int generate_screenshot(const char* video_path, long long timestamp_ms
           int64_t pts = av_rescale_q(frame->pts, format_ctx->streams[stream_idx]->time_base, { 1, 1000 });
           
           if (pts >= timestamp_ms) {
-            // --- 缩放逻辑开始 ---
-            int src_w = frame->width;
-            int src_h = frame->height;
-            int max_w = 540;
-            int max_h = 320;
+            ret = save_frame_internal(frame, output_path);
+            goto cleanup;
 
-            // 判断是否需要缩放
-            if (src_w > max_w || src_h > max_h) {
-              double scale_w = (double)max_w / src_w;
-              double scale_h = (double)max_h / src_h;
-              double scale = std::min(scale_w, scale_h); // 等比例缩放因子
 
-                int dst_w = (int)(src_w * scale);
-                int dst_h = (int)(src_h * scale);
+            //// --- 缩放逻辑开始 ---
+            //int src_w = frame->width;
+            //int src_h = frame->height;
+            //int max_w = 540;
+            //int max_h = 320;
 
-                // 初始化缩放上下文
-                sws_ctx = sws_getContext(
-                  src_w, src_h, (AVPixelFormat)frame->format,
-                  dst_w, dst_h, (AVPixelFormat)frame->format, // 保持原始像素格式
-                  SWS_BICUBIC, NULL, NULL, NULL
-                );
+            //// 判断是否需要缩放
+            //if (src_w > max_w || src_h > max_h) {
+            //  double scale_w = (double)max_w / src_w;
+            //  double scale_h = (double)max_h / src_h;
+            //  double scale = std::min(scale_w, scale_h); // 等比例缩放因子
 
-                if (sws_ctx) {
-                  scaled_frame = av_frame_alloc();
-                  scaled_frame->format = frame->format;
-                  scaled_frame->width = dst_w;
-                  scaled_frame->height = dst_h;
-                  av_frame_get_buffer(scaled_frame, 0);
+            //    int dst_w = (int)(src_w * scale);
+            //    int dst_h = (int)(src_h * scale);
 
-                  // 执行缩放
-                  sws_scale(sws_ctx, frame->data, frame->linesize, 0, src_h,
-                    scaled_frame->data, scaled_frame->linesize);
+            //    // 初始化缩放上下文
+            //    sws_ctx = sws_getContext(
+            //      src_w, src_h, (AVPixelFormat)frame->format,
+            //      dst_w, dst_h, (AVPixelFormat)frame->format, // 保持原始像素格式
+            //      SWS_BICUBIC, NULL, NULL, NULL
+            //    );
 
-                  // 使用缩放后的帧保存
-                  ret = save_frame_internal(scaled_frame, output_path);
-                }
-              }
-              else {
-                // 无需缩放，直接保存
-                ret = save_frame_internal(frame, output_path);
-              }
-              goto cleanup;
+            //    if (sws_ctx) {
+            //      scaled_frame = av_frame_alloc();
+            //      scaled_frame->format = frame->format;
+            //      scaled_frame->width = dst_w;
+            //      scaled_frame->height = dst_h;
+            //      av_frame_get_buffer(scaled_frame, 0);
 
-              // --- 缩放逻辑结束 ---
+            //      // 执行缩放
+            //      sws_scale(sws_ctx, frame->data, frame->linesize, 0, src_h,
+            //        scaled_frame->data, scaled_frame->linesize);
+
+            //      // 使用缩放后的帧保存
+            //      ret = save_frame_internal(scaled_frame, output_path);
+            //    }
+            //  }
+            //  else {
+            //    // 无需缩放，直接保存
+            //    ret = save_frame_internal(frame, output_path);
+            //  }
+            //  goto cleanup;
+
+            //  // --- 缩放逻辑结束 ---
             
           }
           

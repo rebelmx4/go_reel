@@ -20,11 +20,30 @@ export interface VideoFile {
   annotation?: Annotation;  
 }
 
+export interface Tag {
+  id: number;
+  keywords: string;
+  description?: string;
+  imagePath: string; // 存储相对路径，例如 "data/tag_images/1.webp"
+}
+
+export interface PinnedTag {
+  tagId: number;
+  position: number;
+}
+
+export interface TagLibrary {
+  tagsData: Record<string, Tag[]>;
+  pinnedTags: PinnedTag[];
+}
+
+export type HistoryStore = string[];
 
 export interface StartupResult {
   videoList: VideoFile[];
-  history: string[];
+  history: HistoryStore;
   settings: AppSettings;
+  tagLibrary: TagLibrary; 
 }
 
 

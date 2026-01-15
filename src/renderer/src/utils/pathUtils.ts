@@ -121,3 +121,34 @@ export function normalizePath(filePath: string): string {
   
   return result.join('/') || '/';
 }
+
+/**
+ * 将本地物理路径转换为浏览器/Electron 可识别的 URL
+ * 自动处理 Windows 反斜杠、协议前缀和重复前缀
+ */
+export function toFileUrl(filePath: string): string {
+  if (!filePath) return '';
+
+  // 1. 如果已经是网络地址或 Base64，直接返回
+  if (
+    filePath.startsWith('http://') || 
+    filePath.startsWith('https://') || 
+    filePath.startsWith('data:') ||
+    filePath.startsWith('blob:')
+  ) {
+    return filePath;
+  }
+
+  // 2. 统一转换为正斜杠
+  let normalized = filePath.replace(/\\/g, '/');
+
+  // 3. 避免重复添加 file://
+  if (normalized.startsWith('file://')) {
+    return normalized;
+  }
+
+  // 4. 特殊处理：如果路径以 / 开头（类 Unix），file:// 后跟一个 /
+  // 如果是 Windows 路径（如 C:/），file:/// 会更标准，但 file://C:/ 在 Electron 中也能识别
+  // 为了最大的兼容性，通常使用 file:// + 路径
+  return `file://${normalized}`;
+}

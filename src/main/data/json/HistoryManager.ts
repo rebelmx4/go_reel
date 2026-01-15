@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import { BaseJsonManager } from './BaseJsonManager';
+import { HistoryStore } from '../../../shared/models';
 
-export type HistoryStore = string[];
 
 export class HistoryManager extends BaseJsonManager<HistoryStore> {
   constructor() {

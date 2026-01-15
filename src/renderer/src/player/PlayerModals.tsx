@@ -40,10 +40,7 @@ export function PlayerModals(props: PlayerModalsProps) {
                 onClose={() => { props.setShowCreateTag(false); props.setTagCoverImage(''); }}
                 coverImage={props.tagCoverImage}
                 assignedTagIds={videoFile?.annotation?.tags ?? []}
-                onCreated={async (tag) => {
-                    const currentTags = videoFile?.annotation?.tags ?? [];
-                    await updateAnnotation(props.currentPath, { tags: [...currentTags, tag.id] });
-                }}
+                onCreated={async (_) => { }}
             />
         </>
     );

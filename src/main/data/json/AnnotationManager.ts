@@ -3,7 +3,7 @@ import path from 'path';
 import { app } from 'electron';
 import log from 'electron-log';
 
-import { Annotation } from '../../../shared/models';// 引入共享类型
+import { Annotation, DEFAULT_ANNOTATION } from '../../../shared/models';// 引入共享类型
 
 /** 分片字典对象 */
 export interface AnnotationShard {
@@ -91,13 +91,7 @@ export class AnnotationManager {
     const shard = this.shards.get(key)!;
 
     // 默认值
-    const existing = shard[hash] || {
-      like_count: 0,
-      is_favorite: false,
-      rotation: 0,
-      screenshot_rotation: null,
-      tags: []
-    };
+    const existing = shard[hash] || { ...DEFAULT_ANNOTATION };
 
     // 合并并回写内存
     shard[hash] = { ...existing, ...updates };

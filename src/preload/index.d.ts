@@ -7,44 +7,14 @@ import type { FileProfile } from '../main/data/json/FileProfileManager';
 import type { 
   Annotation, 
   VideoFile, 
-  StartupResult 
+  StartupResult,
+  TagLibrary
 } from '../shared/models'; 
 
-// 根据 `SettingsManager.ts` 定义的完整设置类型
-// 这使得前端在调用 `loadSettings` 和 `saveKeyBindings` 等接口时拥有完整的类型提示
-type KeyBindings = {
-  global: {
-    view_nav: Record<string, string>;
-    play_control: Record<string, string>;
-    capture: Record<string, string>;
-    interact: Record<string, string>;
-    edit_tag: Record<string, string>;
-    system: Record<string, string>;
-  };
-  dialog_assign_tag: {
-    quick_assign_tags: Record<string, string>;
-    system: Record<string, string>;
-  };
-};
-
-interface AppSettings {
-  paths: {
-    video_source: string;
-    staged_path: string;
-    screenshot_export_path: string;
-  };
-  playback: {
-    global_volume: number;
-    like_decay_rate: number;
-  };
-  skip_frame: {
-    skip_duration: number;
-    rules: {
-      [key: string]: number;
-    };
-  };
-  key_bindings: KeyBindings;
-}
+import type { 
+  AppSettings,
+  KeyBindingsConfig
+} from '../shared/settings.schema'; 
 
 
 declare global {
@@ -105,20 +75,26 @@ declare global {
         processed_archive_path: string;
         screenshot_export_path: string;
       }>
-      getKeyBindings: () => Promise<KeyBindings>
-      saveKeyBindings: (newKeyBindings: KeyBindings) => Promise<{ success: boolean; conflicts?: Record<string, string[]> }>
+      getKeyBindings: () => Promise<KeyBindingsConfig>
+      saveKeyBindings: (newKeyBindings: KeyBindingsConfig) => Promise<{ success: boolean; conflicts?: Record<string, string[]> }>
       loadSettings: () => Promise<AppSettings>
       updateSettings: (settings: any) => Promise<{ success: boolean }>; // 新增
       openPathInExplorer: (path: string) => Promise<{ success: boolean; error?: string }>;
       
-      // Tags
-      loadTags: () => Promise<any>
-      saveTags: (tagsData: any) => Promise<void>
-      loadPinnedTags: () => Promise<Array<{ tagId: number; position: number }>>
-      savePinnedTags: (pinnedTags: Array<{ tagId: number; position: number }>) => Promise<void>
-      loadVideoTags: (videoPath: string) => Promise<number[]>
-      saveVideoTags: (videoPath: string, tagIds: number[]) => Promise<void>
-      saveTagCover: (tagId: number, dataUrl: string) => Promise<string>
+      // --- Tags (标签管理系统) ---
+      /** 原子创建标签：文字+封面一次性提交 */
+      addTag: (params: { keywords: string; group: string; description?: string; imageBase64: string }) => Promise<Tag>
+      /** 替换已有标签的封面 */
+      replaceTagCover: (params: { tagId: number; imageBase64: string }) => Promise<{ success: boolean; imagePath: string }>
+      /** 加载完整标签库定义 */
+      loadTagLibrary: () => Promise<TagLibrary>
+      /** 批量保存标签数据（排序/重组） */
+      saveTags: (tagsData: Record<string, Tag[]>) => Promise<void>
+      /** 置顶标签管理 */
+      loadPinnedTags: () => Promise<PinnedTag[]>
+      savePinnedTags: (pinnedTags: PinnedTag[]) => Promise<void>
+      /** 视频-标签关联关系 */
+      loadVideoTags: (filePath: string) => Promise<number[]>
       
       // Refresh
       refreshFiles: () => Promise<any>

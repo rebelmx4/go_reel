@@ -1,0 +1,177 @@
+Folder PATH listing for volume ¿ª·¢
+Volume serial number is 000000A9 8E27:C003
+E:\GO_REEL\SRC
++---main
+|   |   index.ts
+|   |   
+|   +---data
+|   |   |   index.ts
+|   |   |   README.md
+|   |   |   
+|   |   +---assets
+|   |   |       BaseAssetManager.ts
+|   |   |       CoverManager.ts
+|   |   |       index.ts
+|   |   |       ScreenshotManager.ts
+|   |   |       
+|   |   \---json
+|   |           AnnotationManager.ts
+|   |           BaseJsonManager.ts
+|   |           FileProfileManager.ts
+|   |           HistoryManager.ts
+|   |           index.ts
+|   |           SettingsManager.ts
+|   |           TagManager.ts
+|   |           VideoMetadataManager.ts
+|   |           
+|   +---ipc
+|   |       AnnotationHandlers.ts
+|   |       coverHandlers.ts
+|   |       FileProfileHandlers.ts
+|   |       historyHandlers.ts
+|   |       index.ts
+|   |       MetadataHandler.ts
+|   |       screenshotHandlers.ts
+|   |       settingsHandlers.ts
+|   |       tagHandlers.ts
+|   |       windowHandlers.ts
+|   |       
+|   +---services
+|   |       FileSystemService.ts
+|   |       index.ts
+|   |       RefreshService.ts
+|   |       StartupService.ts
+|   |       VideoExportService.ts
+|   |       
+|   \---utils
+|           ffmpeg-setup.ts
+|           fileScanner.ts
+|           handlerHelper.ts
+|           hash.ts
+|           index.ts
+|           ScreenshotGenerator.ts
+|           videoUtils.ts
+|           
++---preload
+|       index.d.ts
+|       index.ts
+|       
++---renderer
+|   |   index.html
+|   |   
+|   \---src
+|       |   App.tsx
+|       |   env.d.ts
+|       |   main.tsx
+|       |   
+|       +---assets
+|       |       base.css
+|       |       electron.svg
+|       |       main.css
+|       |       wavy-lines.svg
+|       |       
+|       +---components
+|       |   |   index.ts
+|       |   |   PathConfigurationScreen.tsx
+|       |   |   RefreshLoadingScreen.tsx
+|       |   |   TagCard.tsx
+|       |   |   ToastContainer.tsx
+|       |   |   Versions.tsx
+|       |   |   
+|       |   +---Dialog
+|       |   |       AssignTagDialog.tsx
+|       |   |       CreateTagDialog.tsx
+|       |   |       ExportScreenshotDialog.tsx
+|       |   |       RefreshProgressDialog.tsx
+|       |   |       
+|       |   +---Layout
+|       |   |       MainLayout.tsx
+|       |   |       TitleBar.tsx
+|       |   |       
+|       |   +---Tag
+|       |   |       TagCard.tsx
+|       |   |       TagFilterGrid.tsx
+|       |   |       
+|       |   \---Video
+|       |           CoverCard.module.css
+|       |           CoverCard.tsx
+|       |           CoverGrid.tsx
+|       |           VideoCard.tsx
+|       |           VideoGrid.tsx
+|       |           
+|       +---contexts
+|       |       index.ts
+|       |       VideoContext.tsx
+|       |       
+|       +---hooks
+|       |       index.ts
+|       |       useFileActions.ts
+|       |       useScreenshotExport.ts
+|       |       useVideoCrop.ts
+|       |       useVideoData.ts
+|       |       useVideoShortcuts.ts
+|       |       useVideoVisuals.ts
+|       |       
+|       +---pages
+|       |       ElitePage.tsx
+|       |       HistoryPage.tsx
+|       |       index.ts
+|       |       LikedPage.tsx
+|       |       NewestPage.tsx
+|       |       SearchPage.tsx
+|       |       SettingsPage.tsx
+|       |       TagSearchPage.tsx
+|       |       
+|       +---player
+|       |   |   ClipTrack.tsx
+|       |   |   PlaybackTimeLabel.tsx
+|       |   |   PlayerControls.tsx
+|       |   |   PlayerModals.tsx
+|       |   |   ProgressBarWithThumbnail.tsx
+|       |   |   RecordingIndicator.tsx
+|       |   |   ScreenshotCard.tsx
+|       |   |   ScreenshotTrack.tsx
+|       |   |   VideoPlayer.tsx
+|       |   |   VideoViewport.tsx
+|       |   |   
+|       |   \---hooks
+|       |           index.ts
+|       |           usePlayerActions.ts
+|       |           useVideoCrop.ts
+|       |           useVideoData.ts
+|       |           useVideoShortcuts.ts
+|       |           useVideoVisuals.ts
+|       |           
+|       +---stores
+|       |       clipStore.ts
+|       |       historyStore.ts
+|       |       index.ts
+|       |       navigationStore.ts
+|       |       playerStore.ts
+|       |       playlistStore.ts
+|       |       recordingStore.ts
+|       |       refreshStore.ts
+|       |       screenshotStore.ts
+|       |       settingsStore.ts
+|       |       tagStore.ts
+|       |       toastStore.ts
+|       |       videoFileRegistryStore.ts
+|       |       
+|       \---utils
+|               cover.ts
+|               format.ts
+|               index.ts
+|               KeyBindingManager.ts
+|               pathUtils.ts
+|               screenshot.ts
+|               skipFrame.ts
+|               tagUtils.ts
+|               thumbnail.ts
+|               viewport.ts
+|               
+\---shared
+        constants.ts
+        index.ts
+        models.ts
+        settings.schema.ts
+        

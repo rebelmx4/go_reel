@@ -1,66 +1,51 @@
 import { create } from 'zustand';
+// 导入共享模型以保持一致性
+import { Tag, PinnedTag, TagLibrary } from '../../../shared/models';
 
 /**
- * Tag data structure
- */
-export interface Tag {
-  id: number;
-  keywords: string;      // Global unique keyword
-  description?: string;  // Optional description
-  group: string;         // Group name
-  imagePath: string;     // Cover image path (data/tag_images/[id].webp)
-}
-
-/**
- * Tags organized by group
+ * 对应后端 Record<string, Tag[]> 的结构
  */
 export interface TagsData {
   [group: string]: Tag[];
 }
 
-/**
- * Pinned tag for quick access
- */
-export interface PinnedTag {
-  tagId: number;
-  position: number;  // 0-9 for shortcuts 1-5, Q, W, E, R, ~
-}
-
 interface TagState {
-  // All tags data organized by group
   tagsData: TagsData;
-  
-  // Pinned tags for quick assignment
   pinnedTags: PinnedTag[];
-  
-  // Currently selected tags (for search)
   selectedTags: Tag[];
-  
-  // Loading state
   isLoading: boolean;
+
+  // 核心动作
+  loadTagLibrary: () => Promise<void>;
   
-  // Actions
-  loadTags: () => Promise<void>;
-  addTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
-  updateTag: (id: number, updates: Partial<Tag>) => Promise<void>;
-  deleteTag: (id: number) => Promise<void>;
-  
-  // Pinned tags management
-  pinTag: (tagId: number, position: number) => void;
-  unpinTag: (tagId: number) => void;
-  loadPinnedTags: () => void;
+  // 创建标签：现在需要 imageBase64 并且由后端返回完整的 Tag 对象
+  addTag: (params: { 
+    keywords: string; 
+    group: string; 
+    description?: string; 
+    imageBase64: string 
+  }) => Promise<Tag | null>;
+
+  // 替换封面 (对应 api.replaceTagCover)
+  replaceTagCover: (tagId: number, imageBase64: string) => Promise<boolean>;
+
+  // 标签关联与保存
+  saveTags: (data: TagsData) => Promise<void>;
+
+  // 置顶管理
+  pinTag: (tagId: number) => Promise<void>;
+  unpinTag: (tagId: number) => Promise<void>;
   savePinnedTags: () => Promise<void>;
-  
-  // Selected tags for search
+
+  // 搜索与过滤逻辑
   addSelectedTag: (tag: Tag) => void;
   removeSelectedTag: (tagId: number) => void;
   clearSelectedTags: () => void;
-  
-  // Utility
+
+  // 工具方法
   getTagById: (id: number) => Tag | undefined;
-  getTagsByGroup: (group: string) => Tag[];
   getAllGroups: () => string[];
-  isKeywordUnique: (keyword: string, excludeId?: number) => boolean;
+  isKeywordUnique: (keyword: string) => boolean;
 }
 
 export const useTagStore = create<TagState>((set, get) => ({
@@ -69,151 +54,122 @@ export const useTagStore = create<TagState>((set, get) => ({
   selectedTags: [],
   isLoading: false,
 
-  loadTags: async () => {
+  // 1. 加载完整库
+  loadTagLibrary: async () => {
     set({ isLoading: true });
     try {
-      if (window.api?.loadTags) {
-        const tagsData = await window.api.loadTags();
-        set({ tagsData, isLoading: false });
-      } else {
-        // Fallback to mock data
-        const mockData: TagsData = {
-          '风景': [
-            { id: 1, keywords: '富士山', description: '日本著名山峰', group: '风景', imagePath: 'data/tag_images/1.webp' },
-            { id: 2, keywords: '海滩', group: '风景', imagePath: 'data/tag_images/2.webp' },
-          ],
-          '人物': [
-            { id: 3, keywords: '侧脸特写', description: '人物侧面特写镜头', group: '人物', imagePath: 'data/tag_images/3.webp' },
-            { id: 4, keywords: '微笑', group: '人物', imagePath: 'data/tag_images/4.webp' },
-          ],
-        };
-        set({ tagsData: mockData, isLoading: false });
-      }
+      // 对应 index.d.ts 中的 loadTagLibrary
+      const library: TagLibrary = await window.api.loadTagLibrary();
+      set({ 
+        tagsData: library.tagsData || {}, 
+        pinnedTags: library.pinnedTags || [],
+        isLoading: false 
+      });
     } catch (error) {
-      console.error('Failed to load tags:', error);
+      console.error('Failed to load tag library:', error);
       set({ isLoading: false });
     }
   },
 
-  addTag: async (tagData) => {
-    const state = get();
-    
-    // Generate new ID
-    let maxId = 0;
-    Object.values(state.tagsData).forEach(tags => {
-      tags.forEach(tag => {
-        if (tag.id > maxId) maxId = tag.id;
+  // 2. 原子化创建标签
+  addTag: async (params) => {
+    try {
+      // 调用后端接口，后端负责生成 ID、保存图片、写入 JSON
+      const newTag = await window.api.addTag(params);
+      
+      // 更新本地状态
+      set((state) => {
+        const updatedData = { ...state.tagsData };
+        if (!updatedData[params.group]) {
+          updatedData[params.group] = [];
+        }
+        updatedData[params.group] = [...updatedData[params.group], newTag];
+        return { tagsData: updatedData };
       });
-    });
-    const newId = maxId + 1;
-    
-    const newTag: Tag = {
-      ...tagData,
-      id: newId,
-      imagePath: `data/tag_images/${newId}.webp`
-    };
-    
-    // Add to group
-    const updatedData = { ...state.tagsData };
-    if (!updatedData[newTag.group]) {
-      updatedData[newTag.group] = [];
+
+      return newTag;
+    } catch (error) {
+      console.error('Failed to add tag:', error);
+      return null;
     }
-    updatedData[newTag.group] = [...updatedData[newTag.group], newTag];
-    
-    set({ tagsData: updatedData });
-    
-    // Save to tags.json via IPC
-    if (window.api?.saveTags) {
-      await window.api.saveTags(updatedData);
-    }
-    
-    return newTag;
   },
 
-  updateTag: async (id, updates) => {
-    const state = get();
-    const updatedData = { ...state.tagsData };
-    
-    // Find and update tag
-    for (const group in updatedData) {
-      const tagIndex = updatedData[group].findIndex(t => t.id === id);
-      if (tagIndex !== -1) {
-        updatedData[group][tagIndex] = {
-          ...updatedData[group][tagIndex],
-          ...updates
-        };
-        break;
+  // 3. 替换封面
+  replaceTagCover: async (tagId, imageBase64) => {
+    try {
+      const result = await window.api.replaceTagCover({ tagId, imageBase64 });
+      if (result.success) {
+        // 更新本地 URL 触发 UI 刷新（加 timestamp 防止缓存）
+        set((state) => {
+          const newData = { ...state.tagsData };
+          for (const group in newData) {
+            const index = newData[group].findIndex(t => t.id === tagId);
+            if (index !== -1) {
+              newData[group][index] = { 
+                ...newData[group][index], 
+                imagePath: `${result.imagePath}?t=${Date.now()}` 
+              };
+              break;
+            }
+          }
+          return { tagsData: newData };
+        });
+        return true;
       }
+      return false;
+    } catch (error) {
+      console.error('Replace cover failed:', error);
+      return false;
     }
-    
-    set({ tagsData: updatedData });
-    
-    // TODO: Save to tags.json via IPC
   },
 
-  deleteTag: async (id) => {
-    const state = get();
-    const updatedData = { ...state.tagsData };
-    
-    // Remove tag from its group
-    for (const group in updatedData) {
-      updatedData[group] = updatedData[group].filter(t => t.id !== id);
-      if (updatedData[group].length === 0) {
-        delete updatedData[group];
-      }
+  // 4. 保存整个标签结构 (排序或重组后调用)
+  saveTags: async (data) => {
+    try {
+      await window.api.saveTags(data);
+      set({ tagsData: data });
+    } catch (error) {
+      console.error('Failed to save tags:', error);
     }
-    
-    set({ tagsData: updatedData });
-    
-    // TODO: Save to tags.json via IPC
   },
 
-  pinTag: (tagId, position) => {
-    const state = get();
-    const existing = state.pinnedTags.find(p => p.tagId === tagId);
-    if (existing) return; // Already pinned
+  // 5. 置顶逻辑
+  pinTag: async (tagId) => {
+    const { pinnedTags } = get();
+    if (pinnedTags.some(p => p.tagId === tagId)) return;
     
-    if (state.pinnedTags.length >= 10) {
-      console.warn('Maximum 10 pinned tags allowed');
-      return;
-    }
-    
-    set({
-      pinnedTags: [...state.pinnedTags, { tagId, position }]
-    });
+    const newPinned = [
+      ...pinnedTags, 
+      { tagId, position: pinnedTags.length }
+    ];
+    set({ pinnedTags: newPinned });
+    await get().savePinnedTags();
   },
 
-  unpinTag: (tagId) => {
-    set(state => ({
-      pinnedTags: state.pinnedTags.filter(p => p.tagId !== tagId)
-    }));
-  },
-
-  loadPinnedTags: async () => {
-    if (window.api?.loadPinnedTags) {
-      const pinnedTags = await window.api.loadPinnedTags();
-      set({ pinnedTags });
-    } else {
-      set({ pinnedTags: [] });
-    }
+  unpinTag: async (tagId) => {
+    const newPinned = get().pinnedTags
+      .filter(p => p.tagId !== tagId)
+      .map((p, index) => ({ ...p, position: index })); // 重新排序
+    
+    set({ pinnedTags: newPinned });
+    await get().savePinnedTags();
   },
 
   savePinnedTags: async () => {
-    const state = get();
-    if (window.api?.savePinnedTags) {
-      await window.api.savePinnedTags(state.pinnedTags);
+    try {
+      await window.api.savePinnedTags(get().pinnedTags);
+    } catch (error) {
+      console.error('Failed to save pinned tags:', error);
     }
   },
 
+  // --- 搜索与 UI 辅助 ---
   addSelectedTag: (tag) => {
-    set(state => {
-      if (state.selectedTags.find(t => t.id === tag.id)) {
-        return state; // Already selected
-      }
-      return {
-        selectedTags: [...state.selectedTags, tag]
-      };
-    });
+    set(state => ({
+      selectedTags: state.selectedTags.some(t => t.id === tag.id) 
+        ? state.selectedTags 
+        : [...state.selectedTags, tag]
+    }));
   },
 
   removeSelectedTag: (tagId) => {
@@ -222,39 +178,24 @@ export const useTagStore = create<TagState>((set, get) => ({
     }));
   },
 
-  clearSelectedTags: () => {
-    set({ selectedTags: [] });
-  },
+  clearSelectedTags: () => set({ selectedTags: [] }),
 
   getTagById: (id) => {
-    const state = get();
-    for (const tags of Object.values(state.tagsData)) {
-      const tag = tags.find(t => t.id === id);
+    const { tagsData } = get();
+    for (const group in tagsData) {
+      const tag = tagsData[group].find(t => t.id === id);
       if (tag) return tag;
     }
     return undefined;
   },
 
-  getTagsByGroup: (group) => {
-    return get().tagsData[group] || [];
-  },
+  getAllGroups: () => Object.keys(get().tagsData),
 
-  getAllGroups: () => {
-    return Object.keys(get().tagsData);
-  },
-
-  isKeywordUnique: (keyword, excludeId) => {
-    const state = get();
-    const lowerKeyword = keyword.toLowerCase();
-    
-    for (const tags of Object.values(state.tagsData)) {
-      for (const tag of tags) {
-        if (tag.id === excludeId) continue;
-        if (tag.keywords.toLowerCase() === lowerKeyword) {
-          return false;
-        }
-      }
-    }
-    return true;
-  },
+  isKeywordUnique: (keyword) => {
+    const { tagsData } = get();
+    const lowerKey = keyword.toLowerCase();
+    return !Object.values(tagsData)
+      .flat()
+      .some(t => t.keywords.toLowerCase() === lowerKey);
+  }
 }));

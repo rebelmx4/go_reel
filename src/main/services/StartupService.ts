@@ -4,6 +4,7 @@ import { annotationManager } from '../data/json/AnnotationManager';
 import { fileProfileManager } from '../data/json/FileProfileManager'; // 注意：FileProfile 接口已在 manager 中定义
 import { historyManager } from '../data/json/HistoryManager';
 import { videoMetadataManager } from '../data/json/VideoMetadataManager';
+import { tagManager } from '../data/json/TagManager';
 import { scanVideoFiles } from '../utils/fileScanner';
 import { StartupResult, VideoFile } from '../../shared/models';// 引入共享类型
 import { ipcMain } from 'electron';
@@ -22,7 +23,8 @@ export class StartupService {
       fileProfileManager.init(),
       annotationManager.init(),
       historyManager.load(),
-      videoMetadataManager.init()
+      videoMetadataManager.init(),
+      tagManager.load()
     ]);
 
     log.info('=== Startup: Direct Physical Mapping ===');
@@ -69,7 +71,8 @@ export class StartupService {
     const result: StartupResult = {
         videoList,
         history: historyManager.getHistory(),
-        settings: settingsManager.get()
+        settings: settingsManager.get(),
+        tagLibrary: tagManager.getLibrary()
       };
 
       this.lastResult = result;
