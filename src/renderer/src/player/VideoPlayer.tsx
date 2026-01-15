@@ -1,20 +1,25 @@
+// src/renderer/src/player/VideoPlayer.tsx
 
 import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import { Box, Center, Text } from '@mantine/core';
+
+// Stores & Context
 import {
     usePlayerStore,
     useScreenshotStore,
     usePlaylistStore,
-    useToastStore,
-    useVideoFileRegistryStore, // 修改为 RegistryStore
 } from '../stores';
 import { VideoContext } from '../contexts';
-import { AssignTagDialog } from '../components/Dialog/AssignTagDialog';
-import { CreateTagDialog } from '../components/Dialog/CreateTagDialog';
-import { PlayerControls } from './PlayerControls';
-import { ExportScreenshotDialog } from '../components/Dialog/ExportScreenshotDialog';
 
-import { useVideoVisuals, useVideoCrop, useVideoData, useScreenshotExport, useVideoShortcuts } from '../hooks';
+// Sub-Components
+import { PlayerControls } from './PlayerControls';
+import { VideoViewport } from './VideoViewport';
+import { PlayerModals } from './PlayerModals';
+
+// Hooks
+import { useVideoShortcuts } from './hooks';
+import { usePlayerActions } from './hooks/usePlayerActions'; // 建议放在 player/hooks 下
+import { useScreenshotExport } from '../hooks';
 
 export interface VideoPlayerRef {
     videoElement: HTMLVideoElement | null;
@@ -25,57 +30,44 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // --- 2. Store 数据订阅 ---
-
-    // 导航状态
+    // --- 2. Store 数据订阅 (仅限主流程需要的) ---
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
-
-    // 档案数据 (从 Registry 获取)
-
-    const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
-
-    // 播放器物理状态
     const {
         isPlaying, volume, rotation,
-        setPlaying, setCurrentTime, setDuration, setRotation, reset
+        setPlaying, setCurrentTime, reset
     } = usePlayerStore();
 
-    // 截图与全局 UI
-    const { captureManual, isCropMode, setCropMode, loadScreenshots, clear } = useScreenshotStore();
-    const showToast = useToastStore(state => state.showToast);
+    const { loadScreenshots, clear } = useScreenshotStore();
 
-    // --- 3. UI 局部状态 (仅用于弹窗控制) ---
-    const [showTagDialog, setShowTagDialog] = useState(false);
-    const [showCreateTagDialog, setShowCreateTagDialog] = useState(false);
-    const [tagCoverImage, setTagCoverImage] = useState('');
-
-    // --- 4. Custom Hooks 缝合 ---
-
-    // 同步档案数据 (FPS, 旋转同步等)
-    const { videoFile: activeFile } = useVideoData(videoRef);
-
-    // 处理视觉变换 (CSS Rotation/Scale)
-    const { onVisualLoadedMetadata } = useVideoVisuals({
-        videoRef,
-        containerRef,
-        rotation
+    // --- 3. UI 局部状态 (弹窗控制) ---
+    const [modals, setModals] = useState({
+        tag: false,
+        createTag: false,
+        cover: ''
     });
 
-    // 处理截图导出逻辑
+    // --- 4. 业务逻辑 Hooks ---
+
+    // 封装所有业务操作 (旋转、收藏、删除、截图)
+    const actions = usePlayerActions(videoRef);
+
+    // 处理截图导出弹窗逻辑
     const { showExportDialog, setShowExportDialog } = useScreenshotExport(currentPath);
 
+    // 暴露给父组件的 Ref
     useImperativeHandle(ref, () => ({ videoElement: videoRef.current }));
 
-    // --- 5. 核心交互逻辑 ---
+    // --- 5. 交互与副作用 ---
 
-    // 播放/暂停物理控制
+    // 物理播放控制 (确保 Store 状态与 HTMLVideoElement 同步)
     useEffect(() => {
-        if (!videoRef.current) return;
-        if (isPlaying) {
-            videoRef.current.play().catch(() => setPlaying(false));
-        } else {
-            videoRef.current.pause();
+        const v = videoRef.current;
+        if (!v) return;
+        if (isPlaying && v.paused) {
+            v.play().catch(() => setPlaying(false));
+        } else if (!isPlaying && !v.paused) {
+            v.pause();
         }
     }, [isPlaying, setPlaying]);
 
@@ -84,95 +76,28 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         if (videoRef.current) videoRef.current.volume = volume / 100;
     }, [volume]);
 
-    // 旋转逻辑：更新物理状态的同时持久化到档案库
-    const rotateVideo = useCallback(async () => {
-        if (!currentPath) return;
-        const newRotation = ((rotation + 90) % 360) as 0 | 90 | 180 | 270;
-        console.log("旋转" + newRotation)
-        setRotation(newRotation); // 立即改变物理画面
-        await updateAnnotation(currentPath, { rotation: newRotation }); // 异步存入档案
-    }, [rotation, setRotation, currentPath, updateAnnotation]);
-
-    // 截图执行
-    const takeRawScreenshot = useCallback(async () => {
-        if (!videoRef.current || !currentPath) return;
-        const success = await captureManual(currentPath, videoRef.current.currentTime);
-        if (success) showToast({ message: '截图成功', type: 'success' });
-    }, [currentPath, captureManual, showToast]);
-
-    const handleSoftDelete = useCallback(async () => {
-        if (!currentPath) return;
-
-        const success = await window.api.moveToTrash(currentPath);
-
-        if (success) {
-            showToast({ message: '文件已移至待删除队列', type: 'success' });
-            playNext();
-        } else {
-            showToast({ message: '操作失败', type: 'error' });
-        }
-    }, [currentPath, playNext, showToast]);
-
-    const handleToggleFavorite = useCallback(async () => {
-        if (!currentPath) return;
-
-        // 从当前的 activeFile（档案数据）中获取当前的收藏状态
-        const isFavorite = activeFile?.annotation?.is_favorite || false;
-        const newFavoriteState = !isFavorite;
-
-        try {
-            await updateAnnotation(currentPath, { is_favorite: newFavoriteState });
-            showToast({
-                message: newFavoriteState ? '已加入精品' : '已移出精品',
-                type: 'success'
-            });
-        } catch (error) {
-            showToast({ message: '操作失败', type: 'error' });
-        }
-    }, [currentPath, activeFile, updateAnnotation, showToast]);
-
     // 快捷键监听
+
     useVideoShortcuts({
-        togglePlayPause: () => setPlaying(!isPlaying),
-        rotateVideo,
+        ...actions, // 自动包含 togglePlayPause, rotateVideo, softDelete, toggleFavorite, takeScreenshot
+        playNextVideo: playNext,
+        toggleTagDialog: () => setModals(m => ({ ...m, tag: true })),
         stepFrame: (dir) => {
             if (videoRef.current) {
-                const step = usePlayerStore.getState().stepMode === 'frame'
-                    ? (1 / usePlayerStore.getState().framerate) : 1;
+                const state = usePlayerStore.getState();
+                const step = state.stepMode === 'frame' ? (1 / state.framerate) : 1;
                 videoRef.current.currentTime += dir * step;
             }
         },
-        takeScreenshot: () => isCropMode ? setCropMode(false) : takeRawScreenshot(),
-        toggleTagDialog: () => setShowTagDialog(true),
-        playNextVideo: () => playNext(),
-        softDelete: handleSoftDelete,
-        toggleFavorite: handleToggleFavorite
     });
-
-    const onCropComplete = useCallback((base64: string) => {
-        setTagCoverImage(base64);
-        setShowCreateTagDialog(true);
-    }, []);
-
-    const { handleMouseDown, handleMouseMove, handleMouseUp, cropRect, isDragging } = useVideoCrop(
-        videoRef,
-        containerRef,
-        rotation,
-        isPlaying,
-        setPlaying,
-        onCropComplete
-    );
-
-    // --- 6. 生命周期与事件 ---
-
-    // 路径切换时的副作用
+    // 路径切换时的资源清理与加载
     useEffect(() => {
         if (!currentPath) {
             clear();
             return;
         }
-        reset(); // 先归零物理状态
-        loadScreenshots(currentPath); // 加载该视频的截图列表
+        reset();
+        loadScreenshots(currentPath);
     }, [currentPath, loadScreenshots, clear, reset]);
 
     // 自动播放下一个
@@ -184,10 +109,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         return () => v.removeEventListener('ended', onEnded);
     }, [playNext]);
 
-    // 处理视频源路径 (Windows 兼容)
-    const videoSrc = currentPath ? `file://${currentPath.replace(/\\/g, '/')}` : '';
-
-    // --- 7. 渲染层 ---
+    // --- 6. 渲染层 ---
 
     if (!currentPath) {
         return (
@@ -197,100 +119,51 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         );
     }
 
+    // 处理框选完成：记录截图并开启创建标签弹窗
+    const handleCropComplete = useCallback((base64: string) => {
+        setModals(m => ({ ...m, createTag: true, cover: base64 }));
+    }, []);
+
     return (
         <VideoContext.Provider value={{ videoRef }}>
             <Box style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: '#000' }}>
 
-                {/* 视频渲染区域 */}
-                <Box
-                    ref={containerRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    style={{
-                        flex: 1,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'crosshair' // 提示可框选
-                    }}
-                >
-                    <video
-                        ref={videoRef}
-                        src={videoSrc}
-                        style={{
-                            width: '100%', height: '100%', objectFit: 'contain',
-                            transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                            transformOrigin: 'center center',
-                            pointerEvents: 'auto' // 确保双击能穿透或直接触发
-                        }}
-                        // --- 保留你原来的所有属性 ---
-                        onPlay={() => setPlaying(true)}
-                        onPause={() => setPlaying(false)}
-                        onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
-                        onLoadedMetadata={() => {
-                            setDuration(videoRef.current?.duration || 0);
-                            onVisualLoadedMetadata();
-                        }}
-                        onDoubleClick={() => setPlaying(!isPlaying)}
-                    />
+                {/* 1. 视频视口层：负责画面渲染、视觉变换、框选手势 */}
+                <VideoViewport
+                    videoRef={videoRef}
+                    containerRef={containerRef}
+                    videoSrc={`file://${currentPath.replace(/\\/g, '/')}`}
+                    onCropComplete={handleCropComplete}
+                    onTimeUpdate={setCurrentTime}
+                />
 
-                    {/* 框选矩形 UI 叠加层 */}
-                    {isDragging && cropRect && (
-                        <div style={{
-                            position: 'absolute',
-                            left: Math.min(cropRect.startX, cropRect.currX),
-                            top: Math.min(cropRect.startY, cropRect.currY),
-                            width: Math.abs(cropRect.currX - cropRect.startX),
-                            height: Math.abs(cropRect.currY - cropRect.startY),
-                            border: '1.5px solid #00ff00',
-                            backgroundColor: 'rgba(0, 255, 0, 0.15)',
-                            pointerEvents: 'none', // 不干扰鼠标
-                            zIndex: 100
-                        }} />
-                    )}
-                </Box>
-
-                {/* 底部控制栏 */}
+                {/* 2. 底部控制栏 */}
                 <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
                     <PlayerControls
                         videoRef={videoRef}
-                        onScreenshot={() => isCropMode ? setCropMode(false) : takeRawScreenshot()}
-                        onNext={() => playNext()}
-                        onRotate={rotateVideo}
-                        onDelete={handleSoftDelete}
-                        onToggleFavorite={handleToggleFavorite}
+                        onScreenshot={actions.takeScreenshot}
+                        onNext={playNext}
+                        onRotate={actions.rotateVideo}
+                        onDelete={actions.softDelete}
+                        onToggleFavorite={actions.toggleFavorite}
                     />
                 </Box>
 
-                {/* 弹窗组件 - 数据全部直接来自档案库 */}
-                <ExportScreenshotDialog
-                    opened={showExportDialog}
-                    onClose={() => setShowExportDialog(false)}
-                    videoPath={currentPath}
-                    defaultRotation={rotation}
-                />
-
-                <AssignTagDialog
-                    opened={showTagDialog}
-                    onClose={() => setShowTagDialog(false)}
-                    assignedTagIds={activeFile?.annotation?.tags ?? []}
-                    onAssign={async (ids) => {
-                        await updateAnnotation(currentPath, { tags: ids });
-                    }}
-                />
-
-                <CreateTagDialog
-                    opened={showCreateTagDialog}
-                    onClose={() => { setShowCreateTagDialog(false); setTagCoverImage(''); }}
-                    coverImage={tagCoverImage}
-                    assignedTagIds={activeFile?.annotation?.tags ?? []}
-                    onCreated={async (tag) => {
-                        const currentTags = activeFile?.annotation?.tags ?? [];
-                        await updateAnnotation(currentPath, { tags: [...currentTags, tag.id] });
-                    }}
+                {/* 3. 弹窗组件组 */}
+                <PlayerModals
+                    currentPath={currentPath}
+                    rotation={rotation}
+                    // 导出弹窗
+                    showExport={showExportDialog}
+                    setShowExport={setShowExportDialog}
+                    // 分配标签弹窗
+                    showTag={modals.tag}
+                    setShowTag={(v) => setModals(m => ({ ...m, tag: v }))}
+                    // 创建标签弹窗
+                    showCreateTag={modals.createTag}
+                    setShowCreateTag={(v) => setModals(m => ({ ...m, createTag: v }))}
+                    tagCoverImage={modals.cover}
+                    setTagCoverImage={(v) => setModals(m => ({ ...m, cover: v }))}
                 />
             </Box>
         </VideoContext.Provider>

@@ -10,6 +10,7 @@ move "E:\100_MyProjects\go_reel1\go_reel_c\test_video" "E:\100_MyProjects\go_ree
 
 :: 2. 移动 go_reel1 根目录下的内容
 robocopy "E:\100_MyProjects\go_reel1\bin" "E:\100_MyProjects\go_reel\bin" /e /move
+move  "E:\100_MyProjects\go_reel1\data" "E:\100_MyProjects\go_reela"
 move "E:\100_MyProjects\go_reel1\node_modules" "E:\100_MyProjects\go_reel\"
 move "E:\100_MyProjects\go_reel1\out" "E:\100_MyProjects\go_reel\"
 

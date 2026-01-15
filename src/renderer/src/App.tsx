@@ -1,52 +1,49 @@
-import { useEffect } from 'react';
-import { MantineProvider } from '@mantine/core';
+import { useEffect, useState, useMemo } from 'react';
+import { MantineProvider, Box } from '@mantine/core';
 import '@mantine/core/styles.css';
-import { AppAction } from '../../shared/settings.schema';
 
-// 导入新的 Store 结构
-import {
-  useNavigationStore,
-  useRefreshStore
-} from './stores';
+// 1. Stores
+import { useNavigationStore } from './stores';
 
-import {
-  MainLayout,
-  ToastContainer
-} from './components';
+// 2. Components & Layout
+import { MainLayout, ToastContainer } from './components';
+import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
+import { RecordingIndicator } from './player/RecordingIndicator';
 
+// 3. Pages & Player
 import { VideoPlayer } from './player/VideoPlayer';
-
-
 import {
   TagSearchPage,
   HistoryPage,
   NewestPage,
-  // SearchPage,
-  // LikedPage,
   ElitePage,
   SettingsPage
 } from './pages';
 
-import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
-import { RecordingIndicator } from './player/RecordingIndicator';
+// 4. Utils
 import { keyBindingManager } from './utils/KeyBindingManager';
+import { AppAction } from '../../shared/settings.schema';
 
 function App() {
-  // Navigation
+  // --- Navigation & View State ---
   const currentView = useNavigationStore((state) => state.currentView);
   const setView = useNavigationStore((state) => state.setView);
 
-  // Video & Playlist
-  // const refreshVideos = useVideoStore((state) => state.refreshVideos);
+  // 记录哪些页面已经被访问过（按需挂载）
+  const [visitedViews, setVisitedViews] = useState<Set<string>>(new Set([currentView]));
 
-  // Refresh Progress UI
-  const { startRefresh, finishRefresh } = useRefreshStore();
-
-  /**
-   * Effect 2: 全局事件监听 (快捷键 & 刷新)
-   */
+  // 当视图切换时，将其标记为已访问
   useEffect(() => {
-    // 定义要注册的动作映射
+    setVisitedViews((prev) => {
+      if (prev.has(currentView)) return prev;
+      const next = new Set(prev);
+      next.add(currentView);
+      return next;
+    });
+  }, [currentView]);
+
+  // --- 全局事件监听 ---
+  useEffect(() => {
     const navHandlers = {
       list_history: () => setView('history'),
       list_newest: () => setView('newest'),
@@ -62,34 +59,55 @@ function App() {
       },
     };
 
-    // 1. 使用批量注册
     keyBindingManager.registerHandlers(navHandlers);
-
     return () => {
-      // 2. 建议注销特定的处理器，而不是 clearHandlers()
-      // 这样可以避免在复杂的组件树中意外删掉其他地方注册的快捷键
       keyBindingManager.unregisterHandlers(Object.keys(navHandlers) as AppAction[]);
     };
-  }, [setView, startRefresh, finishRefresh]);
+  }, [setView]);
 
-  // 渲染逻辑
-  const renderView = () => {
-    switch (currentView) {
-      case 'player': return <VideoPlayer />;
-      case 'history': return <HistoryPage />;
-      case 'newest': return <NewestPage />;
-      // case 'search': return <SearchPage />;
-      // case 'liked': return <LikedPage />;
-      case 'elite': return <ElitePage />;
-      case 'tag-search': return <TagSearchPage />;
-      case 'settings': return <SettingsPage />;
-      default: return <VideoPlayer />;
-    }
-  };
+  // --- 页面配置表 ---
+  // 使用 useMemo 避免每次 App 重绘都生成新的对象引用
+  const viewConfigs = useMemo(() => [
+    { id: 'player', component: <VideoPlayer /> },
+    { id: 'history', component: <HistoryPage /> },
+    { id: 'newest', component: <NewestPage /> },
+    { id: 'elite', component: <ElitePage /> },
+    { id: 'tag-search', component: <TagSearchPage /> },
+    { id: 'settings', component: <SettingsPage /> },
+  ], []);
 
   return (
     <MantineProvider defaultColorScheme="dark">
-      <MainLayout>{renderView()}</MainLayout>
+      <MainLayout>
+        {/* 
+            核心渲染逻辑：
+            遍历配置表，如果页面被访问过，则保留在 DOM 树中。
+            通过 display 属性控制显示隐藏，从而保留组件状态（如视频进度、滚动位置）。
+        */}
+        {viewConfigs.map((view) => {
+          const isVisited = visitedViews.has(view.id);
+          const isActive = currentView === view.id;
+
+          // 如果该视图从未被访问过，则完全不渲染，节省内存和初始化性能
+          if (!isVisited) return null;
+
+          return (
+            <Box
+              key={view.id}
+              style={{
+                display: isActive ? 'block' : 'none',
+                height: '100%',
+                width: '100%',
+                overflow: 'hidden' // 确保各页面独立滚动
+              }}
+            >
+              {view.component}
+            </Box>
+          );
+        })}
+      </MainLayout>
+
+      {/* 全局 UI 组件 */}
       <ToastContainer />
       <RefreshLoadingScreen />
       <RecordingIndicator />

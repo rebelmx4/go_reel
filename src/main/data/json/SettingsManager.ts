@@ -50,8 +50,8 @@ const DEFAULT_SETTINGS: AppSettings = {
         screenshot: 'E',
         export_screenshot: 'Ctrl+E',
         export_screenshot_with_dialog: 'Alt+E',
-        record_clip: 'R',
-        cancel_record: 'Shift+R',
+        record_clip: 'K',
+        cancel_record: 'Shift+K',
       },
       interact: {
         like: 'F',
