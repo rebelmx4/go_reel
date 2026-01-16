@@ -17,12 +17,9 @@ import {
 
 
 import { registerHistoryHandlers } from './ipc/historyHandlers';
-import { calculateFastHash } from './utils/hash'
 
 let refreshService: RefreshService | null = null;
 let videoExportService: VideoExportService | null = null;
-
-
 
 log.info('Initializing startup service...');
 
