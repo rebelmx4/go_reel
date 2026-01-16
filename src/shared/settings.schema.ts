@@ -4,13 +4,17 @@
  */
 
 export interface ViewNavActions {
-  list_history: string;
-  list_newest: string;
-  list_search: string;
-  list_liked: string;
-  list_elite: string;
-  back_to_player: string;
+  player_page: string;   
+  history_page: string;
+  newest_page: string;
+  search_page: string;
+  tag_search_page: string;
+  liked_page: string;
+  elite_page: string;
+  settings_page: string; 
 }
+
+
 
 export interface PlayControlActions {
   toggle_play: string;
@@ -48,7 +52,6 @@ export interface EditTagActions {
 export interface SystemActions {
   refresh: string;
   soft_delete: string;
-  open_settings: string;
   open_video_dir: string,
 }
 

@@ -38,12 +38,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   key_bindings: {
     global: {
       view_nav: {
-        list_history: '1',
-        list_newest: '2',
-        list_search: '3',
-        list_liked: '5',
-        list_elite: '6',
-        back_to_player: 'Esc', // 从 system 移动到了这里
+        history_page: '1',
+        newest_page: '2',
+        search_page: '3',
+        tag_search_page: '4',
+        liked_page: '5',
+        elite_page: '6',
+        settings_page: '8',
+        player_page: 'Esc',
       },
       play_control: {
         toggle_play: 'Space',
@@ -77,7 +79,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
       system: {
         refresh: 'F5',
         soft_delete: 'Ctrl+Delete',
-        open_settings: 'Ctrl+,', // 新增字段
         open_video_dir: 'Ctrl+Shift+O', 
       },
     },

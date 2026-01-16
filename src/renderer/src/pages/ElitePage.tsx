@@ -35,7 +35,7 @@ export function ElitePage() {
          * 2. 切换到播放器视图
          */
         jumpTo(video.path, 'elite');
-        setView('player');
+        setView('player_page');
     };
 
     const handleToggleLike = (video: VideoFile) => {

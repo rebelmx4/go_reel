@@ -31,7 +31,7 @@ export function NewestPage() {
          * 2. 切换页面到播放器
          */
         jumpTo(video.path, 'newest');
-        setView('player');
+        setView('player_page');
     };
 
     const handleToggleLike = (video: VideoFile) => {

@@ -1,11 +1,9 @@
-// src/renderer/src/pages/HistoryPage.tsx
-
 import { useMemo } from 'react';
 import { Box, Text } from '@mantine/core';
 import {
-    useVideoFileRegistryStore, // 新的档案库 Store
-    usePlaylistStore,          // 合并了历史记录的播放 Store
-    useNavigationStore         // 页面切换 Store
+    useVideoFileRegistryStore,
+    usePlaylistStore,
+    useNavigationStore
 } from '../stores';
 
 import { VideoGrid } from '../components/Video/VideoGrid';
@@ -40,7 +38,7 @@ export function HistoryPage() {
          * 2. 切换页面到播放器
          */
         jumpTo(video.path, 'all');
-        setView('player');
+        setView('player_page');
     };
 
     const handleToggleLike = (video: VideoFile) => {

@@ -20,7 +20,7 @@ export function LikedPage() {
     // const handlePlay = (video: any) => {
     //     setCurrentVideo(video.path);
     //     updateLastPlayed(video.id);
-    //     setView('player');
+    //     setView('player_page');
     // };
 
     // return (

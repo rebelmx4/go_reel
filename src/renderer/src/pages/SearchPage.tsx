@@ -5,7 +5,7 @@ import { usePlayerStore, useNavigationStore, usePlaylistStore } from '../stores'
 import { VideoGrid } from '../components/Video/VideoGrid';
 
 export function SearchPage() {
-    // const [keyword, setKeyword] = useState('');
+    const [keyword, setKeyword] = useState('');
     // const searchByFilename = useVideoStore((state) => state.searchByFilename);
     // const loadVideos = useVideoStore((state) => state.loadVideos);
     // const toggleLike = useVideoStore((state) => state.toggleLike);
@@ -24,7 +24,7 @@ export function SearchPage() {
     // const handlePlay = (video: any) => {
     //     setCurrentVideo(video.path);
     //     updateLastPlayed(video.id);
-    //     setView('player');
+    //     setView('player_page');
     // };
 
     // return (

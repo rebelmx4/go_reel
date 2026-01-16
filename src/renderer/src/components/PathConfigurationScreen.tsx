@@ -45,7 +45,7 @@ export function PathConfigurationScreen() {
 
             if (result.success) {
                 // Switch to player view
-                setView('player');
+                setView('player_page');
             } else {
                 setError(result.error || '保存配置失败');
             }

@@ -1,31 +1,14 @@
 import { create } from 'zustand';
+import { ViewNavActions } from '../../../shared/settings.schema';
 
-/**
- * Available views in the application
- */
-export type ViewType =
-  | 'player'
-  | 'history'
-  | 'newest'
-  | 'search'
-  | 'liked'
-  | 'elite'
-  | 'tag-search'
-  | 'settings';
+export type ViewType = keyof ViewNavActions;
 
-/**
- * Navigation state interface
- */
 interface NavigationState {
   currentView: ViewType;
   setView: (view: ViewType) => void;
 }
 
-/**
- * Navigation store
- * Manages the current view/page in the application
- */
 export const useNavigationStore = create<NavigationState>((set) => ({
-  currentView: 'player', // Start with configuration screen
+  currentView: 'player_page', 
   setView: (view) => set({ currentView: view }),
 }));

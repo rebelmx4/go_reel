@@ -71,7 +71,7 @@ const bootstrap = async () => {
 
     // 7. 初始化 UI 状态
     playlist.setMode('all');        // 默认播放模式
-    nav.setView('player');          // 默认显示播放器页面
+    nav.setView('player_page');          // 默认显示播放器页面
 
     console.log(`Bootstrap complete. Loaded ${videoList.length} files.`);
 

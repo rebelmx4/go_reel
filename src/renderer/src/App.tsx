@@ -45,13 +45,14 @@ function App() {
   // --- 全局事件监听 ---
   useEffect(() => {
     const navHandlers = {
-      list_history: () => setView('history'),
-      list_newest: () => setView('newest'),
-      list_search: () => setView('search'),
-      list_liked: () => setView('liked'),
-      list_elite: () => setView('elite'),
-      back_to_player: () => setView('player'),
-      open_settings: () => setView('settings'),
+      history_page: () => setView('history_page'),
+      newest_page: () => setView('newest_page'),
+      search_page: () => setView('search_page'),
+      tag_search_page: () => setView('tag_search_page'),
+      liked_page: () => setView('liked_page'),
+      elite_page: () => setView('elite_page'),
+      player_page: () => setView('player_page'),
+      settings_page: () => setView('settings_page'),
       open_video_dir: () => {
         window.api.openVideoSourceDir().then(res => {
           if (!res.success) console.error('无法打开目录:', res.error);
@@ -68,12 +69,12 @@ function App() {
   // --- 页面配置表 ---
   // 使用 useMemo 避免每次 App 重绘都生成新的对象引用
   const viewConfigs = useMemo(() => [
-    { id: 'player', component: <VideoPlayer /> },
-    { id: 'history', component: <HistoryPage /> },
-    { id: 'newest', component: <NewestPage /> },
-    { id: 'elite', component: <ElitePage /> },
-    { id: 'tag-search', component: <TagSearchPage /> },
-    { id: 'settings', component: <SettingsPage /> },
+    { id: 'player_page', component: <VideoPlayer /> },
+    { id: 'history_page', component: <HistoryPage /> },
+    { id: 'newest_page', component: <NewestPage /> },
+    { id: 'elite_page', component: <ElitePage /> },
+    { id: 'tag_search_page', component: <TagSearchPage /> },
+    { id: 'settings_page', component: <SettingsPage /> },
   ], []);
 
   return (
