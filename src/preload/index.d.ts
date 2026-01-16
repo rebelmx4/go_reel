@@ -54,17 +54,14 @@ declare global {
       exportScreenshots: (fielPath: string, rotation: number) => Promise<void>
       
       // Video Metadata
-      calculateVideoHash: (filePath: string) => Promise<string | null>
       getVideoMetadata: (videoPath: string) => Promise<VideoMetadata>
 
       // annotation
-      addAnnotation: (fielPath: string, annotation: Annotation) => Promise<{ success: boolean; error?: string }>
       updateAnnotation: (fielPath: string, updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>
       getAnnotation: (fielPath: string) => Promise<Annotation | null>
       
       // File Profile 相关接口...
       getFileProfile: (filePath: string) => Promise<FileProfile | null>
-      getProfilesByHash: (hash: string) => Promise<FileProfile[] | null>
           
       // Settings
       getAssetStatistics: () => Promise<{ total_indexed_videos: string; total_disk_usage: string; }>

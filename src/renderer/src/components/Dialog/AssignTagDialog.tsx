@@ -1,258 +1,217 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Modal, Box, Text, TextInput, Button, Group } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { useTagStore, Tag } from '../../stores';
+import { useTagStore } from '../../stores/tagStore';
+import { Tag } from '../../../../shared';
+import { useVideoFileRegistryStore } from '../../stores/videoFileRegistryStore';
+import { keyBindingManager } from '../../utils/KeyBindingManager';
 import { TagCard } from '../Tag/TagCard';
 import { TagFilterGrid } from '../Tag/TagFilterGrid';
 
 interface AssignTagDialogProps {
     opened: boolean;
     onClose: () => void;
-    videoId?: number;
+    videoPath: string; // 统一使用 path
     assignedTagIds: number[];
-    onAssign: (tagIds: number[]) => void;
+    // onAssign 依然保留，用于通知父组件 UI 刷新（如果父组件没有订阅 RegistryStore 的话）
+    onAssign?: (tagIds: number[]) => void;
 }
-
-const SHORTCUT_KEYS = ['1', '2', '3', '4', '5', 'Q', 'W', 'E', 'R', '~'];
 
 export function AssignTagDialog({
     opened,
     onClose,
+    videoPath,
     assignedTagIds,
     onAssign
 }: AssignTagDialogProps) {
+    // --- 1. Store 数据与方法 ---
+    const { tagsData, pinnedTags, getTagById, pinTag, unpinTag } = useTagStore();
+    const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
+
+    // --- 2. 本地会话状态 ---
     const [searchKeyword, setSearchKeyword] = useState('');
-    const [sessionAssignedIds, setSessionAssignedIds] = useState<Set<number>>(
-        new Set(assignedTagIds)
-    );
+    const [sessionAssignedIds, setSessionAssignedIds] = useState<Set<number>>(new Set());
 
-    const tagsData = useTagStore((state) => state.tagsData);
-    const pinnedTags = useTagStore((state) => state.pinnedTags);
-    const getTagById = useTagStore((state) => state.getTagById);
-    const pinTag = useTagStore((state) => state.pinTag);
-    const unpinTag = useTagStore((state) => state.unpinTag);
+    // 当对话框打开时，同步初始状态
+    useEffect(() => {
+        if (opened) {
+            setSessionAssignedIds(new Set(assignedTagIds));
+            setSearchKeyword('');
+        }
+    }, [opened, assignedTagIds]);
 
-    // Get pinned tag objects
-    const pinnedTagObjects = pinnedTags
-        .map(p => getTagById(p.tagId))
-        .filter((t): t is Tag => t !== undefined);
+    // --- 3. 数据计算 (Memoized) ---
+    const pinnedTagObjects = useMemo(() =>
+        pinnedTags
+            .sort((a, b) => a.position - b.position)
+            .map(p => getTagById(p.tagId))
+            .filter((t): t is Tag => !!t),
+        [pinnedTags, getTagById]);
 
-    // Get assigned tag objects
-    const assignedTagObjects = Array.from(sessionAssignedIds)
-        .map(id => getTagById(id))
-        .filter((t): t is Tag => t !== undefined);
+    const assignedTagObjects = useMemo(() =>
+        Array.from(sessionAssignedIds)
+            .map(id => getTagById(id))
+            .filter((t): t is Tag => !!t),
+        [sessionAssignedIds, getTagById]);
 
-    // Excluded IDs = pinned + assigned
-    const excludedIds = new Set([
+    const excludedIds = useMemo(() => new Set([
         ...pinnedTags.map(p => p.tagId),
-        ...sessionAssignedIds
-    ]);
+        ...Array.from(sessionAssignedIds)
+    ]), [pinnedTags, sessionAssignedIds]);
 
-    // Handle tag click from library
-    const handleTagClick = useCallback((tag: Tag) => {
-        setSessionAssignedIds(prev => new Set([...prev, tag.id]));
-    }, []);
-
-    // Handle unassign
-    const handleUnassign = useCallback((tag: Tag) => {
+    // --- 4. 逻辑处理函数 ---
+    const handleToggleTag = useCallback((tagId: number) => {
         setSessionAssignedIds(prev => {
             const next = new Set(prev);
-            next.delete(tag.id);
+            if (next.has(tagId)) next.delete(tagId);
+            else next.add(tagId);
             return next;
         });
     }, []);
 
-    // Handle pin tag
-    const handlePinTag = useCallback((tag: Tag) => {
-        if (pinnedTags.length >= 10) {
-            alert('常用标签栏已满（最多10个）');
-            return;
-        }
-        const position = pinnedTags.length;
-        pinTag(tag.id, position);
+    const handlePin = useCallback(async (tag: Tag) => {
+        if (pinnedTags.length >= 10) return alert('常用标签栏已满');
+        await pinTag(tag.id); // 内部已包含保存逻辑
     }, [pinnedTags, pinTag]);
 
-    // Handle unpin tag
-    const handleUnpinTag = useCallback((tag: Tag) => {
-        unpinTag(tag.id);
-    }, [unpinTag]);
-
-    // Handle drag drop to pinned area
-    const handleDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        const tagData = e.dataTransfer.getData('application/json');
-        if (tagData) {
-            const tag: Tag = JSON.parse(tagData);
-            handlePinTag(tag);
-        }
-    }, [handlePinTag]);
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
-
-    // Handle shortcut keys
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        const key = e.key.toUpperCase();
-        const keyIndex = SHORTCUT_KEYS.findIndex(k => k === key);
-
-        if (keyIndex !== -1 && keyIndex < pinnedTagObjects.length) {
-            const tag = pinnedTagObjects[keyIndex];
-            if (!sessionAssignedIds.has(tag.id)) {
-                setSessionAssignedIds(prev => new Set([...prev, tag.id]));
-            }
-        }
-    }, [pinnedTagObjects, sessionAssignedIds]);
-
-    // Register keyboard shortcuts
-    useState(() => {
-        if (opened) {
-            window.addEventListener('keydown', handleKeyDown);
-            return () => window.removeEventListener('keydown', handleKeyDown);
-        }
-    });
-
-    // Handle confirm
     const handleConfirm = async () => {
-        // Save pinned tags
-        const savePinnedTags = useTagStore.getState().savePinnedTags;
-        await savePinnedTags();
-
-        // Save assigned tags
-        onAssign(Array.from(sessionAssignedIds));
+        const finalIds = Array.from(sessionAssignedIds);
+        // 直接更新 Registry Store，这会触发后端 files.json 的写入
+        await updateAnnotation(videoPath, { tags: finalIds });
+        onAssign?.(finalIds);
         onClose();
     };
 
-    // Handle cancel
-    const handleCancel = () => {
-        setSessionAssignedIds(new Set(assignedTagIds));
-        onClose();
+    // --- 5. 快捷键集成 (KeyBindingManager) ---
+    useEffect(() => {
+        if (!opened) return;
+
+        // 切换上下文
+        const originalContext = keyBindingManager.getContext();
+        keyBindingManager.setContext('dialog_assign_tag');
+
+        // 注册处理器
+        // 动态构建 1-10 号槽位的动作
+        const handlers: Record<string, () => void> = {
+            confirm: handleConfirm,
+            cancel: onClose
+        };
+
+        // 映射 slot_1, slot_2 ... slot_10
+        pinnedTagObjects.forEach((tag, index) => {
+            handlers[`slot_${index + 1}`] = () => handleToggleTag(tag.id);
+        });
+
+        keyBindingManager.registerHandlers(handlers);
+
+        return () => {
+            keyBindingManager.setContext(originalContext);
+            // 清理本次注册的所有处理器
+            Object.keys(handlers).forEach(action => keyBindingManager.unregisterHandler(action));
+        };
+    }, [opened, pinnedTagObjects, handleToggleTag, handleConfirm, onClose]);
+
+    // 获取 Slot 对应的快捷键名称（用于 UI 显示）
+    const getSlotKeyLabel = (index: number) => {
+        const bindings = keyBindingManager.getBindings();
+        return bindings?.dialog_assign_tag.quick_assign_tags[`slot_${index + 1}`] || '';
     };
 
     return (
         <Modal
             opened={opened}
-            onClose={handleCancel}
-            title="为当前视频分配标签"
+            onClose={onClose}
+            title={<Text fw={700}>为当前视频分配标签</Text>}
             size="xl"
             styles={{
-                body: { padding: 0 },
-                header: { backgroundColor: '#1a1a1a', borderBottom: '1px solid #333' }
+                body: { padding: 0, height: '75vh', display: 'flex', flexDirection: 'column' },
+                content: { backgroundColor: '#141517' }
             }}
         >
-            <Box style={{ display: 'flex', flexDirection: 'column', height: '70vh' }}>
-                {/* Pinned Tags Area */}
+            {/* 1. 常用标签区 (Pinned) */}
+            <Box p="md" style={{ backgroundColor: '#0b0c0d', borderBottom: '1px solid #333' }}>
+                <Text size="xs" fw={700} c="dimmed" mb="xs">常用标签 (拖拽标签库内容至此，或使用快捷键快速切换)</Text>
                 <Box
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={async (e) => {
+                        const data = e.dataTransfer.getData('application/json');
+                        if (data) handlePin(JSON.parse(data));
+                    }}
                     style={{
-                        padding: 16,
-                        backgroundColor: '#0a0a0a',
-                        borderBottom: '1px solid #333',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: 10,
+                        minHeight: 100,
+                        border: '1px dashed #333',
+                        padding: 8,
+                        borderRadius: 4
                     }}
                 >
-                    <Text size="sm" fw={600} mb={8} c="dimmed">
-                        常用标签 (拖拽到此处固化，数字键快速分配)
-                    </Text>
-                    <Box
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(5, 1fr)',
-                            gap: 8,
-                            minHeight: 100,
-                        }}
-                    >
-                        {pinnedTagObjects.map((tag, index) => (
-                            <TagCard
-                                key={tag.id}
-                                tag={tag}
-                                shortcutKey={SHORTCUT_KEYS[index]}
-                                dimmed={sessionAssignedIds.has(tag.id)}
-                                showRemove
-                                onRemove={handleUnpinTag}
-                                onClick={() => {
-                                    if (!sessionAssignedIds.has(tag.id)) {
-                                        setSessionAssignedIds(prev => new Set([...prev, tag.id]));
-                                    }
-                                }}
-                            />
-                        ))}
-                    </Box>
-                </Box>
-
-                {/* Assigned Tags Area */}
-                <Box
-                    style={{
-                        padding: 16,
-                        backgroundColor: '#1a1a1a',
-                        borderBottom: '1px solid #333',
-                    }}
-                >
-                    <Text size="sm" fw={600} mb={8} c="dimmed">
-                        已分配标签 ({assignedTagObjects.length})
-                    </Text>
-                    <Box
-                        style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 8,
-                            minHeight: 60,
-                        }}
-                    >
-                        {assignedTagObjects.map(tag => (
-                            <Box key={tag.id} style={{ width: 120 }}>
-                                <TagCard
-                                    tag={tag}
-                                    showRemove
-                                    onRemove={handleUnassign}
-                                />
-                            </Box>
-                        ))}
-                        {assignedTagObjects.length === 0 && (
-                            <Text size="sm" c="dimmed">暂无分配的标签</Text>
-                        )}
-                    </Box>
-                </Box>
-
-                {/* Tag Library */}
-                <Box style={{ flex: 1, padding: 16, overflow: 'hidden' }}>
-                    <TextInput
-                        placeholder="🔍 搜索标签库..."
-                        value={searchKeyword}
-                        onChange={(e) => setSearchKeyword(e.currentTarget.value)}
-                        leftSection={<IconSearch size={16} />}
-                        mb={12}
-                    />
-                    <Box style={{ height: 'calc(100% - 50px)' }}>
-                        <TagFilterGrid
-                            allTagsData={tagsData}
-                            filterKeyword={searchKeyword}
-                            excludedIds={excludedIds}
-                            onTagClick={handleTagClick}
-                            draggable
-                            onTagDragStart={() => { }}
+                    {pinnedTagObjects.map((tag, index) => (
+                        <TagCard
+                            key={tag.id}
+                            tag={tag}
+                            shortcutKey={getSlotKeyLabel(index)}
+                            dimmed={sessionAssignedIds.has(tag.id)}
+                            showRemove
+                            onRemove={() => unpinTag(tag.id)}
+                            onClick={() => handleToggleTag(tag.id)}
                         />
-                    </Box>
-                </Box>
-
-                {/* Footer */}
-                <Box
-                    style={{
-                        padding: 16,
-                        borderTop: '1px solid #333',
-                        backgroundColor: '#1a1a1a',
-                    }}
-                >
-                    <Group justify="flex-end">
-                        <Button variant="subtle" onClick={handleCancel}>
-                            取消
-                        </Button>
-                        <Button onClick={handleConfirm}>
-                            确定
-                        </Button>
-                    </Group>
+                    ))}
+                    {pinnedTagObjects.length === 0 && (
+                        <Box style={{ gridColumn: 'span 5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text size="xs" c="dimmed">暂无常用标签</Text>
+                        </Box>
+                    )}
                 </Box>
             </Box>
+
+            {/* 2. 当前分配区 (Assigned) */}
+            <Box p="md" style={{ borderBottom: '1px solid #333' }}>
+                <Text size="xs" fw={700} c="dimmed" mb="xs">已分配给本视频 ({assignedTagObjects.length})</Text>
+                <Group gap="xs" style={{ minHeight: 40 }}>
+                    {assignedTagObjects.map(tag => (
+                        <Box key={tag.id} w={120}>
+                            <TagCard
+                                tag={tag}
+                                showRemove
+                                onRemove={() => handleToggleTag(tag.id)}
+                            />
+                        </Box>
+                    ))}
+                    {assignedTagObjects.length === 0 && <Text size="xs" c="dimmed">尚未分配标签</Text>}
+                </Group>
+            </Box>
+
+            {/* 3. 标签库搜索区 (Library) */}
+            <Box p="md" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <TextInput
+                    placeholder="🔍 搜索标签库..."
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.currentTarget.value)}
+                    mb="md"
+                    data-autofocus
+                />
+                <Box style={{ flex: 1 }}>
+                    <TagFilterGrid
+                        allTagsData={tagsData}
+                        filterKeyword={searchKeyword}
+                        excludedIds={excludedIds}
+                        onTagClick={(tag) => handleToggleTag(tag.id)}
+                        draggable
+                    />
+                </Box>
+            </Box>
+
+            {/* 4. 底部操作栏 */}
+            <Group justify="flex-end" p="md" style={{ borderTop: '1px solid #333', backgroundColor: '#141517' }}>
+                <Button variant="subtle" color="gray" onClick={onClose}>
+                    取消
+                </Button>
+                <Button color="green" onClick={handleConfirm}>
+                    确定
+                </Button>
+            </Group>
         </Modal>
     );
 }

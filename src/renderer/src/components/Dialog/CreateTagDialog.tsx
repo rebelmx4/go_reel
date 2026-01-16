@@ -96,7 +96,7 @@ export function CreateTagDialog({
         setIsSubmitting(true);
         try {
             // 第一步：调用后端 API 创建标签
-            const newTag = await window.api.addTag({
+            const newTag = await addTag({
                 keywords: trimmedKey,
                 group: finalGroup,
                 description: description.trim(),
@@ -153,11 +153,27 @@ export function CreateTagDialog({
                     <Stack style={{ width: '45%', padding: 20, borderRight: '1px solid #333', overflowY: 'auto' }} gap="md">
                         <Box>
                             <Text size="xs" c="dimmed" fw={700} mb={5}>封面预览 (可粘贴图片替换)</Text>
-                            <Image
-                                src={cover}
-                                radius="md"
-                                style={{ border: '2px solid #333', aspectRatio: '16/9', objectFit: 'cover' }}
-                            />
+                            {cover ? (
+                                <Image
+                                    src={cover}
+                                    radius="md"
+                                    fit="contain"
+                                    style={{ border: '2px solid #333', maxHeight: '300px' }}
+                                />
+                            ) : (
+                                <Box
+                                    style={{
+                                        height: 200,
+                                        border: '2px dashed #333',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: '#1a1b1e'
+                                    }}
+                                >
+                                    <Text c="dimmed" size="sm">请截图后在此处 Ctrl+V 粘贴</Text>
+                                </Box>
+                            )}
                         </Box>
 
                         <TextInput

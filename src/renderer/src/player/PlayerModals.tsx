@@ -18,7 +18,6 @@ interface PlayerModalsProps {
 }
 
 export function PlayerModals(props: PlayerModalsProps) {
-    const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
     const videoFile = useVideoFileRegistryStore(s => s.videos[props.currentPath]);
 
     return (
@@ -32,8 +31,9 @@ export function PlayerModals(props: PlayerModalsProps) {
             <AssignTagDialog
                 opened={props.showTag}
                 onClose={() => props.setShowTag(false)}
+                videoPath={props.currentPath}
                 assignedTagIds={videoFile?.annotation?.tags ?? []}
-                onAssign={ids => updateAnnotation(props.currentPath, { tags: ids })}
+                onAssign={(_ids) => { /* 内部已处理保存，此处可留空 */ }}
             />
             <CreateTagDialog
                 opened={props.showCreateTag}

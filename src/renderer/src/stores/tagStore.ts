@@ -16,7 +16,8 @@ interface TagState {
   isLoading: boolean;
 
   // 核心动作
-  loadTagLibrary: () => Promise<void>;
+  setInitialData: (library: TagLibrary) => void;
+  refreshTagLibrary: () => Promise<void>;
   
   // 创建标签：现在需要 imageBase64 并且由后端返回完整的 Tag 对象
   addTag: (params: { 
@@ -54,8 +55,16 @@ export const useTagStore = create<TagState>((set, get) => ({
   selectedTags: [],
   isLoading: false,
 
+  setInitialData: (library: TagLibrary) => {
+    set({ 
+      tagsData: library.tagsData || {}, 
+      pinnedTags: library.pinnedTags || [],
+      isLoading: false 
+    });
+  },
+
   // 1. 加载完整库
-  loadTagLibrary: async () => {
+  refreshTagLibrary: async () => {
     set({ isLoading: true });
     try {
       // 对应 index.d.ts 中的 loadTagLibrary

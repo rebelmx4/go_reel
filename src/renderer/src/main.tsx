@@ -2,7 +2,7 @@ import './assets/main.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { usePlayerStore, usePlaylistStore, useNavigationStore, useVideoFileRegistryStore } from './stores';
+import { usePlayerStore, usePlaylistStore, useNavigationStore, useVideoFileRegistryStore, useTagStore } from './stores';
 import { keyBindingManager } from './utils/KeyBindingManager';
 import App from './App'
 
@@ -16,6 +16,7 @@ const bootstrap = async () => {
   const playlist = usePlaylistStore.getState();
   const player = usePlayerStore.getState();
   const nav = useNavigationStore.getState();
+  const tagStore = useTagStore.getState();
 
   try {
     // 2. 核心：从后端一次性获取所有启动数据 (扫描结果、历史记录、用户设置)
@@ -27,7 +28,7 @@ const bootstrap = async () => {
       return;
     }
 
-    const { videoList, history, settings } = result;
+    const { videoList, history, settings, tagLibrary } = result;
 
     // 3. 分发数据到 VideoFileRegistryStore (档案库)
     // 此步骤会建立 Path -> VideoFile 的映射并完成初始排序
@@ -62,6 +63,10 @@ const bootstrap = async () => {
     const allPaths = useVideoFileRegistryStore.getState().videoPaths;
     if (allPaths.length > 0) {
       playlist.setCurrentPath(allPaths[0]);
+    }
+
+    if (tagLibrary) {
+      tagStore.setInitialData(tagLibrary);
     }
 
     // 7. 初始化 UI 状态

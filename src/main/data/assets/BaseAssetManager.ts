@@ -2,156 +2,126 @@ import fs from 'fs-extra';
 import path from 'path';
 import { app } from 'electron';
 import log from 'electron-log';
+import { fileProfileManager } from '../json/FileProfileManager'; 
+
 
 export abstract class BaseAssetManager {
   protected baseDir: string;
 
   constructor(subDir: string) {
+    // 严格遵循要求使用 app.getAppPath()
     this.baseDir = path.join(app.getAppPath(), 'data', subDir);
-    this.ensureDir();
+    this.ensureDirSync(this.baseDir);
   }
 
-  private ensureDir() {
+  /**
+   * 内部工具：确保目录存在 (同步)
+   */
+  protected ensureDirSync(dir: string) {
     try {
-      fs.ensureDirSync(this.baseDir);
+      fs.ensureDirSync(dir);
     } catch (error) {
-      log.error(`Failed to create asset directory ${this.baseDir}:`, error);
+      log.error(`[BaseAssetManager] Failed to ensure directory: ${dir}`, error);
     }
   }
 
   /**
-   * 【新增】Get the hash-based nested directory path.
-   * Ensures the directory exists before returning the path.
-   * @param hash - Full hash string
-   * @returns Full path to the hash-specific directory like: baseDir/a1/a1b2c3d4e5
+   * 内部私有方法：统一获取 Hash
+   * 这样如果以后逻辑变了，只需要改这一处
    */
-  protected getHashBasedDir(hash: string): string {
-    const prefix = hash.substring(0, 2);
-    const hashDir = path.join(this.baseDir, prefix, hash);
-    try {
-      // Ensure the nested directory exists every time it's requested
-      fs.ensureDirSync(hashDir);
-    } catch (error) {
-      log.error(`Failed to create hash-based directory ${hashDir}:`, error);
+  protected async getHash(filePath: string): Promise<string> {
+    const profile = await fileProfileManager.getProfile(filePath);
+    if (!profile || !profile.hash) {
+      throw new Error(`[ScreenshotManager] 无法获取文件档案或 Hash: ${filePath}`);
     }
-    return hashDir;
+    return profile.hash;
   }
 
   /**
-   * Get hash-based nested path for a specific file.
-   * @param hash - Full hash string
-   * @param filename - Filename to append
-   * @returns Full path like: baseDir/a1/a1b2c3d4e5/filename
+   * 获取哈希前缀目录 (两级结构)
+   * 对应 CoverManager 使用场景: baseDir/ab
+   * @param hash 完整哈希值
    */
-  protected getHashBasedPath(hash: string, filename: string): string {
-    const hashDir = this.getHashBasedDir(hash);
-    return path.join(hashDir, filename);
+  protected getPrefixDir(hash: string): string {
+    const prefix = (hash || '00').substring(0, 2);
+    const dir = path.join(this.baseDir, prefix);
+    this.ensureDirSync(dir);
+    return dir;
   }
 
   /**
-   * Get flat path for covers and other assets
-   * @param filename - Filename
-   * @returns Full path like: baseDir/filename
+   * 获取哈希专用子目录 (三级结构)
+   * 对应 ScreenshotManager 使用场景: baseDir/ab/abcdefg...
+   * @param hash 完整哈希值
    */
-  protected getFlatPath(filename: string): string {
-    return path.join(this.baseDir, filename);
+  protected getHashDir(hash: string): string {
+    const prefixDir = this.getPrefixDir(hash);
+    const dir = path.join(prefixDir, hash);
+    this.ensureDirSync(dir);
+    return dir;
   }
 
-  public async saveAsset(fileName: string, data: Buffer): Promise<string> {
-    const filePath = this.getFlatPath(fileName);
+  /**
+   * 获取前缀目录下的文件路径
+   * 常用语 Cover: baseDir/ab/abcdefg.webp
+   */
+  protected getFilePathInPrefix(hash: string, filename: string): string {
+    return path.join(this.getPrefixDir(hash), filename);
+  }
+
+  /**
+   * 获取哈希专用子目录下的文件路径
+   * 常用于 Screenshot: baseDir/ab/abcdefg/00001000.webp
+   */
+  protected getFilePathInHash(hash: string, filename: string): string {
+    return path.join(this.getHashDir(hash), filename);
+  }
+
+  /**
+   * 检查路径是否存在
+   */
+  public async exists(targetPath: string): Promise<boolean> {
+    return await fs.pathExists(targetPath);
+  }
+
+  /**
+   * 删除文件或文件夹
+   */
+  public async delete(targetPath: string): Promise<void> {
+    try {
+      if (await fs.pathExists(targetPath)) {
+        await fs.remove(targetPath);
+      }
+    } catch (error) {
+      log.error(`[BaseAssetManager] Failed to delete: ${targetPath}`, error);
+    }
+  }
+
+  /**
+   * 列出哈希专用子目录下的所有文件
+   * @param hash 完整哈希值
+   */
+  protected async listFilesInHashDir(hash: string): Promise<string[]> {
+    const dir = this.getHashDir(hash);
+    try {
+      if (await fs.pathExists(dir)) {
+        return await fs.readdir(dir);
+      }
+    } catch (error) {
+      log.error(`[BaseAssetManager] Failed to list files in: ${dir}`, error);
+    }
+    return [];
+  }
+
+  /**
+   * 写入 Buffer 数据到指定路径
+   */
+  protected async writeFile(filePath: string, data: Buffer): Promise<void> {
     try {
       await fs.writeFile(filePath, data);
-      return filePath;
     } catch (error) {
-      log.error(`Failed to save asset ${filePath}:`, error);
+      log.error(`[BaseAssetManager] Failed to write file: ${filePath}`, error);
       throw error;
     }
-  }
-
-  public async getAssetPath(fileName: string): Promise<string | null> {
-    const filePath = this.getFlatPath(fileName);
-    if (await fs.pathExists(filePath)) {
-      return filePath;
-    }
-    return null;
-  }
-
-  public async deleteAsset(fileName: string): Promise<void> {
-    const filePath = this.getFlatPath(fileName);
-    try {
-      if (await fs.pathExists(filePath)) {
-        await fs.remove(filePath);
-      }
-    } catch (error) {
-      log.error(`Failed to delete asset ${filePath}:`, error);
-    }
-  }
-
-  /**
-   * List all files in a hash-based directory
-   * @param hash - Full hash string
-   * @returns Array of filenames
-   */
-  protected async listHashBasedFiles(hash: string): Promise<string[]> {
-    const prefix = hash.substring(0, 2);
-    const hashDir = path.join(this.baseDir, prefix, hash);
-    try {
-      if (await fs.pathExists(hashDir)) {
-        return await fs.readdir(hashDir);
-      }
-      return [];
-    } catch (error) {
-      log.error(`Failed to list files in ${hashDir}:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Delete a file in a hash-based directory
-   * @param hash - Full hash string
-   * @param filename - Filename to delete
-   */
-  protected async deleteHashBasedFile(hash: string, filename: string): Promise<void> {
-    const filePath = this.getHashBasedPath(hash, filename);
-    try {
-      if (await fs.pathExists(filePath)) {
-        await fs.remove(filePath);
-      }
-    } catch (error) {
-      log.error(`Failed to delete hash-based file ${filePath}:`, error);
-    }
-  }
-
-  /**
-   * Save a file in a hash-based directory
-   * @param hash - Full hash string
-   * @param filename - Filename
-   * @param data - File data
-   * @returns Full path to saved file
-   */
-  protected async saveHashBasedFile(
-    hash: string,
-    filename: string,
-    data: Buffer
-  ): Promise<string> {
-    const filePath = this.getHashBasedPath(hash, filename);
-    try {
-      await fs.writeFile(filePath, data);
-      return filePath;
-    } catch (error) {
-      log.error(`Failed to save hash-based file ${filePath}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if a hash-based file exists
-   * @param hash - Full hash string
-   * @param filename - Filename
-   * @returns True if file exists
-   */
-  protected async hashBasedFileExists(hash: string, filename: string): Promise<boolean> {
-    const filePath = this.getHashBasedPath(hash, filename);
-    return await fs.pathExists(filePath);
   }
 }

@@ -10,6 +10,8 @@ interface ShortcutHandlers {
     stepFrame: (dir: number) => void;
     takeScreenshot: () => void;
     toggleTagDialog: () => void;
+    openAssignTag: () => void;   
+    openCreateTag: () => void;
     playNextVideo: () => void;
     softDelete: () => void; 
     toggleFavorite: () => void; 
@@ -37,7 +39,8 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             screenshot: () => handlersRef.current.takeScreenshot(),
 
             // --- 标签 (edit_tag) ---
-            open_assign_tag_dialog: () => handlersRef.current.toggleTagDialog(),
+            open_assign_tag_dialog: () => handlersRef.current.openAssignTag(),
+            create_tag_from_selection: () => handlersRef.current.openCreateTag(),
 
             // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
             // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"

@@ -169,15 +169,6 @@ export class VideoExportService {
 
     const userDataPath = app.getPath('userData');
 
-    // 1. Migrate files.json metadata
-    const oldMetadata = this.metadataManager.getAnnotation(oldHash);
-    if (oldMetadata) {
-      this.metadataManager.addAnnotation(newHash, oldMetadata);
-      this.metadataManager.removeAnnotation(oldHash);
-      await this.metadataManager.save();
-      log.info('Metadata migrated');
-    }
-
     // 2. Migrate covers
     const coversDir = path.join(userDataPath, 'data', 'covers');
     const oldCover = path.join(coversDir, `${oldHash}.webp`);

@@ -55,8 +55,6 @@ const api = {
   
   
   // Video Metadata
-  calculateVideoHash: (filePath: string) => 
-    ipcRenderer.invoke('calculate-video-hash', filePath),
   getVideoMetadata: (videoPath: string) =>
     ipcRenderer.invoke('get-video-metadata', videoPath),
   
@@ -73,8 +71,6 @@ const api = {
   
 
   // Annotation 语义化操作
-  addAnnotation: (filePath: string, annotation: Annotation) => 
-    ipcRenderer.invoke('add-annotation', filePath, annotation),
   updateAnnotation: (filePath: string, updates: Partial<Annotation>) => 
     ipcRenderer.invoke('update-annotation', filePath, updates),
   getAnnotation: (filePath: string) => 
@@ -83,8 +79,6 @@ const api = {
   // File Profile
   getFileProfile: (filePath: string) => 
     ipcRenderer.invoke('get-file-profile', filePath),
-  getProfilesByHash: (hash: string) => 
-    ipcRenderer.invoke('get-profiles-by-hash', hash),
   
   
   // Settings

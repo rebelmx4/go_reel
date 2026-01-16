@@ -50,7 +50,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     // --- 4. 业务逻辑 Hooks ---
 
     // 封装所有业务操作 (旋转、收藏、删除、截图)
-    const actions = usePlayerActions(videoRef);
+    const actions = usePlayerActions(videoRef, {
+        onOpenAssignTag: () => setModals(m => ({ ...m, tag: true })),
+        onOpenCreateTag: (cover) => setModals(m => ({ ...m, createTag: true, cover: cover || '' }))
+    });
 
     // 处理截图导出弹窗逻辑
     const { showExportDialog, setShowExportDialog } = useScreenshotExport(currentPath);
@@ -81,7 +84,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     useVideoShortcuts({
         ...actions, // 自动包含 togglePlayPause, rotateVideo, softDelete, toggleFavorite, takeScreenshot
         playNextVideo: playNext,
-        toggleTagDialog: () => setModals(m => ({ ...m, tag: true })),
+        toggleTagDialog: () => {
+            setPlaying(false); // 暂停
+            setModals(m => ({ ...m, createTag: true, cover: '' })); // 打开弹窗，初始封面为空
+        },
         stepFrame: (dir) => {
             if (videoRef.current) {
                 const state = usePlayerStore.getState();

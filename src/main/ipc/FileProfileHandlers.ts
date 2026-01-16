@@ -9,11 +9,4 @@ export function registerFileProfileHandlers() {
   ipcMain.handle('get-file-profile', async (_, filePath: string) => {
     return await fileProfileManager.getProfile(filePath);
   });
-
-  /**
-   * 给 Hash，找回所有有效的物理文件档案
-   */
-  ipcMain.handle('get-profiles-by-hash', async (_, hash: string) => {
-    return await fileProfileManager.getValidProfilesByHash(hash);
-  });
 }

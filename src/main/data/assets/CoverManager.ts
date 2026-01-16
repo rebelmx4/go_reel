@@ -1,171 +1,100 @@
-// src/data/assets/CoverManager.ts
-
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import fs from 'fs-extra';
 import { BaseAssetManager } from './BaseAssetManager';
 import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator';
-import { calculateFastHash } from '../../utils/hash';
+import log from 'electron-log';
 
 export class CoverManager extends BaseAssetManager {
   constructor() {
-    // 'covers' 目录将由 BaseAssetManager 的构造函数自动创建和管理
     super('covers');
   }
 
-  // --- 私有辅助方法 (用于生成标准文件名) ---
-  private getDefaultCoverFilename(hash: string): string {
-    return `${hash}_d.webp`;
-  }
-
-  private getManualCoverFilename(hash:string): string {
-    return `${hash}.webp`;
-  }
-
-    /**
-   * 获取基于 Hash 前两位的子目录路径
-   * 例如: /app/data/covers/ab
+  /**
+   * 获取封面文件的完整绝对路径
+   * 结构: baseDir/ab/abcdefg...webp
    */
-  private getSubDir(hash: string): string {
-    const subDirName = hash.substring(0, 2) || '00';
-    // this.baseDir 是 BaseAssetManager 提供的基础路径
-    return path.join(this.baseDir, subDirName);
+  private getCoverPath(hash: string): string {
+    return this.getFilePathInPrefix(hash, `${hash}.webp`);
   }
 
   /**
-   * 获取文件在分级目录下的完整绝对路径
+   * [核心方法] 获取视频封面
+   * 逻辑：检查是否存在 -> 存在则返回 -> 不存在则生成并返回
+   * @param videoPath - 视频文件的原始物理路径
+   * @returns 保证返回一个 file:// 协议的路径或空字符串
    */
-  private getHierarchicalPath(hash: string, filename: string): string {
-    return path.join(this.getSubDir(hash), filename);
-  }
-
-  /**
-   * 确保子目录存在
-   */
-  private async ensureSubDir(hash: string): Promise<string> {
-    const dir = this.getSubDir(hash);
-    await fs.mkdir(dir, { recursive: true });
-    return dir;
-  }
-
-
-
-  // ====================================================================
-  // 核心业务逻辑
-  // ====================================================================
-
-  /**
-   * [核心方法] 获取视频封面，实现了完整的三级回退逻辑。
-   * @param hash - 视频哈希
-   * @param videoPath - 视频文件的路径 (仅在需要生成封面时使用)
-   * @returns 保证返回一个可用的 file:// 协议封面路径
-   */
-  public async getCover(hash: string | undefined | null, videoPath: string): Promise<string> {
-    let effectiveHash = hash;
-
-    // 1. 容错处理：如果没有 Hash，现场计算
-    if (!effectiveHash) {
-        console.warn(`[getCover] Hash was missing for video "${videoPath}". Calculating on the fly.`);
-        try {
-            effectiveHash = await calculateFastHash(videoPath);
-        } catch (error) {
-            console.error(`[getCover] Failed to calculate hash for "${videoPath}":`, error);
-            return ''; 
-        }
-    }
-
-    // 2. 检查已存在的手动或默认封面
-    const existingPath = await this.getCoverPath(effectiveHash);
-    if (existingPath) {
-      return `file://${existingPath}`;
-    }
-
-    // 3. 如果都不存在，则生成、保存并返回新的默认封面
+  public async getCover(videoPath: string): Promise<string> {
     try {
-        const newCoverPath = await this.generateDefaultCover(effectiveHash, videoPath);
-        return `file://${newCoverPath}`;
-    } catch (e) {
-        console.error(`[getCover] Failed to generate default cover:`, e);
-        return '';
+      const hash = await this.getHash(videoPath);
+      const coverPath = this.getCoverPath(hash);
+
+      // 1. 检查物理文件是否存在
+      if (await this.exists(coverPath)) {
+        return `file://${coverPath}`;
+      }
+
+      // 2. 如果不存在，则生成封面
+      log.info(`[CoverManager] Generating new cover for: ${hash}`);
+      const newCoverPath = await this.generateCover(hash, videoPath);
+      return `file://${newCoverPath}`;
+    } catch (error) {
+      log.error(`[CoverManager] getCover failed for ${videoPath}:`, error);
+      return '';
     }
   }
 
   /**
-   * [核心方法] 从一个指定的截图文件路径来设置手动封面。
-   * [优化] 使用 copyFile 替代 readFile + saveAsset，效率更高
+   * [核心方法] 手动设置封面
+   * 逻辑：将外部图片拷贝并覆盖现有的封面文件
+   * @param videoPath - 视频路径（用于锁定Hash）
+   * @param sourceImagePath - 用户选择的图片路径
    */
-  public async setManualCoverFromPath(hash: string, sourcePath: string): Promise<boolean> {
-    const filename = this.getManualCoverFilename(hash);
-    
-    // 1. 确保子目录存在
-    await this.ensureSubDir(hash);
-    
-    // 2. 获取分级后的目标路径
-    const targetPath = this.getHierarchicalPath(hash, filename);
-    
-    // 使用文件系统级别的拷贝，比读入 Buffer 再写入更快且省内存
-    await fs.copyFile(sourcePath, targetPath);
-    
-    return true;
-  }
-
-  // ====================================================================
-  // 内部辅助方法
-  // ====================================================================
-
-  /**
-   * 按优先级获取封面路径：手动 > 默认 > null。
-   */
-  public async getCoverPath(hash: string): Promise<string | null> {
-    // 1. 检查手动封面
-    const manualPath = this.getHierarchicalPath(hash, this.getManualCoverFilename(hash));
+  public async setManualCoverFromPath(videoPath: string, sourceImagePath: string): Promise<boolean> {
     try {
-      await fs.access(manualPath);
-      return manualPath;
-    } catch {
-      // 不存在则继续
-    }
+      const hash = await this.getHash(videoPath);
+      const targetPath = this.getCoverPath(hash);
 
-    // 2. 检查默认封面
-    const defaultPath = this.getHierarchicalPath(hash, this.getDefaultCoverFilename(hash));
-    try {
-      await fs.access(defaultPath);
-      return defaultPath;
-    } catch {
-      return null;
+      // 直接覆盖旧文件
+      await fs.copy(sourceImagePath, targetPath);
+      
+      log.info(`[CoverManager] Manual cover updated: ${targetPath}`);
+      return true;
+    } catch (error) {
+      log.error(`[CoverManager] Failed to set manual cover:`, error);
+      return false;
     }
   }
-  
+
   /**
-   * [优化] 生成并保存默认封面 (在视频20%处截图)。
-   * 修复点：直接生成最终文件名，不再使用 rename
+   * 内部逻辑：生成封面
+   * 默认在视频 20% 处截取
    */
-  private async generateDefaultCover(hash: string, videoPath: string): Promise<string> {
+  private async generateCover(hash: string, videoPath: string): Promise<string> {
+    const targetPath = this.getCoverPath(hash);
+    
     try {
-      // 1. 获取时间点
       const duration = await ScreenshotGenerator.getVideoDuration(videoPath);
       const timestamp = duration * 0.2;
 
-      // 2. 预先构建最终的输出路径
-      const finalFilename = this.getDefaultCoverFilename(hash);
-      const finalPath = this.getHierarchicalPath(hash, finalFilename);
-      
-      // 3. 直接调用生成器，输出到最终路径
-      // ScreenshotGenerator 会自动处理目录创建（虽然 BaseAssetManager 应该已经创建了目录）
       await ScreenshotGenerator.generateScreenshotAtTimestamp(
         videoPath,
         timestamp,
-        finalPath // 直接传入完整路径
+        targetPath
       );
 
-      // 4. 不再需要 fs.rename
-      
-      console.log(`[CoverManager] Default cover generated for ${hash}`);
-      return finalPath;
-
+      return targetPath;
     } catch (error) {
-      console.error(`[CoverManager] Failed to generate default cover for ${hash}:`, error);
+      log.error(`[CoverManager] FFmpeg generation failed for ${hash}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * 删除封面
+   * @param hash - 视频哈希
+   */
+  public async deleteCover(hash: string): Promise<void> {
+    const targetPath = this.getCoverPath(hash);
+    await this.delete(targetPath);
   }
 }
 

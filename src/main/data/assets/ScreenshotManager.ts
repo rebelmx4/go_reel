@@ -1,188 +1,104 @@
-// --- START OF FILE ScreenshotManager.ts ---
-
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import path from 'path';
+import fs from 'fs-extra';
 import sharp from 'sharp';
+
 import { BaseAssetManager } from './BaseAssetManager';
-import { settingsManager }  from '../json/SettingsManager';
-import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator'; 
-import { videoMetadataManager } from '../json/VideoMetadataManager';
+import { settingsManager } from '../json/SettingsManager';
+import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator';
 
-export interface Screenshot {
-  filename: string;
-  timestamp: number;
-  path: string;
-  type: 'manual' | 'auto';
-}
-
+/**
+ * 视频截图管理器
+ * 负责截图的生成、加载、删除及导出
+ */
 export class ScreenshotManager extends BaseAssetManager {
   constructor() {
     super('screenshots');
   }
 
   /**
-   * 手动截图
-   * [优化] 直接生成最终文件名，无需重命名
+   * 手动创建视频截图
+   * @param videoPath 视频文件路径
+   * @param timestamp 截图时间点（秒）
    */
-  public async createManualScreenshot(hash: string, videoPath: string, timestampInSeconds: number): Promise<boolean> {
-    const dir = this.getHashBasedDir(hash);
-    
+  public async createManualScreenshot(videoPath: string, timestamp: number): Promise<boolean> {
     try {
-      
-       // 1. 获取视频元数据 (从缓存或 FFmpeg 提取)
-      const metadata = await videoMetadataManager.getVideoMetadata(videoPath);
-      
-      // 2. 计算补零长度
-      // 如果获取到了元数据，计算总时长的毫秒数有多少位
-      // 比如视频 120秒 -> 120000ms -> 6位
-      let padLength = 8; // 默认兜底 8 位 (约 2.7 小时)
-      if (metadata && metadata.duration > 0) {
-        const totalMs = Math.floor(metadata.duration * 1000);
-        padLength = totalMs.toString().length;
-      }
+      const hash = await this.getHash(videoPath);
+      // 将时间戳转为毫秒并补齐位数，作为文件名（便于排序）
+      const filename = `${Math.floor(timestamp * 1000).toString().padStart(8, '0')}.webp`;
+      const savePath = this.getFilePathInHash(hash, filename);
 
-      // 3. 格式化当前时间戳
-      const currentMs = Math.floor(timestampInSeconds * 1000);
-      // 使用 padStart 进行高位补零
-      const paddedTimestamp = currentMs.toString().padStart(padLength, '0');
-      
-      const finalFilename = `${paddedTimestamp}_m.webp`;
-      const finalPath = path.join(dir, finalFilename);
-
-      // 2. 直接告诉生成器生成这个文件
-      await ScreenshotGenerator.generateScreenshotAtTimestamp(videoPath, timestampInSeconds, finalPath);
-
-      console.log(`[Manual Screenshot] Success: ${finalPath}`);
+      await ScreenshotGenerator.generateScreenshotAtTimestamp(videoPath, timestamp, savePath);
       return true;
     } catch (error) {
-      console.error(`[Manual Screenshot] Failed for ${hash}:`, error);
+      console.error(`[ScreenshotManager] 截图生成失败: ${videoPath}`, error);
       return false;
     }
   }
 
   /**
-   * 自动截图 (9张)
-   * [优化] 利用 C++ 模板功能直接生成 _a 后缀的文件，无需重命名循环
+   * 加载指定视频的所有截图
+   * @param filePath 视频文件路径
    */
-  private async generateAutoScreenshots(hash: string, videoPath: string): Promise<boolean> {
-    if (await this.hasScreenshots(hash)) {
-      console.log(`[Auto Screenshot] Exists for ${hash}. Skipping.`);
-      return true;
-    }
+  public async loadScreenshots(filePath: string) {
+    const hash = await this.getHash(filePath);
+    const files = await this.listFilesInHashDir(hash);
 
-    const dir = this.getHashBasedDir(hash);
-
-    try {
-      // 1. 获取时长并计算时间点
-      const duration = await ScreenshotGenerator.getVideoDuration(videoPath);
-      if (duration <= 0) throw new Error('Invalid video duration.');
-
-      const interval = duration / 10;
-      const timestamps = Array.from({ length: 9 }, (_, i) => interval * (i + 1)).sort((a, b) => a - b);
-      
-      const startTime = performance.now();
-      
-      // 2. [关键修改] 传入 filenamePattern: '%ms_a'
-      // C++ 会自动将 %ms 替换为时间戳，生成如 "12345_a.webp" 的文件
-      const generatedPaths = await ScreenshotGenerator.generateMultipleScreenshots(
-        videoPath, 
-        timestamps, 
-        { 
-          outputDir: dir,
-          filenamePattern: '%ms_a' // 这里指定生成的格式为 {时间戳}_a
-        }
-      );
-
-      const endTime = performance.now();
-      console.log(`[Auto Screenshot] Generated 9 images in ${(endTime - startTime).toFixed(2)}ms`);
-
-      if (generatedPaths.length !== timestamps.length) {
-          throw new Error('Mismatch between requested and generated screenshots.');
-      }
-
-      // 3. 以前这里需要遍历 rename，现在完全不需要了！
-      
-      return true;
-
-    } catch (error) {
-      console.error(`[Auto Screenshot] Failed for ${hash}:`, error);
-      return false;
-    }
+    return files
+      .filter((file) => file.endsWith('.webp'))
+      .map((file) => ({
+        filename: file,
+        timestamp: parseInt(path.parse(file).name, 10) || 0,
+        path: `file://${this.getFilePathInHash(hash, file)}`,
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  
-  public async loadScreenshots(hash: string, filePath: string): Promise<Screenshot[]> {
-    try {
-      let files = await this.listHashBasedFiles(hash);
-      const screenshots: Screenshot[] = [];
-      
-      // ✨ 关键逻辑：如果发现没有截图，自动触发生成，但不阻塞当前返回
-    //   if (files.length === 0) {
-    //   console.log(`[ScreenshotManager] Generating screenshots for ${hash}...`);
-    //   const success = await this.generateAutoScreenshots(hash, filePath);
-    //   if (success) {
-    //     // 生成成功后重新获取文件列表
-    //     files = await this.listHashBasedFiles(hash);
-    //   } else {
-    //     return []; // 生成失败
-    //   }
-    // }
-      
-      for (const file of files) {
-        const match = file.match(/^(\d+)_(m|a)\.webp$/);
-        if (match) {
-          const absolutePath = this.getHashBasedPath(hash, file);
-          screenshots.push({
-            filename: file,
-            timestamp: parseInt(match[1], 10),
-            path: `file://${absolutePath}`, 
-            type: match[2] === 'm' ? 'manual' : 'auto'
-          });
-        }
-      }
-      
-      screenshots.sort((a, b) => a.timestamp - b.timestamp);
-      return screenshots;
-    } catch (error) {
-      return [];
-    }
+  /**
+   * 删除特定截图
+   * @param filePath 视频文件路径
+   * @param filename 截图文件名
+   */
+  public async deleteScreenshot(filePath: string, filename: string): Promise<void> {
+    const hash = await this.getHash(filePath);
+    const targetPath = this.getFilePathInHash(hash, filename);
+    await this.delete(targetPath);
   }
 
-  public async deleteScreenshot(hash: string, filename: string): Promise<void> {
-    return this.deleteHashBasedFile(hash, filename);
-  }
-
-  public async exportScreenshots(hash: string, rotation: number): Promise<void> {
-    const exportPath = settingsManager.getScreenshotExportPath();
-    const targetDir = path.join(exportPath, hash);
-    await fs.mkdir(targetDir, { recursive: true });
+  /**
+   * 导出截图到指定目录，并可选进行旋转
+   * @param filePath 视频文件路径
+   * @param rotation 旋转角度 (0, 90, 180, 270)
+   */
+  public async exportScreenshots(filePath: string, rotation: number): Promise<void> {
+    const hash = await this.getHash(filePath);
+    const exportBaseDir = settingsManager.getScreenshotExportPath();
+    const targetDir = path.join(exportBaseDir, hash);
     
-    const screenshots = await this.listHashBasedFiles(hash);
-    
-    for (const file of screenshots) {
-      if (file.endsWith('.webp')) {
-        const sourcePath = this.getHashBasedPath(hash, file);
-        const targetPath = path.join(targetDir, file);
-        try {
-          if (rotation > 0 && [90, 180, 270].includes(rotation)) {
-            await sharp(sourcePath).rotate(rotation).toFile(targetPath);
-          } else {
-            await fs.copyFile(sourcePath, targetPath);
-          }
-        } catch (error) {
-            console.error(`Export error ${file}:`, error);
-        }
+    await fs.ensureDir(targetDir);
+
+    const files = await this.listFilesInHashDir(hash);
+
+    for (const file of files) {
+      const src = this.getFilePathInHash(hash, file);
+      const dest = path.join(targetDir, file);
+
+      if (rotation > 0) {
+        // 如果有旋转角度，使用 sharp 处理后保存
+        await sharp(src).rotate(rotation).toFile(dest);
+      } else {
+        // 无旋转则直接拷贝，效率更高
+        await fs.copy(src, dest);
       }
     }
   }
-  
+
+  /**
+   * 检查该哈希目录下是否存在截图
+   * @param hash 视频哈希值
+   */
   public async hasScreenshots(hash: string): Promise<boolean> {
-    try {
-      const files = await this.listHashBasedFiles(hash);
-      return files.some(f => f.endsWith('.webp'));
-    } catch {
-      return false;
-    }
+    const files = await this.listFilesInHashDir(hash);
+    return files.some((f) => f.endsWith('.webp'));
   }
 }
 

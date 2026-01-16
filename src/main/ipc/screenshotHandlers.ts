@@ -1,35 +1,34 @@
-/**
- * Screenshot IPC Handlers
- * Main process handlers for screenshot management.
- * This layer is responsible for IPC communication and delegates business logic to the ScreenshotManager.
- */
-
 import { ipcMain } from 'electron';
 import { screenshotManager } from '../data/assets/ScreenshotManager'; 
-import { withHash } from '../utils/handlerHelper';
+import { safeInvoke } from '../utils/handlerHelper';
 
-/**
- * 注册所有与截图相关的 IPC handlers
- */
 export function registerScreenshotHandlers() {
 
-  // 保存一张手动截图
   ipcMain.handle('save-manual-screenshot', async (_, filePath: string, timestamp: number) => {
-    return withHash(filePath, (hash) => screenshotManager.createManualScreenshot(hash, filePath, timestamp));
+    return safeInvoke(
+      () => screenshotManager.createManualScreenshot(filePath, timestamp),
+      false 
+    );
   });
 
-  // 加载视频的所有截图
   ipcMain.handle('load-screenshots', async (_, filePath: string) => {
-    return withHash(filePath, (hash) => screenshotManager.loadScreenshots(hash, filePath));
+    return safeInvoke(
+      () => screenshotManager.loadScreenshots(filePath),
+      [] // 失败返回空数组
+    );
   });
   
-  // 删除一张指定的截图
   ipcMain.handle('delete-screenshot', async (_, filePath: string, filename: string) => {
-    withHash(filePath, (hash) => screenshotManager.deleteScreenshot(hash, filename));
+    return safeInvoke(
+      () => screenshotManager.deleteScreenshot(filePath, filename),
+      undefined
+    );
   });
   
-  // 导出视频的所有截图
   ipcMain.handle('export-screenshots', async (_, filePath: string, rotation: number) => {
-    withHash(filePath, (hash) => screenshotManager.exportScreenshots(hash, rotation));
+    return safeInvoke(
+      () => screenshotManager.exportScreenshots(filePath, rotation),
+      undefined
+    );
   });
 }

@@ -2,7 +2,12 @@
 import { useCallback } from 'react';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useToastStore, useVideoFileRegistryStore } from '../../stores';
 
-export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | null>) {
+interface PlayerActionOptions {
+    onOpenAssignTag: () => void;
+    onOpenCreateTag: (cover?: string) => void;
+}
+
+export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | null>,  options?: PlayerActionOptions ) {
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
     const { rotation, setRotation, setPlaying, isPlaying} = usePlayerStore();
@@ -10,6 +15,17 @@ export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | nu
     const { showToast } = useToastStore();
     const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
     const videoFile = useVideoFileRegistryStore(s => currentPath ? s.videos[currentPath] : null);
+
+     const openAssignTag = useCallback(() => {
+        setPlaying(false); 
+        options?.onOpenAssignTag();
+    }, [setPlaying, options]);
+
+    // --- 核心修改：打开创建弹窗 ---
+    const openCreateTag = useCallback(() => {
+        setPlaying(false);
+        options?.onOpenCreateTag(); // 不带封面打开
+    }, [setPlaying, options]);
 
     const rotateVideo = useCallback(async () => {
         if (!currentPath) return;
@@ -53,6 +69,8 @@ export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | nu
         softDelete,
         toggleFavorite,
         takeScreenshot,
-        togglePlayPause: () => setPlaying(!isPlaying)
+        togglePlayPause: () => setPlaying(!isPlaying),
+        openAssignTag,   
+        openCreateTag    
     };
 }
