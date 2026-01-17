@@ -9,9 +9,8 @@ interface ShortcutHandlers {
     rotateVideo: () => void;
     stepFrame: (dir: number) => void;
     takeScreenshot: () => void;
-    toggleTagDialog: () => void;
-    openAssignTag: () => void;   
     openCreateTag: () => void;
+    openAssignTag: () => void;   
     playNextVideo: () => void;
     softDelete: () => void; 
     toggleFavorite: () => void; 

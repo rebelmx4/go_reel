@@ -52,7 +52,7 @@ export function TitleBar() {
             case 'liked': queue = selectLikedPaths(registry); break;
             case 'elite': queue = selectElitePaths(registry); break;
             case 'search': queue = selectSearchPaths(registry, searchQuery); break;
-            default: queue = registry.videoPaths; // 'all' 模式
+            default: queue = registry.videoPaths;
         }
 
         const total = queue.length;
@@ -67,6 +67,13 @@ export function TitleBar() {
     const handleMinimize = () => window.api.windowMinimize();
     const handleMaximize = () => window.api.windowMaximize();
     const handleClose = () => window.api.windowClose();
+
+    const handleOpenFolder = () => {
+        if (currentPath) {
+            window.api.showInExplorer(currentPath);
+        }
+    };
+
 
     return (
         <Box
@@ -115,22 +122,34 @@ export function TitleBar() {
             </Box>
 
             {/* 中间：视频标题展示 */}
-            <Text
-                size="xs"
-                fw={500}
-                style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    padding: '0 20px',
-                    color: 'var(--mantine-color-dark-2)',
-                    pointerEvents: 'none',
-                }}
-            >
-                {videoTitle}
-            </Text>
+            <Box style={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: 0, // 防止溢出
+                height: '100%'
+            }}>
+                <Text
+                    size="xs"
+                    fw={500}
+                    onDoubleClick={handleOpenFolder}
+                    className="titlebar-filename"
+                    style={{
+                        padding: '0 8px',
+                        color: 'var(--mantine-color-dark-2)',
+                        WebkitAppRegion: 'no-drag', // 只有文字区域不可拖拽（可双击）
+                        cursor: 'pointer',          // 鼠标变成小手，提示可点击
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        borderRadius: '4px',       // 配合 hover 效果
+                    }}
+                    title="双击打开所在文件夹"
+                >
+                    {videoTitle}
+                </Text>
+            </Box>
 
             {/* 右侧：窗口控制按钮 */}
             <Group gap={0} style={{ WebkitAppRegion: 'no-drag', flex: '0 0 auto' }}>
@@ -165,6 +184,10 @@ export function TitleBar() {
                 .titlebar-close-button:hover {
                     background-color: var(--mantine-color-red-8) !important;
                     color: white !important;
+                }
+                .titlebar-filename:hover {
+                    background-color: var(--mantine-color-dark-5);
+                    color: var(--mantine-color-white) !important;
                 }
             `}</style>
         </Box>

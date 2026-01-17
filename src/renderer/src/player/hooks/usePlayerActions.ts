@@ -1,6 +1,7 @@
 // src/renderer/src/player/hooks/usePlayerActions.ts
 import { useCallback } from 'react';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useToastStore, useVideoFileRegistryStore } from '../../stores';
+import {useVideoFrameCapture} from "./useVideoFrameCapture"
 
 interface PlayerActionOptions {
     onOpenAssignTag: () => void;
@@ -15,17 +16,22 @@ export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | nu
     const { showToast } = useToastStore();
     const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
     const videoFile = useVideoFileRegistryStore(s => currentPath ? s.videos[currentPath] : null);
+    const { captureFrame } = useVideoFrameCapture();
 
      const openAssignTag = useCallback(() => {
         setPlaying(false); 
         options?.onOpenAssignTag();
     }, [setPlaying, options]);
 
-    // --- 核心修改：打开创建弹窗 ---
     const openCreateTag = useCallback(() => {
+        if (!videoRef.current) return;
         setPlaying(false);
-        options?.onOpenCreateTag(); // 不带封面打开
-    }, [setPlaying, options]);
+        
+        // 关键步骤：在这里抓取当前带有旋转角度的图片
+        const frameBase64 = captureFrame(videoRef.current, rotation);
+        
+        options?.onOpenCreateTag(frameBase64); 
+    }, [setPlaying, options, rotation, videoRef, captureFrame]);
 
     const rotateVideo = useCallback(async () => {
         if (!currentPath) return;

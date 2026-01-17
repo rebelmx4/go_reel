@@ -1,7 +1,6 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Box } from '@mantine/core';
-import { usePlayerStore } from '../stores'; // 直接引入 store
-
+import { usePlayerStore } from '../stores';
 
 interface ProgressBarWithThumbnailProps {
     videoPath: string | null;
@@ -13,83 +12,43 @@ export function ProgressBarWithThumbnail({
     onSeek
 }: ProgressBarWithThumbnailProps) {
     const progressRef = useRef<HTMLDivElement>(null);
-    const ghostVideoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const thumbnailVideoRef = useRef<HTMLVideoElement>(null);
 
     const [showThumbnail, setShowThumbnail] = useState(false);
     const [thumbnailPosition, setThumbnailPosition] = useState(0);
     const [thumbnailTime, setThumbnailTime] = useState(0);
-    const [isSeeking, setIsSeeking] = useState(false);
 
     const currentTime = usePlayerStore(state => state.currentTime);
     const duration = usePlayerStore(state => state.duration);
 
-    // Load ghost video when video path changes
+    // 1. 初始化加载：只在路径变化时执行一次
     useEffect(() => {
-        if (ghostVideoRef.current && videoPath) {
-            ghostVideoRef.current.src = `file://${videoPath}`;
-            ghostVideoRef.current.muted = true;
-            ghostVideoRef.current.load();
+        const video = thumbnailVideoRef.current;
+        if (video && videoPath) {
+            const fileUrl = `file:///${videoPath.replace(/\\/g, '/')}`;
+            console.log("Thumbnail video source set:", fileUrl);
+            video.src = fileUrl;
+            video.load();
         }
     }, [videoPath]);
 
-    // Draw thumbnail when ghost video seeks
-    useEffect(() => {
-        const ghostVideo = ghostVideoRef.current;
-        const canvas = canvasRef.current;
-
-        if (!ghostVideo || !canvas) return;
-
-        const handleSeeked = () => {
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-
-            // Draw video frame to canvas
-            ctx.drawImage(ghostVideo, 0, 0, canvas.width, canvas.height);
-        };
-
-        ghostVideo.addEventListener('seeked', handleSeeked);
-        return () => ghostVideo.removeEventListener('seeked', handleSeeked);
-    }, []);
-
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!progressRef.current || !duration) return;
+        const progress = progressRef.current;
+        const video = thumbnailVideoRef.current;
+        if (!progress || !video || !duration) return;
 
-        const rect = progressRef.current.getBoundingClientRect();
+        const rect = progress.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(1, x / rect.width));
         const time = percentage * duration;
 
         setThumbnailPosition(x);
         setThumbnailTime(time);
-        setShowThumbnail(true);
 
-        // Seek ghost video if not already seeking and time difference is significant
-        if (!isSeeking && ghostVideoRef.current && Math.abs(ghostVideoRef.current.currentTime - time) > 1) {
-            setIsSeeking(true);
-            // ghostVideoRef.current.currentTime = time;
-            setTimeout(() => setIsSeeking(false), 100);
+        // 关键：只有当视频元数据加载完成后才进行 Seek
+        if (video.readyState >= 1) {
+            video.currentTime = time;
         }
-    };
-
-    const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-        setShowThumbnail(false);
-        e.currentTarget.style.height = '10px';
-    };
-
-    const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-        e.currentTarget.style.height = '15px';
-    };
-
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!progressRef.current || !duration) return;
-
-        const rect = progressRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const percentage = Math.max(0, Math.min(1, x / rect.width));
-        const time = percentage * duration;
-
-        onSeek(time);
     };
 
     const formatTime = (time: number) => {
@@ -102,68 +61,77 @@ export function ProgressBarWithThumbnail({
 
     return (
         <Box style={{ position: 'relative', width: '100%' }}>
-            {/* Hidden ghost video */}
-            <video
-                ref={ghostVideoRef}
-                style={{ display: 'none' }}
-            />
 
-            {/* Thumbnail popup */}
-            {showThumbnail && (
+            {/* 
+               注意：我们将预览框放在这里，但不使用 {showThumbnail && ...} 
+               而是通过 opacity 和 visibility 来控制显隐。
+               这样里面的 <video> 标签会一直保持加载状态，不会被销毁。
+            */}
+            <Box
+                style={{
+                    position: 'absolute',
+                    bottom: 30,
+                    left: thumbnailPosition,
+                    transform: 'translateX(-50%)',
+                    width: 240, // 稍微大一点，方便观察
+                    backgroundColor: '#000',
+                    border: '2px solid #fff',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    zIndex: 100,
+                    pointerEvents: 'none',
+                    boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
+                    // 核心修改：控制显隐但不销毁
+                    opacity: showThumbnail ? 1 : 0,
+                    visibility: showThumbnail ? 'visible' : 'hidden',
+                    transition: 'opacity 0.1s ease-in-out'
+                }}
+            >
+                <video
+                    ref={thumbnailVideoRef}
+                    muted
+                    preload="auto"
+                    style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block',
+                        backgroundColor: '#000'
+                    }}
+                />
                 <Box
                     style={{
-                        position: 'absolute',
-                        bottom: 25,
-                        left: thumbnailPosition,
-                        transform: 'translateX(-50%)',
-                        width: 160,
-                        backgroundColor: '#000',
-                        border: '2px solid #fff',
-                        borderRadius: 4,
-                        overflow: 'hidden',
-                        pointerEvents: 'none',
-                        zIndex: 100,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        color: '#fff',
+                        fontSize: 12,
+                        textAlign: 'center',
+                        padding: '4px 0',
+                        fontWeight: 'bold'
                     }}
                 >
-                    <canvas
-                        ref={canvasRef}
-                        width={160}
-                        height={90}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            display: 'block',
-                            backgroundColor: '#000'
-                        }}
-                    />
-                    <Box
-                        style={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            color: '#fff',
-                            fontSize: 12,
-                            textAlign: 'center',
-                            padding: '2px 0'
-                        }}
-                    >
-                        {formatTime(thumbnailTime)}
-                    </Box>
+                    {formatTime(thumbnailTime)}
                 </Box>
-            )}
+            </Box>
 
-            {/* Progress bar */}
+            {/* 进度条轨道 */}
             <Box
                 ref={progressRef}
                 onMouseMove={handleMouseMove}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onClick={handleClick}
+                onMouseEnter={() => setShowThumbnail(true)}
+                onMouseLeave={() => setShowThumbnail(false)}
+                onClick={(e) => {
+                    const rect = progressRef.current?.getBoundingClientRect();
+                    if (rect && duration) {
+                        const x = e.clientX - rect.left;
+                        onSeek((x / rect.width) * duration);
+                    }
+                }}
                 style={{
-                    height: 10,
-                    backgroundColor: '#444',
-                    borderRadius: 5,
+                    height: 12,
+                    backgroundColor: '#333',
+                    borderRadius: 6,
                     cursor: 'pointer',
                     position: 'relative',
-                    transition: 'height 0.1s',
+                    marginTop: '20px'
                 }}
             >
                 <Box
@@ -171,7 +139,7 @@ export function ProgressBarWithThumbnail({
                         height: '100%',
                         width: `${progressPercentage}%`,
                         backgroundColor: '#ff0000',
-                        borderRadius: 5,
+                        borderRadius: 6,
                         pointerEvents: 'none',
                     }}
                 />

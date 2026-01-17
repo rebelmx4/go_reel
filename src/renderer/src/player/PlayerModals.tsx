@@ -26,7 +26,6 @@ export function PlayerModals(props: PlayerModalsProps) {
                 opened={props.showExport}
                 onClose={() => props.setShowExport(false)}
                 videoPath={props.currentPath}
-                defaultRotation={props.rotation}
             />
             <AssignTagDialog
                 opened={props.showTag}
@@ -38,8 +37,7 @@ export function PlayerModals(props: PlayerModalsProps) {
             <CreateTagDialog
                 opened={props.showCreateTag}
                 onClose={() => { props.setShowCreateTag(false); props.setTagCoverImage(''); }}
-                coverImage={props.tagCoverImage}
-                assignedTagIds={videoFile?.annotation?.tags ?? []}
+                fullImage={props.tagCoverImage}
                 onCreated={async (_) => { }}
             />
         </>

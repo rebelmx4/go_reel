@@ -59,7 +59,6 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
         currentPath ? state.videos[currentPath] : null, [currentPath]
     ));
 
-    const { isCropMode, setCropMode } = useScreenshotStore();
 
     // --- 2. 状态派生 (不再需要 useState) ---
     const isFavorite = videoFile?.annotation?.is_favorite || false;

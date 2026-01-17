@@ -3,7 +3,7 @@
 import { Modal, Button, Box, Text, Group, ScrollArea, SimpleGrid, UnstyledButton } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { IconCheck } from '@tabler/icons-react';
-import { useToastStore, useScreenshotStore } from '../../stores';
+import { useToastStore, useScreenshotStore, useVideoFileRegistryStore } from '../../stores';
 
 interface ExportScreenshotDialogProps {
     opened: boolean;
@@ -19,8 +19,7 @@ interface ExportScreenshotDialogProps {
 export function ExportScreenshotDialog({
     opened,
     onClose,
-    videoPath,
-    defaultRotation
+    videoPath
 }: ExportScreenshotDialogProps) {
     const [selectedRotation, setSelectedRotation] = useState<0 | 90 | 180 | 270>(0);
     const [loading, setLoading] = useState(false);
@@ -28,34 +27,59 @@ export function ExportScreenshotDialog({
     const showToast = useToastStore((state) => state.showToast);
     const screenshots = useScreenshotStore((state) => state.screenshots);
     const firstScreenshot = screenshots.length > 0 ? screenshots[0] : null;
+    const [isInitializing, setIsInitializing] = useState(true);
+    const videoFile = useVideoFileRegistryStore((state) => videoPath ? state.videos[videoPath] : null);
 
-    // 每次打开弹窗，将选中项同步为外部传入的默认值
     useEffect(() => {
-        if (opened) {
-            setSelectedRotation((defaultRotation % 360) as any);
+        async function determineDefaultRotation() {
+            if (!opened || !videoPath) return;
+
+            setIsInitializing(true);
+            try {
+                // 1. 优先检查数据库中是否已有“截图旋转”记录
+                const savedRotation = videoFile?.annotation?.screenshot_rotation;
+                if (savedRotation !== undefined && savedRotation !== null) {
+                    setSelectedRotation(savedRotation as any);
+                    return;
+                }
+
+                // 2. 如果没有记录，从后端获取物理元数据
+                const metadata = await window.api.getVideoMetadata(videoPath);
+
+                if (metadata) {
+                    // 横竖屏判定逻辑：
+                    // 横屏 (width > height) -> 默认 90
+                    // 竖屏 (width <= height) -> 默认 0
+                    const defaultRot = metadata.width > metadata.height ? 90 : 0;
+                    setSelectedRotation(defaultRot);
+                } else {
+                    // 兜底：如果元数据也拿不到，默认 0
+                    setSelectedRotation(0);
+                }
+            } catch (err) {
+                console.error('Failed to get metadata:', err);
+            } finally {
+                setIsInitializing(false);
+            }
         }
-    }, [opened, defaultRotation]);
+
+        determineDefaultRotation();
+    }, [opened, videoPath, videoFile?.annotation?.screenshot_rotation]);
 
     const handleConfirm = async () => {
         if (!videoPath) return;
         setLoading(true);
         try {
-            // 如果用户选的角度和传进来的角度不一致，说明发生了更改，需要更新数据库
-            if (selectedRotation !== (defaultRotation % 360)) {
-                await window.api.updateAnnotation(videoPath, {
-                    screenshot_rotation: selectedRotation
-                });
-            }
+            // 只要用户确认了，我们就更新数据库（确保下次打开还是这个角度）
+            await window.api.updateAnnotation(videoPath, {
+                screenshot_rotation: selectedRotation
+            });
 
             showToast({ message: '正在导出...', type: 'info' });
-
-            // 执行物理导出
             await window.api.exportScreenshots(videoPath, selectedRotation);
-
             showToast({ message: '截图导出成功', type: 'success' });
             onClose();
         } catch (error) {
-            console.error('[ExportDialog] Failed:', error);
             showToast({ message: '导出失败', type: 'error' });
         } finally {
             setLoading(false);

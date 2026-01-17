@@ -84,10 +84,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     useVideoShortcuts({
         ...actions, // 自动包含 togglePlayPause, rotateVideo, softDelete, toggleFavorite, takeScreenshot
         playNextVideo: playNext,
-        toggleTagDialog: () => {
-            setPlaying(false); // 暂停
-            setModals(m => ({ ...m, createTag: true, cover: '' })); // 打开弹窗，初始封面为空
-        },
         stepFrame: (dir) => {
             if (videoRef.current) {
                 const state = usePlayerStore.getState();
@@ -125,11 +121,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
         );
     }
 
-    // 处理框选完成：记录截图并开启创建标签弹窗
-    const handleCropComplete = useCallback((base64: string) => {
-        setModals(m => ({ ...m, createTag: true, cover: base64 }));
-    }, []);
-
     return (
         <VideoContext.Provider value={{ videoRef }}>
             <Box style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: '#000' }}>
@@ -139,7 +130,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                     videoRef={videoRef}
                     containerRef={containerRef}
                     videoSrc={`file://${currentPath.replace(/\\/g, '/')}`}
-                    onCropComplete={handleCropComplete}
                     onTimeUpdate={setCurrentTime}
                 />
 
