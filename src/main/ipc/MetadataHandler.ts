@@ -16,10 +16,7 @@ export function registerMetadataHandler() {
     try {
       // 直接调用带缓存的管理类
       const metadata = await videoMetadataManager.getVideoMetadata(filePath);
-      return {
-        success: !!metadata,
-        data: metadata
-      };
+      return metadata;
     } catch (error) {
        log.error('Failed to get video metadata via DLL:', error);
       return {
