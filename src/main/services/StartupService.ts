@@ -54,7 +54,7 @@ export class StartupService {
 
         if (profile) {
           
-          const annotation = annotationManager.getAnnotation(profile.hash);
+          const annotation = await annotationManager.getAnnotation(profile.hash);
           if (annotation) {
             video.annotation = annotation;
           }

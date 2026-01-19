@@ -2,8 +2,6 @@
 
 import { ipcMain } from 'electron';
 import { tagManager } from '../data/json/TagManager';
-import { annotationManager } from '../data/json/AnnotationManager';
-import { withHash } from '../utils/handlerHelper';
 
 export function registerTagHandlers() {
   /**

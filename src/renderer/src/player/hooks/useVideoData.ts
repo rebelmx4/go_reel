@@ -2,7 +2,6 @@
 
 import { useEffect, RefObject } from 'react';
 import { usePlayerStore, useVideoFileRegistryStore, usePlaylistStore } from '../../stores';
-import { VideoMetadata } from '../../../../shared/models'
 
 /**
  * 视频数据同步 Hook

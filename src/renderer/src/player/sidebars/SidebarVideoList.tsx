@@ -1,8 +1,7 @@
-// src/renderer/src/player/sidebars/SidebarVideoList.tsx
-
 import { Box, Text } from '@mantine/core';
 import { VideoFile } from '../../../../shared/models';
 import { VideoCard } from '../../components/Video/VideoCard';
+import { VList } from 'virtua';
 
 interface SidebarVideoListProps {
     videos: VideoFile[];
@@ -39,37 +38,32 @@ export function SidebarVideoList({
     }
 
     return (
-        <Box
-            style={{
-                height: '100%',
-                overflowY: 'auto',
-                // 自定义滚动条样式，使其在侧边栏更美观
-                scrollbarWidth: 'thin',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px' // 卡片之间的间距
-            }}
-        >
-            {videos.map(video => (
-                <Box
-                    key={video.path}
-                    style={{
-                        flexShrink: 0,
-                        width: '100%' // 确保卡片填满 300px 宽度
-                    }}
-                >
-                    <VideoCard
-                        video={video}
-                        onPlay={onPlay}
-                        onToggleLike={onToggleLike}
-                        onToggleElite={onToggleElite}
-                    />
-                </Box>
-            ))}
-
-            {/* 底部留白，防止最后一个卡片紧贴边缘 */}
-            <Box style={{ height: 20, flexShrink: 0 }} />
+        <Box style={{ height: '100%', width: '100%' }}>
+            <VList
+                style={{ height: '100%' }}
+            >
+                {videos.map((video, index) => (
+                    <Box
+                        key={video.path}
+                        style={{
+                            // 1. 手动处理间距
+                            paddingBottom: 16,
+                            // 2. 左右边距
+                            paddingLeft: 12,
+                            paddingRight: 12,
+                            // 3. 第一个元素增加顶部间距
+                            paddingTop: index === 0 ? 12 : 0
+                        }}
+                    >
+                        <VideoCard
+                            video={video}
+                            onPlay={onPlay}
+                            onToggleLike={onToggleLike}
+                            onToggleElite={onToggleElite}
+                        />
+                    </Box>
+                ))}
+            </VList>
         </Box>
     );
 }

@@ -5334,6 +5334,11 @@ verror@^1.10.0:
     core-util-is "1.0.2"
     extsprintf "^1.2.0"
 
+virtua@^0.48.3:
+  version "0.48.3"
+  resolved "https://registry.npmmirror.com/virtua/-/virtua-0.48.3.tgz#f26f0a287e1789175e7b202822c8d215524cc669"
+  integrity sha512-WTGPqMshLNtTQaIhvNo6EnjMvBP0GAYN8ZJsTY6HZqQCJlspW0L9IrIDi4vYV2J7uBlnuSqemnw40IKTg/aeGA==
+
 vite@^7.1.6:
   version "7.2.6"
   resolved "https://registry.npmmirror.com/vite/-/vite-7.2.6.tgz"
