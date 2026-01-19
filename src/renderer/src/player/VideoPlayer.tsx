@@ -15,6 +15,7 @@ import { VideoContext } from '../contexts';
 import { PlayerControls } from './PlayerControls';
 import { VideoViewport } from './VideoViewport';
 import { PlayerModals } from './PlayerModals';
+import { NewestSidebar } from './sidebars/NewestSidebar';
 
 // Hooks
 import { useVideoShortcuts } from './hooks';
@@ -34,8 +35,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
     const {
-        isPlaying, volume, rotation,
-        setPlaying, setCurrentTime, reset
+        isPlaying, volume, rotation, showSidebar,
+        setPlaying, setCurrentTime, reset, toggleSidebar
     } = usePlayerStore();
 
     const { loadScreenshots, clear } = useScreenshotStore();
@@ -83,6 +84,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
 
     useVideoShortcuts({
         ...actions, // 自动包含 togglePlayPause, rotateVideo, softDelete, toggleFavorite, takeScreenshot
+        toggleSidebar: toggleSidebar,
         playNextVideo: playNext,
         stepFrame: (dir) => {
             if (videoRef.current) {
@@ -123,39 +125,45 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
 
     return (
         <VideoContext.Provider value={{ videoRef }}>
-            <Box style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: '#000' }}>
+            {/* [修改] 最外层改为 Row 布局，以容纳侧边栏 */}
+            <Box style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%', backgroundColor: '#000', overflow: 'hidden' }}>
 
-                {/* 1. 视频视口层：负责画面渲染、视觉变换、框选手势 */}
-                <VideoViewport
-                    videoRef={videoRef}
-                    containerRef={containerRef}
-                    videoSrc={`file://${currentPath.replace(/\\/g, '/')}`}
-                    onTimeUpdate={setCurrentTime}
-                />
-
-                {/* 2. 底部控制栏 */}
-                <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
-                    <PlayerControls
+                {/* 左侧：播放器主体（Viewport + Controls） */}
+                <Box style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%' }}>
+                    {/* 1. 视频视口层 */}
+                    <VideoViewport
                         videoRef={videoRef}
-                        onScreenshot={actions.takeScreenshot}
-                        onNext={playNext}
-                        onRotate={actions.rotateVideo}
-                        onDelete={actions.softDelete}
-                        onToggleFavorite={actions.toggleFavorite}
+                        containerRef={containerRef}
+                        videoSrc={`file://${currentPath.replace(/\\/g, '/')}`}
+                        onTimeUpdate={setCurrentTime}
                     />
+
+                    {/* 2. 底部控制栏 */}
+                    <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
+                        <PlayerControls
+                            videoRef={videoRef}
+                            onScreenshot={actions.takeScreenshot}
+                            onNext={playNext}
+                            onRotate={actions.rotateVideo}
+                            onDelete={actions.softDelete}
+                            onToggleFavorite={actions.toggleFavorite}
+                        />
+                    </Box>
                 </Box>
 
-                {/* 3. 弹窗组件组 */}
+                {/* 右侧：最新视频侧边栏 [新增] */}
+                {showSidebar && (
+                    <NewestSidebar />
+                )}
+
+                {/* 3. 弹窗组件组（Portal 渲染，不影响布局） */}
                 <PlayerModals
                     currentPath={currentPath}
                     rotation={rotation}
-                    // 导出弹窗
                     showExport={showExportDialog}
                     setShowExport={setShowExportDialog}
-                    // 分配标签弹窗
                     showTag={modals.tag}
                     setShowTag={(v) => setModals(m => ({ ...m, tag: v }))}
-                    // 创建标签弹窗
                     showCreateTag={modals.createTag}
                     setShowCreateTag={(v) => setModals(m => ({ ...m, createTag: v }))}
                     tagCoverImage={modals.cover}

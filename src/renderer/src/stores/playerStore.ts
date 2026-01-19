@@ -12,6 +12,8 @@ interface PlayerState {
   
   // 视觉状态
   rotation: number; 
+
+  showSidebar: boolean;
   
   // 帧控制技术参数
   stepMode: 'frame' | 'second';
@@ -32,6 +34,10 @@ interface PlayerState {
 
   setStepMode: (mode: 'frame' | 'second') => void; 
 
+   // 侧边栏 Actions (新增)
+  setShowSidebar: (show: boolean) => void;
+  toggleSidebar: () => void;
+
   // 快捷操作
   togglePlay: () => void;
   reset: () => void; // 切换视频时重置状态
@@ -47,6 +53,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   stepMode: 'frame',
   framerate: 30,
   skipFrameMode: false, // 初始化
+  showSidebar: false, 
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
@@ -65,6 +72,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }), // 补回此方法
   setFramerate: (framerate) => set({ framerate }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
+
+  // 侧边栏控制 (新增)
+  setShowSidebar: (showSidebar) => set({ showSidebar }),
+  toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   

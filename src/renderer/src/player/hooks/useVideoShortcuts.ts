@@ -14,6 +14,7 @@ interface ShortcutHandlers {
     playNextVideo: () => void;
     softDelete: () => void; 
     toggleFavorite: () => void; 
+    toggleSidebar: () => void;
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
@@ -46,6 +47,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             play_next: () => handlersRef.current.playNextVideo(), 
             soft_delete: () => handlersRef.current.softDelete(),
             toggle_favorite: () => handlersRef.current.toggleFavorite(), 
+            toggle_sidebar: () => handlersRef.current.toggleSidebar(), 
         };
 
         const actionKeys = Object.keys(actionMap);

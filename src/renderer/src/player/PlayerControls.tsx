@@ -4,7 +4,7 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider } from '@mantine/core';
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand,
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -52,6 +52,9 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
     const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
     const volumeUp = usePlayerStore(state => state.volumeUp);
     const volumeDown = usePlayerStore(state => state.volumeDown);
+
+    const showSidebar = usePlayerStore(state => state.showSidebar);
+    const toggleSidebar = usePlayerStore(state => state.toggleSidebar);
 
     const currentPath = usePlaylistStore(state => state.currentPath);
 
@@ -121,6 +124,16 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
 
             <Group justify="space-between">
                 <Group gap="sm">
+                    <Tooltip label={getTooltipLabel(showSidebar ? "关闭侧边栏" : "打开侧边栏", 'toggle_sidebar')}>
+                        <ActionIcon
+                            variant={showSidebar ? "filled" : "subtle"}
+                            color={showSidebar ? "blue" : "gray"}
+                            onClick={toggleSidebar}
+                        >
+                            <IconLayoutSidebarRightExpand size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+
                     {/* 跳帧/步进 */}
                     <Tooltip label={getTooltipLabel(skipFrameMode ? "退出跳帧模式" : "进入跳帧模式", 'toggle_skip_frame_mode')}>
                         <ActionIcon

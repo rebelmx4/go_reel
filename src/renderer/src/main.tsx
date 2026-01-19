@@ -15,7 +15,7 @@ const bootstrap = async () => {
   const videoRegistry = useVideoFileRegistryStore.getState();
   const playlist = usePlaylistStore.getState();
   const player = usePlayerStore.getState();
-  const nav = useNavigationStore.getState();
+  const navigation = useNavigationStore.getState();
   const tagStore = useTagStore.getState();
 
   try {
@@ -31,14 +31,10 @@ const bootstrap = async () => {
     const { videoList, history, settings, tagLibrary } = result;
 
     // 3. 分发数据到 VideoFileRegistryStore (档案库)
-    // 此步骤会建立 Path -> VideoFile 的映射并完成初始排序
-    videoRegistry.setInitialData(videoList || []);
+    videoRegistry.setInitialData(videoList);
 
-    // 4. 分发数据到 PlaylistStore (播放逻辑与足迹)
-    // 将历史记录填入，以便在历史页面显示
-    if (history) {
-      playlist.setHistoryPaths(history);
-    }
+    // 4. 将历史记录填入，以便在历史页面显示
+    playlist.setHistoryPaths(history);
 
     // 5. 应用用户设置 (Settings)
     if (settings) {
@@ -70,8 +66,8 @@ const bootstrap = async () => {
     }
 
     // 7. 初始化 UI 状态
-    playlist.setMode('all');        // 默认播放模式
-    nav.setView('player_page');          // 默认显示播放器页面
+    playlist.setMode('all');            // 默认播放模式
+    navigation.setView('player_page');  // 默认显示播放器页面
 
     console.log(`Bootstrap complete. Loaded ${videoList.length} files.`);
 

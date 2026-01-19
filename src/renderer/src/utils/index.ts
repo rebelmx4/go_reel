@@ -1,6 +1,4 @@
-export { keyBindingManager } from './keyBindingManager';
-export * from './screenshot';
-export * from './thumbnail';
+export { keyBindingManager } from './KeyBindingManager';
 export * from './skipFrame';
 export * from './viewport';
 export * from './tagUtils';

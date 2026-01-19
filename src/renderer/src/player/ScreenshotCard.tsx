@@ -1,7 +1,7 @@
-import { Box, ActionIcon } from '@mantine/core'; // 注意：将 Button 替换为 ActionIcon
+import { Box, ActionIcon } from '@mantine/core';
 import { IconPhoto, IconTrash, IconCheck } from '@tabler/icons-react';
 import { Screenshot } from '../stores/screenshotStore';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface ScreenshotCardProps {
     screenshot: Screenshot;
@@ -12,7 +12,6 @@ interface ScreenshotCardProps {
     onDelete: (screenshot: Screenshot) => void;
 }
 
-// 格式化毫秒时间为 "分钟:秒" 或 "小时:分钟:秒"
 const formatMSTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -26,8 +25,6 @@ const formatMSTime = (ms: number) => {
     return `${paddedMinutes}:${paddedSeconds}`;
 };
 
-// ... 其他导入保持不变
-
 export function ScreenshotCard({
     screenshot,
     isActive,
@@ -37,6 +34,22 @@ export function ScreenshotCard({
     onDelete,
 }: ScreenshotCardProps) {
     const [isHovered, setIsHovered] = useState(false);
+    // 存储图片加载后的原始宽高比
+    const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
+
+    // 判断当前是否处于“竖向旋转”状态 (90度或270度)
+    const isRotatedVertical = (rotation / 90) % 2 !== 0;
+
+    // 计算容器宽度：
+    // 如果旋转了90/270度，视觉宽度 = 高度 / 原始宽高比
+    // 如果是0/180度，视觉宽度 = 高度 * 原始宽高比
+    const cardHeight = 320;
+    const cardWidth = useMemo(() => {
+        if (isRotatedVertical) {
+            return cardHeight / aspectRatio;
+        }
+        return cardHeight * aspectRatio;
+    }, [aspectRatio, isRotatedVertical, cardHeight]);
 
     return (
         <Box
@@ -51,54 +64,57 @@ export function ScreenshotCard({
                 borderRadius: 8,
                 overflow: 'hidden',
                 flexShrink: 0,
-                transition: 'border-color 0.2s, transform 0.2s',
+                transition: 'width 0.3s ease, border-color 0.2s', // 宽度变化也加个过渡
                 backgroundColor: '#000',
+                height: `${cardHeight}px`,
+                width: `${cardWidth}px`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '280px',
-                width: `${280 * 16 / 9}px`
             }}
         >
             <img
                 src={screenshot.path}
                 alt="Screenshot"
+                onLoad={(e) => {
+                    const img = e.currentTarget;
+                    if (img.naturalHeight > 0) {
+                        setAspectRatio(img.naturalWidth / img.naturalHeight);
+                    }
+                }}
                 style={{
-                    position: 'absolute', top: 0, left: 0,
-                    width: '100%', height: '100%',
+                    position: 'absolute',
+                    // 当旋转 90/270度时，图片的长边要对齐容器的短边，反之亦然
+                    // 这里直接用 scale 配合旋转是最简单的做法
+                    width: isRotatedVertical ? `${cardHeight}px` : '100%',
+                    height: isRotatedVertical ? `${cardWidth}px` : '100%',
                     objectFit: 'cover',
                     transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease, filter 0.2s ease-in-out',
+                    transition: 'transform 0.3s ease, width 0.3s ease, height 0.3s ease, filter 0.2s ease-in-out',
                 }}
                 className="screenshot-card-image"
             />
 
-            {/* 修改后的底部栏：去掉了 backgroundColor */}
+            {/* 底部信息栏层级设高一点 */}
             <Box style={{
                 position: 'absolute', bottom: 0, left: 0,
                 boxSizing: 'border-box',
                 width: '100%',
-                backgroundColor: 'transparent', // 【修改】这里改为透明
+                backgroundColor: 'rgba(0,0,0,0.3)', // 加一点极浅阴影增强文字识别
                 color: 'white',
                 fontSize: '12px',
                 padding: '4px 8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                // 添加文字阴影，确保在浅色图片上也能看清时间
-                textShadow: '0px 1px 3px rgba(0,0,0,0.8)',
-                pointerEvents: 'none', // 允许点击穿透到底部，除非是内部的按钮
+                textShadow: '0px 1px 3px rgba(0,0,0,1)',
+                pointerEvents: 'none',
+                zIndex: 2
             }}>
-                {/* 时间戳 */}
                 <span style={{ fontWeight: 500 }}>{formatMSTime(screenshot.timestamp)}</span>
 
-                {/* 图标容器 */}
                 {isHovered && (
-                    <Box style={{
-                        display: 'flex',
-                        gap: '4px',
-                        pointerEvents: 'auto' // 恢复按钮的可点击性
-                    }}>
+                    <Box style={{ display: 'flex', gap: '4px', pointerEvents: 'auto' }}>
                         <ActionIcon
                             variant="filled"
                             size="sm"
@@ -108,7 +124,6 @@ export function ScreenshotCard({
                         >
                             {isCover ? <IconCheck size={16} /> : <IconPhoto size={16} />}
                         </ActionIcon>
-
                         <ActionIcon
                             variant="filled"
                             size="sm"

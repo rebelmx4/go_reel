@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import { VideoFile, Annotation } from '../../../shared/models';
+import { VideoFile, Annotation, DEFAULT_ANNOTATION} from '../../../shared';
 
 /**
  * Registry 状态定义
@@ -66,19 +66,10 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
     // 1. 获取旧注解（可能是 undefined）
     const oldAnnotation = originalFile.annotation;
 
-    // 2. 定义一套标准默认值 (确保即使是第一次标注，对象也是完整的)
-    const defaultAnnotation: Annotation = {
-      like_count: 0,
-      is_favorite: false,
-      rotation: 0,
-      screenshot_rotation: null,
-      tags: [],
-    };
-
     // 3. 构造新注解
     // 优先级：默认值 < 旧值 < 新更新
     const newAnnotation: Annotation = {
-      ...defaultAnnotation,
+      ...DEFAULT_ANNOTATION,
       ...(oldAnnotation ?? {}), // 如果是 undefined，就解构空对象
       ...updates
     };

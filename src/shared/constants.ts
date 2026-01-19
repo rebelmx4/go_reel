@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   playback: {
     global_volume: 80,
     like_decay_rate: 0.2,
-    default_rate: 1.0, // 新增
+    default_rate: 1.0, 
   },
   skip_frame: {
     skip_duration: 2,
@@ -49,12 +49,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
       },
       play_control: {
         toggle_play: 'Space',
-        step_backward: 'A',
-        step_forward: 'D',
+        step_backward: 'ArrowLeft',
+        step_forward: 'ArrowRight',
         volume_up: 'W',
         volume_down: 'S',
         rotate_video: 'R',
-        play_next: "PageDown"
+        play_next: "PageDown",
+        toggle_sidebar:  "PageUp"
       },
       capture: {
         screenshot: 'E',

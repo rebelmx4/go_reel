@@ -155,21 +155,20 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                 onMouseUp={handleMouseUpOrLeave}
                 onMouseLeave={handleMouseUpOrLeave}
                 style={{
-                    height: 300,
+                    height: 360, // 卡片高度 320 + 上下 padding 约 40
                     backgroundColor: 'rgba(26, 26, 26, 0.8)',
                     borderRadius: 8,
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '10px',
+                    padding: '0 16px', // 左右留白
                     border: '1px solid #333',
                     overflowX: 'auto',
                     userSelect: 'none',
                     cursor: 'grab',
                     position: 'relative',
-                    scrollbarWidth: 'none', // 隐藏标准滚动条
+                    scrollbarWidth: 'thin', // 允许显示细滚动条
                 }}
             >
-                {/* 加载状态：如果是初次加载且没数据 */}
                 {isLoading && screenshots.length === 0 ? (
                     <Center style={{ width: '100%' }}>
                         <Group gap="xs">
@@ -180,14 +179,13 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                 ) : screenshots.length === 0 ? (
                     <Text size="sm" c="dimmed" style={{ margin: '0 auto' }}>无可用预览截图</Text>
                 ) : (
-                    <Box style={{ display: 'flex', gap: 10, height: '100%' }}>
+                    // 使用 flex 布局，gap 会自动处理卡片间距
+                    <Box style={{ display: 'flex', gap: 12, height: 320 }}>
                         {screenshots.map((s) => (
                             <ScreenshotCard
                                 key={s.filename}
                                 screenshot={s}
                                 isActive={activeScreenshot?.filename === s.filename}
-                                // 这里假设 cover 管理也在后端实现，可以通过 filename 规律简单判断，
-                                // 或者后续由 videoStore 的 annotation 提供 isCover 信息
                                 isCover={false}
                                 rotation={rotation}
                                 onSetCover={() => handleSetCover(s)}
@@ -200,42 +198,30 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
 
             <style>{`
                 /* 隐藏横向滚动条但保留功能 */
-                ${trackRef.current ? `#${trackRef.current.id}` : ''}::-webkit-scrollbar {
-                    display: none;
-                }
-
-                .screenshot-card-container {
-                    transition: transform 0.2s ease;
-                }
-
-                .screenshot-card-container:hover {
-                    transform: translateY(-2px);
-                }
-
-                /* 悬停时显示操作层 */
-                .screenshot-card-container:hover .screenshot-card-overlay {
-                    opacity: 1;
-                }
-
-                /* 悬停时图片模糊，让按钮更清晰 */
-                .screenshot-card-container:hover .screenshot-card-image {
-                    filter: blur(2px) brightness(0.7);
-                }
-
-                /* 滚动条美化 */
                 ::-webkit-scrollbar {
                     height: 6px;
                 }
                 ::-webkit-scrollbar-track {
-                    background: #1a1b1e;
-                    border-radius: 10px;
+                    background: transparent;
                 }
                 ::-webkit-scrollbar-thumb {
-                    background: #373a40;
+                    background: #444;
                     border-radius: 10px;
                 }
                 ::-webkit-scrollbar-thumb:hover {
-                    background: #4a4d53;
+                    background: #666;
+                }
+
+                .screenshot-card-container {
+                    transition: transform 0.2s ease, width 0.3s ease;
+                }
+
+                .screenshot-card-container:hover {
+                    transform: translateY(-4px); /* 悬停稍微上浮感 */
+                }
+
+                .screenshot-card-container:hover .screenshot-card-image {
+                    filter: brightness(0.7); /* 悬停变暗 */
                 }
             `}</style>
         </>

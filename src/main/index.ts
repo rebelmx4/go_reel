@@ -13,10 +13,13 @@ import {
   registerSettingsHandlers,
   registerAnnotationHandlers,
   registerTagHandlers,
+  registerHistoryHandlers
 } from './ipc';
 
+import { setupFfmpeg } from './utils';
 
-import { registerHistoryHandlers } from './ipc/historyHandlers';
+
+setupFfmpeg()
 
 let refreshService: RefreshService | null = null;
 let videoExportService: VideoExportService | null = null;

@@ -24,6 +24,7 @@ export interface PlayControlActions {
   volume_down: string;
   rotate_video: string;
   play_next: string;
+  toggle_sidebar: string;
 }
 
 export interface CaptureActions {

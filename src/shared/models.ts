@@ -1,8 +1,6 @@
-// src/shared/types.ts
 import { AppSettings } from './settings.schema'; 
 
 
-// 纯净的接口定义
 export interface Annotation {
   like_count: number;
   is_favorite: boolean;
@@ -24,7 +22,7 @@ export interface Tag {
   id: number;
   keywords: string;
   description?: string;
-  imagePath: string; // 存储相对路径，例如 "data/tag_images/1.webp"
+  imagePath: string;
 }
 
 export interface PinnedTag {
@@ -45,7 +43,6 @@ export interface StartupResult {
   settings: AppSettings;
   tagLibrary: TagLibrary; 
 }
-
 
 export interface VideoMetadata {
     duration: number; 
