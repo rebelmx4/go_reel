@@ -1,49 +1,45 @@
 import { useIntersection } from '@mantine/hooks';
-import { useState, useEffect, useMemo } from 'react';
-import { Box, Image, Text, ActionIcon, Group, Skeleton, Tooltip } from '@mantine/core';
-import { IconHeart, IconHeartFilled, IconStar, IconStarFilled, IconPlayerPlay } from '@tabler/icons-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Box, Image, Text, ActionIcon, Group, Tooltip } from '@mantine/core';
+import { IconHeart, IconHeartFilled, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { IconFolderOpen, IconTrash } from '@tabler/icons-react';
 import { VideoFile } from '../../../../shared/models';
 import { useFileActions } from '../../hooks/useFileActions';
-import { formatRelativeTime, formatFileSize, formatDuration } from '../../utils/format';
-
+import { formatRelativeTime, formatFileSize } from '../../utils/format';
 
 interface VideoCardProps {
     video: VideoFile;
     onPlay: (video: VideoFile) => void;
-    // 这里的回调参数类型同步修改
     onToggleLike?: (video: VideoFile) => void;
     onToggleElite?: (video: VideoFile) => void;
-}
-
-interface CardMetadata {
-    duration: number;
-    width: number;
-    height: number;
 }
 
 export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoCardProps) {
     const [coverUrl, setCoverUrl] = useState<string>('');
     const { handleShowInExplorer, handleDelete } = useFileActions();
-    const [metaData, setMetaData] = useState<CardMetadata>({
-        duration: 0,
-        width: 0,
-        height: 0
-    });
     const [isLoadingCover, setIsLoadingCover] = useState(true);
+    const [isHovered, setIsHovered] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // 从路径派生文件名
     const filename = useMemo(() => {
         return video.path.replace(/\\/g, '/').split('/').pop() || 'Unknown Video';
     }, [video.path]);
 
-    // 计算状态（映射到新的数据结构）
+    // 转换本地文件路径为 file 协议 URL
+    const videoSrc = useMemo(() => {
+        const normalizedPath = video.path.replace(/\\/g, '/');
+        return `file:///${normalizedPath}`;
+    }, [video.path]);
+
     const isLiked = (video.annotation?.like_count ?? 0) > 0;
     const isFavorite = !!video.annotation?.is_favorite;
 
     const { ref, entry } = useIntersection({
-        root: null, // 默认相对于视口
-        threshold: 0.1, // 只要露出 10% 就算可见
+        root: null,
+        threshold: 0.1,
     });
 
     const [hasBeenVisible, setHasBeenVisible] = useState(false);
@@ -54,226 +50,218 @@ export function VideoCard({ video, onPlay, onToggleLike, onToggleElite }: VideoC
         }
     }, [entry?.isIntersecting]);
 
-    // 加载封面和元数据
+    // 加载封面
     useEffect(() => {
         if (!hasBeenVisible) return;
-
         let isMounted = true;
         setIsLoadingCover(true);
-
-        const loadData = async () => {
-            try {
-                // 1. 获取封面 - 依据你的 window.api 定义: getCover(fielPath: string)
-                const url = await window.api.getCover(video.path);
-                if (isMounted) setCoverUrl(url);
-
-                // 2. 获取时长 (如果需要异步获取)
-                if (metaData.duration === 0 && window.api?.getVideoMetadata) {
-                    const meta = await window.api.getVideoMetadata(video.path);
-                    if (isMounted) {
-                        // [修改] 一次性保存所有有用的信息
-                        setMetaData({
-                            duration: meta.duration,
-                            width: meta.width,
-                            height: meta.height
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error(`Failed to load data for ${filename}`, error);
-            } finally {
-                if (isMounted) setIsLoadingCover(false);
+        window.api.getCover(video.path).then(url => {
+            if (isMounted) {
+                setCoverUrl(url);
+                setIsLoadingCover(false);
             }
-        };
+        });
+        return () => { isMounted = false; };
+    }, [video.path, hasBeenVisible]);
 
-        loadData();
+    // 处理悬停逻辑
+    const handleMouseEnter = () => {
+        // 设置一个小延迟，防止快速划过时频繁触发视频加载
+        hoverTimeoutRef.current = setTimeout(() => {
+            setIsHovered(true);
+        }, 200);
+    };
 
-        return () => {
-            isMounted = false;
-        };
-    }, [video.path, filename, hasBeenVisible]);
+    const handleMouseLeave = () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        setIsHovered(false);
+        setProgress(0);
+    };
+
+    // 视频进度更新
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            const current = videoRef.current.currentTime;
+            const total = videoRef.current.duration;
+            if (total > 0) {
+                setProgress((current / total) * 100);
+            }
+        }
+    };
+
+    // 进度条点击跳转
+    const handleProgressClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // 阻止触发卡片的 onPlay
+        if (videoRef.current) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const clickedPercent = x / rect.width;
+            videoRef.current.currentTime = clickedPercent * videoRef.current.duration;
+        }
+    };
 
     return (
-        <Box
-            className="video-card"
-            ref={ref}
-            style={{
-                position: 'relative',
-                borderRadius: 8,
-                overflow: 'hidden',
-                border: '2px solid #2C2E33',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer',
-                backgroundColor: '#1A1B1E',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--mantine-color-blue-filled)';
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#2C2E33';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-            }}
-            onClick={() => onPlay(video)}
-        >
-            {/* Thumbnail Section */}
-            <Box style={{ position: 'relative', paddingTop: '56.25%' }}>
-                <Box style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                    {isLoadingCover ? (
-                        <Skeleton height="100%" radius={0} />
-                    ) : (
+        <Tooltip label={filename} position="top" withArrow openDelay={500}>
+            <Box
+                className="video-card"
+                ref={ref}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onClick={() => onPlay(video)}
+                style={{
+                    position: 'relative',
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '2px solid #2C2E33',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                    backgroundColor: '#1A1B1E',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
+            >
+                {/* 媒体区域 */}
+                <Box style={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#000' }}>
+                    <Box style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                        {/* 封面图：在视频未播放或加载时显示 */}
                         <Image
                             src={coverUrl}
                             alt={filename}
                             height="100%"
-                            fit="cover"
-                            loading="lazy"
-                            decoding="async"
-                            fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect fill='%23333' width='300' height='200'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%23666' font-family='sans-serif'%3ENo Cover%3C/text%3E%3C/svg%3E"
+                            fit="contain"
+                            style={{
+                                display: (isHovered && !isLoadingCover) ? 'none' : 'block',
+                                opacity: isLoadingCover ? 0.5 : 1
+                            }}
+                            fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect fill='%23333' width='300' height='200'/%3E%3C/text%3E%3C/svg%3E"
                         />
+
+                        {/* 预览视频 */}
+                        {isHovered && (
+                            <video
+                                ref={videoRef}
+                                src={videoSrc}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0
+                                }}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                onTimeUpdate={handleTimeUpdate}
+                            />
+                        )}
+                    </Box>
+
+                    {/* 预览进度条 */}
+                    {isHovered && (
+                        <Box
+                            onClick={handleProgressClick}
+                            style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: 8,
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                zIndex: 20,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <Box
+                                style={{
+                                    width: `${progress}%`,
+                                    height: '100%',
+                                    backgroundColor: 'var(--mantine-color-blue-filled)',
+                                    transition: 'width 0.1s linear'
+                                }}
+                            />
+                        </Box>
+                    )}
+
+                    {/* 管理按钮 */}
+                    <Group
+                        gap={4}
+                        style={{
+                            position: 'absolute', top: 5, right: 5, zIndex: 10,
+                            backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2
+                        }}
+                    >
+                        <Tooltip label="打开所在文件夹" position="bottom">
+                            <ActionIcon
+                                variant="subtle" color="gray.3" size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleShowInExplorer(video.path); }}
+                            >
+                                <IconFolderOpen size={16} />
+                            </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="移至待删除" position="bottom">
+                            <ActionIcon
+                                variant="subtle" color="red.5" size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(video); }}
+                            >
+                                <IconTrash size={16} />
+                            </ActionIcon>
+                        </Tooltip>
+                    </Group>
+
+                    {/* 精品标记 */}
+                    {isFavorite && (
+                        <Box
+                            style={{
+                                position: 'absolute', top: 6, left: 6,
+                                backgroundColor: 'rgba(255, 215, 0, 0.95)',
+                                color: '#000', padding: '2px 8px', borderRadius: 4,
+                                fontSize: 10, fontWeight: 'bold', zIndex: 5
+                            }}
+                        >
+                            精品
+                        </Box>
                     )}
                 </Box>
 
-                {/* Play overlay */}
-                <Box
-                    style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                        opacity: 0,
-                        transition: 'opacity 0.2s',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0'; }}
-                >
-                    <IconPlayerPlay size={48} color="#fff" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
-                </Box>
+                {/* 信息区域 (移除了文件名，保留元数据和点赞) */}
+                <Box style={{ padding: '8px 12px', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+                    <Group justify="space-between" align="center" style={{ width: '100%' }} wrap="nowrap">
+                        <Box style={{ minWidth: 0 }}>
+                            <Text size="xs" c="dimmed">
+                                {formatRelativeTime(video.mtime)} • {formatFileSize(video.size)}
+                            </Text>
+                        </Box>
 
-                {/* Duration badge */}
-                <Box
-                    style={{
-                        position: 'absolute',
-                        bottom: 6, right: 6,
-                        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                        color: '#fff',
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        pointerEvents: 'none'
-                    }}
-                >
-                    {formatDuration(metaData.duration)}
-                </Box>
-
-                {/* 管理操作按钮：固定在右上角，仅在鼠标移入卡片时可能更显眼 */}
-                <Group
-                    gap={4}
-                    style={{
-                        position: 'absolute', top: 5, right: 5, zIndex: 10,
-                        backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2
-                    }}
-                >
-                    <Tooltip label="打开所在文件夹" position="bottom">
-                        <ActionIcon
-                            variant="subtle" color="gray.3" size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleShowInExplorer(video.path); }}
-                        >
-                            <IconFolderOpen size={16} />
-                        </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="移至待删除" position="bottom">
-                        <ActionIcon
-                            variant="subtle" color="red.5" size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleDelete(video); }}
-                        >
-                            <IconTrash size={16} />
-                        </ActionIcon>
-                    </Tooltip>
-                </Group>
-
-                {/* Elite badge */}
-                {isFavorite && (
-                    <Box
-                        style={{
-                            position: 'absolute',
-                            top: 6, left: 6,
-                            backgroundColor: 'rgba(255, 215, 0, 0.95)',
-                            color: '#000',
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            fontSize: 10,
-                            fontWeight: 'bold',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                        }}
-                    >
-                        精品
-                    </Box>
-                )}
-            </Box>
-
-            {/* Info Section */}
-            <Box style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <Text
-                    size="sm"
-                    fw={600}
-                    style={{
-                        marginBottom: 8,
-                        lineHeight: 1.3,
-                        height: '2.6em',
-                        overflow: 'hidden',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        wordBreak: 'break-all'
-                    }}
-                    title={filename}
-                >
-                    {filename}
-                </Text>
-
-                <Group justify="space-between" align="end" wrap="nowrap">
-                    <Box style={{ minWidth: 0 }}>
-                        <Text size="xs" c="dimmed" truncate>
-                            {/* VideoFile 中包含 createdAt 和 size */}
-                            <Text>{formatRelativeTime(video.mtime)} • {formatFileSize(video.size)}</Text>
-                        </Text>
-                    </Box>
-
-                    <Group gap={4} style={{ flexShrink: 0 }}>
-                        <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            color={isLiked ? 'red' : 'gray'}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleLike?.(video);
-                            }}
-                        >
-                            {isLiked ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
-                        </ActionIcon>
-                        <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            color={isFavorite ? 'yellow' : 'gray'}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleElite?.(video);
-                            }}
-                        >
-                            {isFavorite ? <IconStarFilled size={18} /> : <IconStar size={18} />}
-                        </ActionIcon>
+                        <Group gap={4} style={{ flexShrink: 0 }}>
+                            <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                color={isLiked ? 'red' : 'gray'}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleLike?.(video);
+                                }}
+                            >
+                                {isLiked ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+                            </ActionIcon>
+                            <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                color={isFavorite ? 'yellow' : 'gray'}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleElite?.(video);
+                                }}
+                            >
+                                {isFavorite ? <IconStarFilled size={18} /> : <IconStar size={18} />}
+                            </ActionIcon>
+                        </Group>
                     </Group>
-                </Group>
+                </Box>
             </Box>
-        </Box>
+        </Tooltip>
     );
 }

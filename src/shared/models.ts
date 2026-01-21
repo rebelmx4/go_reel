@@ -50,3 +50,10 @@ export interface VideoMetadata {
     height: number;
     framerate: number;
 }
+
+export interface VideoClip {
+  id: string;      
+  startTime: number;
+  endTime: number;
+  state: 'keep' | 'remove';
+}
