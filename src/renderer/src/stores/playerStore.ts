@@ -2,6 +2,8 @@
 
 import { create } from 'zustand';
 
+export type SidebarTab = 'newest' | 'elite';
+
 interface PlayerState {
   // 基础状态
   isPlaying: boolean;
@@ -13,7 +15,9 @@ interface PlayerState {
   // 视觉状态
   rotation: number; 
 
+  // --- 侧边栏状态优化 ---
   showSidebar: boolean;
+  sidebarTab: SidebarTab; // 记录当前/上次选中的标签
   
   // 帧控制技术参数
   stepMode: 'frame' | 'second';
@@ -34,9 +38,11 @@ interface PlayerState {
 
   setStepMode: (mode: 'frame' | 'second') => void; 
 
-   // 侧边栏 Actions (新增)
+  // 侧边栏控制逻辑
   setShowSidebar: (show: boolean) => void;
-  toggleSidebar: () => void;
+  setSidebarTab: (tab: SidebarTab) => void;
+  toggleSidebar: () => void; // 全局开关：基于上次的 tab 打开/关闭
+  handleSidebarTabClick: (tab: SidebarTab) => void; // VS Code 式逻辑
 
   // 快捷操作
   togglePlay: () => void;
@@ -54,6 +60,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   framerate: 30,
   skipFrameMode: false, // 初始化
   showSidebar: false, 
+  sidebarTab: 'newest', // 默认选中“最新”
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
@@ -74,8 +81,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
 
   // 侧边栏控制 (新增)
-  setShowSidebar: (showSidebar) => set({ showSidebar }),
+   setShowSidebar: (showSidebar) => set({ showSidebar }),
+  setSidebarTab: (sidebarTab) => set({ sidebarTab }),
+  
+  // 全局开关：如果是关闭的，则打开上次记录的 tab
   toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
+
+  // VS Code 逻辑：
+  // 1. 如果侧边栏关闭 -> 打开并切换到该 tab
+  // 2. 如果侧边栏开启且 tab 不同 -> 切换 tab
+  // 3. 如果侧边栏开启且 tab 相同 -> 关闭侧边栏
+  handleSidebarTabClick: (tab) => {
+    const { showSidebar, sidebarTab } = get();
+    if (showSidebar && sidebarTab === tab) {
+      set({ showSidebar: false });
+    } else {
+      set({ showSidebar: true, sidebarTab: tab });
+    }
+  },
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   

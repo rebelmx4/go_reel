@@ -45,18 +45,9 @@ export class StartupService {
         size: file.size
       };
 
-      try {
-        const profile = await fileProfileManager.getProfile(file.path);
-
-        if (profile) {
-          
-          const annotation = await annotationManager.getAnnotation(profile.hash);
-          if (annotation) {
-            video.annotation = annotation;
-          }
-        }
-      } catch (e) {
-        log.error(`Failed to map profile for ${file.path}`, e);
+      const annotation = await annotationManager.getAnnotation(file.path);
+      if (annotation) {
+        video.annotation = annotation;
       }
 
       return video;

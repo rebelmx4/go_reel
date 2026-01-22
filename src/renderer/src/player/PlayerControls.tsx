@@ -91,7 +91,7 @@ export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDel
 
     // 持久化音量
     useDebouncedEffect(() => {
-        window.api.updateSettings({ playback: { global_volume: volume } });
+        window.api.updatePreferenceSettings({ playback: { global_volume: volume } });
     }, 1000, [volume]);
 
     const getTooltipLabel = (baseLabel: string, action: string) => {

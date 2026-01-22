@@ -4,9 +4,10 @@
  * 严格按照 `其他 - 设置.md` 文档的需求实现
  */
 
-import { ipcMain, shell } from 'electron';
+import { ipcMain } from 'electron';
 import path from 'path';
-import { preferenceManager } from '../data/json'; 
+import { preferenceManager, storageManager } from '../data/json'; 
+import { PreferenceSettings } from '../../shared';
 
 /**
  * 注册所有与设置相关的 IPC 处理器
@@ -48,11 +49,11 @@ export function registerSettingsHandlers() {
    */
   ipcMain.handle('get-path-overview', async () => {
     return {
-      video_source: settingsManager.getVideoSourcePath(),
+      video_source: storageManager.getVideoSourcePath(),
       data_directory: path.join(process.cwd(), 'data'), // 数据存储目录是固定的
-      pending_delete_path: settingsManager.getTrashPath(), // 待删除目录
-      processed_archive_path: settingsManager.getEditedPath(), // 已处理归档目录
-      screenshot_export_path: settingsManager.getScreenshotExportPath(),
+      pending_delete_path: storageManager.getTrashPath(), // 待删除目录
+      processed_archive_path: storageManager.getEditedPath(), // 已处理归档目录
+      screenshot_export_path: storageManager.getScreenshotExportPath(),
     };
   });
 
@@ -71,7 +72,7 @@ export function registerSettingsHandlers() {
    * @param {AppSettings['key_bindings']} newKeyBindings - 从前端传来的新快捷键配置
    * @returns {Promise<{success: boolean, conflicts?: any}>} 返回操作结果和冲突详情
    */
-  ipcMain.handle('save-key-bindings', async (_, newKeyBindings: AppSettings['key_bindings']) => {
+  ipcMain.handle('save-key-bindings', async (_, newKeyBindings: PreferenceSettings['key_bindings']) => {
     const allConflicts: Record<string, string[]> = {};
 
     // 遍历每一个快捷键上下文 (e.g., 'global', 'dialog_assign_tag')
@@ -126,16 +127,14 @@ export function registerSettingsHandlers() {
   });
 
   /**
-   * [新增] 通用设置更新接口
+   *  通用设置更新接口
    * @param _ - IpcMainInvokeEvent
-   * @param {Partial<AppSettings>} settingsToUpdate - 包含要更新的键值对的对象
+   * @param {Partial<PreferenceSettings>} settingsToUpdate - 包含要更新的键值对的对象
    * @returns {Promise<{success: boolean}>}
    */
-  ipcMain.handle('update-settings', async (_, settingsToUpdate: Partial<AppSettings>) => {
+  ipcMain.handle('update-preference-settings', async (_, settingsToUpdate: Partial<PreferenceSettings>) => {
     try {
-      // SettingsManager 需要一个通用的 set 方法，它应该已经存在了
-      // 假设 BaseJsonManager 提供了 set 方法来合并和保存
-      settingsManager.set(settingsToUpdate);
+      preferenceManager.set(settingsToUpdate);
       console.log('Settings updated:', settingsToUpdate);
       return { success: true };
     } catch (error) {
@@ -143,25 +142,4 @@ export function registerSettingsHandlers() {
       return { success: false };
     }
   });
-
-   ipcMain.handle('open-path-in-explorer', async (_, folderPath: string) => {
-    try {
-      // shell.openPath 是 Electron 专门用于此功能的 API
-      const errorMessage = await shell.openPath(folderPath);
-      
-      if (errorMessage) {
-        // 如果 Electron 无法打开路径，它会返回一个错误信息
-        console.error(`无法打开路径 ${folderPath}: ${errorMessage}`);
-        return { success: false, error: errorMessage };
-      }
-      
-      // 成功打开
-      return { success: true };
-
-    } catch (error) {
-      console.error(`打开路径时发生未知错误:`, error);
-      return { success: false, error: (error as Error).message };
-    }
-  });
 }
-// --- END OF FILE settingsHandlers.ts ---

@@ -75,8 +75,7 @@ declare global {
       getKeyBindings: () => Promise<KeyBindingsConfig>
       saveKeyBindings: (newKeyBindings: KeyBindingsConfig) => Promise<{ success: boolean; conflicts?: Record<string, string[]> }>
       loadSettings: () => Promise<AppSettings>
-      updateSettings: (settings: any) => Promise<{ success: boolean }>; // 新增
-      openPathInExplorer: (path: string) => Promise<{ success: boolean; error?: string }>;
+      updatePreferenceSettings: (settings: any) => Promise<{ success: boolean }>; // 新增
       
       // --- Tags (标签管理系统) ---
       /** 原子创建标签：文字+封面一次性提交 */

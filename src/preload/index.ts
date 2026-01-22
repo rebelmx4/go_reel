@@ -84,8 +84,7 @@ const api = {
   saveKeyBindings: (keyBindings: any) => ipcRenderer.invoke('save-key-bindings', keyBindings),
   loadSettings: () =>
     ipcRenderer.invoke('load-settings'),
-  updateSettings: (settings: any) => ipcRenderer.invoke('update-settings', settings), 
-  openPathInExplorer: (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
+  updatePreferenceSettings: (settings: any) => ipcRenderer.invoke('update-preference-settings', settings), 
   
   // Tags (New & Refactored)
   addTag: (params) => ipcRenderer.invoke('add-tag', params),

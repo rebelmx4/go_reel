@@ -1,8 +1,8 @@
-// src/renderer/src/player/VideoPlayer.tsx
-
-import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
+import { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react';
 import { Box, Center, Text } from '@mantine/core';
-
+import { IconClock, IconStar } from '@tabler/icons-react';
+import { Stack, ActionIcon, Tooltip, rem } from '@mantine/core';
+import { EliteSidebar } from './sidebars/EliteSidebar';
 // Stores & Context
 import {
     usePlayerStore,
@@ -35,8 +35,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
     const {
-        isPlaying, volume, rotation, showSidebar,
-        setPlaying, setCurrentTime, reset, toggleSidebar
+        isPlaying, volume, rotation, showSidebar, sidebarTab,
+        setPlaying, setCurrentTime, reset, toggleSidebar, handleSidebarTabClick
     } = usePlayerStore();
 
     const { loadScreenshots, clear } = useScreenshotStore();
@@ -151,10 +151,56 @@ export const VideoPlayer = forwardRef<VideoPlayerRef>((_props, ref) => {
                     </Box>
                 </Box>
 
-                {/* 右侧：最新视频侧边栏 [新增] */}
+
+
+                {/* 3. 右侧：侧边栏内容区 */}
                 {showSidebar && (
-                    <NewestSidebar />
+                    <Box style={{ height: '100%' }}>
+                        {sidebarTab === 'newest' && <NewestSidebar />}
+                        {sidebarTab === 'elite' && <EliteSidebar />}
+                    </Box>
                 )}
+
+                {/* 2. 中间：侧边栏按钮控制条 (VS Code Style) */}
+                <Box
+                    style={{
+                        width: rem(48),
+                        height: '100%',
+                        backgroundColor: 'var(--mantine-color-dark-8)',
+                        borderLeft: '1px solid var(--mantine-color-dark-4)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        paddingTop: rem(16),
+                        zIndex: 40
+                    }}
+                >
+                    <Stack gap="md">
+                        {/* 最新视频按钮 */}
+                        <Tooltip label="最新视频" position="left" withArrow>
+                            <ActionIcon
+                                variant={showSidebar && sidebarTab === 'newest' ? 'filled' : 'light'}
+                                size="lg"
+                                onClick={() => handleSidebarTabClick('newest')}
+                                color={showSidebar && sidebarTab === 'newest' ? 'blue' : 'gray'}
+                            >
+                                <IconClock style={{ width: rem(20), height: rem(20) }} />
+                            </ActionIcon>
+                        </Tooltip>
+
+                        {/* 精品视频按钮 */}
+                        <Tooltip label="精品收藏" position="left" withArrow>
+                            <ActionIcon
+                                variant={showSidebar && sidebarTab === 'elite' ? 'filled' : 'light'}
+                                size="lg"
+                                onClick={() => handleSidebarTabClick('elite')}
+                                color={showSidebar && sidebarTab === 'elite' ? 'blue' : 'gray'}
+                            >
+                                <IconStar style={{ width: rem(20), height: rem(20) }} />
+                            </ActionIcon>
+                        </Tooltip>
+                    </Stack>
+                </Box>
 
                 {/* 3. 弹窗组件组（Portal 渲染，不影响布局） */}
                 <PlayerModals
