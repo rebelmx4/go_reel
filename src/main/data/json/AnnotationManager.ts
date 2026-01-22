@@ -15,12 +15,6 @@ export class AnnotationManager extends BaseShardedJsonManager<Annotation> {
  public async getAnnotation(filePath: string): Promise<Annotation | null> {
     const profile = await fileProfileManager.getProfile(filePath);
     if (!profile) return null;
-
-    if (filePath.includes("麻豆傳媒映畫 - 七夕情人双屄夹击 - 两任女友联手榨精 - XVIDEOS.COM"))
-      return this.getItem(profile.hash);
-
-    if (profile.hash == '504ec0852972aa4a')
-      return this.getItem(profile.hash);
     
     return this.getItem(profile.hash);
   }
