@@ -67,7 +67,7 @@ export abstract class BaseShardedJsonManager<T> {
   /**
    * 获取单条数据
    */
-  public getItem(id: string): T | null {
+  protected getItem(id: string): T | null {
     const key = this.getShardKey(id);
     const shard = this.shards.get(key);
     return shard ? shard[id] || null : null;
@@ -83,7 +83,7 @@ export abstract class BaseShardedJsonManager<T> {
   /**
    * 设置/覆盖单条数据并持久化
    */
-  public async setItem(id: string, value: T): Promise<void> {
+  protected async setItem(id: string, value: T): Promise<void> {
     const key = this.getShardKey(id);
     const shard = this.shards.get(key) || {};
 
@@ -96,7 +96,7 @@ export abstract class BaseShardedJsonManager<T> {
   /**
    * 部分更新单条数据并持久化
    */
-  public async updateItem(id: string, updates: Partial<T>, defaultValue?: T): Promise<void> {
+  protected async updateItem(id: string, updates: Partial<T>, defaultValue?: T): Promise<void> {
     const key = this.getShardKey(id);
     const shard = this.shards.get(key) || {};
 
@@ -114,7 +114,7 @@ export abstract class BaseShardedJsonManager<T> {
   /**
    * 删除单条数据
    */
-  public async deleteItem(id: string): Promise<void> {
+  protected async deleteItem(id: string): Promise<void> {
     const key = this.getShardKey(id);
     const shard = this.shards.get(key);
 

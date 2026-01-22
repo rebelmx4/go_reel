@@ -1,5 +1,5 @@
 import { Annotation } from './models';
-import { AppSettings } from './settings.schema';
+import { PreferenceSettings } from './settings.schema';
 
 /**
  * Annotation 默认初始状态
@@ -15,12 +15,7 @@ export const DEFAULT_ANNOTATION: Annotation = {
 /**
  * AppSettings 默认配置
  */
-export const DEFAULT_SETTINGS: AppSettings = {
-  paths: {
-    video_source: '',
-    staged_path: '',
-    screenshot_export_path: '',
-  },
+export const DEFAULT_SETTINGS: PreferenceSettings = {
   playback: {
     global_volume: 80,
     like_decay_rate: 0.2,

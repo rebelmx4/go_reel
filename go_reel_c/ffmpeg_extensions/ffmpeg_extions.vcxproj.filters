@@ -21,6 +21,12 @@
     <ClInclude Include="screen_shot\ScreenshotterInternal.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="video_trim\VideoTrimer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="screen_shot\ScreenshotterBatch.cpp">
@@ -33,6 +39,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="screen_shot\ScreenshotterUtils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="video_trim\VideoTrimer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

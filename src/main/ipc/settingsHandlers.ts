@@ -6,8 +6,7 @@
 
 import { ipcMain, shell } from 'electron';
 import path from 'path';
-// 导入 SettingsManager 的单例，而不是类本身
-import { settingsManager, AppSettings } from '../data/json/SettingsManager'; 
+import { preferenceManager } from '../data/json'; 
 
 /**
  * 注册所有与设置相关的 IPC 处理器
@@ -63,7 +62,7 @@ export function registerSettingsHandlers() {
    * 获取所有快捷键绑定
    */
   ipcMain.handle('get-key-bindings', async () => {
-    return settingsManager.getKeyBindings();
+    return preferenceManager.getKeyBindings();
   });
 
   /**
@@ -111,7 +110,7 @@ export function registerSettingsHandlers() {
       return { success: false, conflicts: allConflicts };
     } else {
       // 情况 A: 无任何冲突
-      settingsManager.setKeyBindings(newKeyBindings);
+      preferenceManager.setKeyBindings(newKeyBindings);
       console.log('快捷键设置已成功保存。');
       // 后续应在此处或通过事件通知相关模块重新加载快捷键监听器
       return { success: true };
@@ -123,7 +122,7 @@ export function registerSettingsHandlers() {
    * 加载所有设置 (用于设置页面的初始数据填充)
    */
   ipcMain.handle('load-settings', async () => {
-    return settingsManager.getData();
+    return preferenceManager.getData();
   });
 
   /**

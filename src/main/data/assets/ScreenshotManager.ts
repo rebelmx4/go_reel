@@ -3,7 +3,7 @@ import fs from 'fs-extra';
 import sharp from 'sharp';
 
 import { BaseAssetManager } from './BaseAssetManager';
-import { settingsManager } from '../json/SettingsManager';
+import { storageManager } from '../json';
 import { ScreenshotGenerator } from '../../utils/ScreenshotGenerator';
 
 /**
@@ -71,7 +71,7 @@ export class ScreenshotManager extends BaseAssetManager {
    */
   public async exportScreenshots(filePath: string, rotation: number): Promise<void> {
     const hash = await this.getHash(filePath);
-    const exportBaseDir = settingsManager.getScreenshotExportPath();
+    const exportBaseDir = storageManager.getScreenshotExportPath();
     const targetDir = path.join(exportBaseDir, hash);
     
     await fs.ensureDir(targetDir);

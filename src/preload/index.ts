@@ -26,10 +26,6 @@ const api = {
   // File staging
   moveToTrash: (filePath: string) =>
     ipcRenderer.invoke('move-file-to-trash', filePath),
-  moveToEdited: (filePath: string) =>
-    ipcRenderer.invoke('move-file-to-edited', filePath),
-  moveToTranscoded: (filePath: string) =>
-    ipcRenderer.invoke('move-file-to-transcoded', filePath),
   showInExplorer: (filePath: string) => 
     ipcRenderer.invoke('show-in-explorer', filePath),
   openVideoSourceDir: () => 

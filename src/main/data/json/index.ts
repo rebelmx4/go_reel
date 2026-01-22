@@ -1,6 +1,7 @@
-// JSON Managers
-export { BaseJsonManager } from './BaseJsonManager';
-export { settingsManager } from './SettingsManager';
-export { TagManager } from './TagManager';
-export { HistoryManager } from './HistoryManager';
+export { storageManager } from './StorageManager';
+export { preferenceManager } from './PreferenceManager';
+export { fileProfileManager } from './FileProfileManager';
+export { historyManager } from './HistoryManager';
+export { tagManager } from './TagManager';
 export { annotationManager} from './AnnotationManager';
+export { videoMetadataManager} from './VideoMetadataManager';

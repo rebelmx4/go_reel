@@ -1,4 +1,14 @@
 /**
+ * 1. 存储路径相关设置 (存储在 storage_paths.json)
+ */
+export interface StorageSettings {
+  video_source: string;
+  staged_path: string;
+  screenshot_export_path: string;
+}
+
+
+/**
  * 1. 定义具体的动作分类接口
  * 这里的属性名（Key）就是你在代码中直接使用的“变量名”/“动作名”
  */
@@ -90,16 +100,11 @@ export type AppAction =
   | keyof SystemActions
   | 'confirm' | 'cancel' | string; // 允许部分特殊或动态 key
 
+
 /**
- * 4. 完整的应用程序设置定义
+ * 2. 用户偏好相关设置 (存储在 preferences.json)
  */
-export interface AppSettings {
-  // 路径相关
-  paths: {
-    video_source: string;
-    staged_path: string;
-    screenshot_export_path: string;
-  };
+export interface PreferenceSettings {
   // 播放参数
   playback: {
     global_volume: number;
@@ -112,5 +117,5 @@ export interface AppSettings {
     rules: Record<string, number>;
   };
   // 快捷键配置
-  key_bindings: KeyBindingsConfig;
+  key_bindings: KeyBindingsConfig; // KeyBindingsConfig 保持你之前的定义
 }

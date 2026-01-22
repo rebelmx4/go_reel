@@ -1,21 +1,12 @@
 #pragma once
 
 #include <cstdint> // 为了使用 int64_t
+#include "../common.h"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifdef _WIN32
-#ifdef FFMPEG_EXTENSIONS_EXPORTS
-#define DLLEXPORT __declspec(dllexport)
-#else
-#define DLLEXPORT __declspec(dllimport)
-#endif
-#else
-#define DLLEXPORT
-#endif
-
 
   typedef struct {
     long long duration_ms; // 时长 (毫秒)

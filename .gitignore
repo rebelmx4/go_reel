@@ -29,3 +29,5 @@ out
 /bin/swscale-8.dll
 /build
 /bin
+/.vs/slnx.sqlite
+/.vs/VSWorkspaceState.json

@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs  from 'fs-extra';
-import { settingsManager } from '../data/json/SettingsManager';
+import { storageManager } from '../data/json';
 import log from 'electron-log';
 import { shell } from 'electron';
 import { ipcMain } from 'electron';
@@ -52,7 +52,7 @@ export class FileSystemService {
       throw new Error(`[FileManager] source file not exist: ${srcFile}`);
     }
 
-    const stagedRoot = settingsManager.getStagedPath();
+    const stagedRoot = storageManager.getStagedPath();
     if (!stagedRoot) {
       throw new Error('[FileManager] staged_path is empty in settings');
     }
@@ -68,15 +68,15 @@ export class FileSystemService {
   /* ================ 对外接口 ================ */
 
    public async moveToTrash(filePath: string): Promise<string> {
-    return this.moveTo(filePath, settingsManager.getTrashPath());
+    return this.moveTo(filePath, storageManager.getTrashPath());
   }
 
   public async moveToEdited(filePath: string): Promise<string> {
-    return this.moveTo(filePath, settingsManager.getEditedPath());
+    return this.moveTo(filePath, storageManager.getEditedPath());
   }
 
   public async moveToTranscoded(filePath: string): Promise<string> {
-    return this.moveTo(filePath, settingsManager.getTranscodedPath());
+    return this.moveTo(filePath, storageManager.getTranscodedPath());
   }
 
   /**
@@ -109,7 +109,7 @@ export class FileSystemService {
    * 快捷动作：直接打开视频源根目录
    */
   public async openVideoSourceDir(): Promise<void> {
-    const videoPath = settingsManager.getVideoSourcePath();
+    const videoPath = storageManager.getVideoSourcePath();
     await this.openDirectory(videoPath);
     log.info(`[FileSystemService] Opened video source: ${videoPath}`);
   }
@@ -130,27 +130,6 @@ export function registerFileSytemHandlers() {
     }
   });
 
-  // 移动文件到 staged_path/已编辑
-  ipcMain.handle('move-file-to-edited', async (_, filePath: string) => {
-    try {
-      const finalPath = await fileSystemService.moveToEdited(filePath);
-      return { success: true, finalPath };
-    } catch (err: any) {
-      log.error('[IPC] move-file-to-edited failed:', err);
-      return { success: false, error: err.message };
-    }
-  });
-
-  // 移动文件到 staged_path/已转码
-  ipcMain.handle('move-file-to-transcoded', async (_, filePath: string) => {
-    try {
-      const finalPath = await fileSystemService.moveToTranscoded(filePath);
-      return { success: true, finalPath };
-    } catch (err: any) {
-      log.error('[IPC] move-file-to-transcoded failed:', err);
-      return { success: false, error: err.message };
-    }
-  });
 
   ipcMain.handle('show-in-explorer', async (_, filePath: string) => {
     try {

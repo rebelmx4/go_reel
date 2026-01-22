@@ -1,4 +1,4 @@
-import { SettingsManager } from '../data/json/SettingsManager';
+import { storageManager } from '../data/json';
 import { AnnotationManager } from '../data/json/AnnotationManager';
 import { scanVideoFiles, ScanResult } from '../utils/fileScanner';
 import { calculateFastHash } from '../utils/hash';
@@ -246,3 +246,22 @@ export class RefreshService {
     }
   }
 }
+
+
+// ipcMain.handle('refresh-files', async () => {
+//     try {
+//       if (!refreshService) {
+//         throw new Error('Refresh service not initialized');
+//       }
+      
+//       const mainWindow = BrowserWindow.getAllWindows()[0];
+//       if (mainWindow) {
+//         refreshService.setMainWindow(mainWindow);
+//       }
+//       const result = await refreshService.refresh();
+//       return result;
+//     } catch (error) {
+//       console.error('Failed to refresh files:', error);
+//       return { success: false, totalFiles: 0, newFiles: 0, movedFiles: 0, deletedFiles: 0, duplicateFiles: 0, error: String(error) };
+//     }
+//   });

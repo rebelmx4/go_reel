@@ -1,10 +1,5 @@
 import log from 'electron-log';
-import { settingsManager } from '../data/json/SettingsManager';
-import { annotationManager } from '../data/json/AnnotationManager';
-import { fileProfileManager } from '../data/json/FileProfileManager'; // 注意：FileProfile 接口已在 manager 中定义
-import { historyManager } from '../data/json/HistoryManager';
-import { videoMetadataManager } from '../data/json/VideoMetadataManager';
-import { tagManager } from '../data/json/TagManager';
+import { preferenceManager, storageManager, annotationManager, fileProfileManager, historyManager, videoMetadataManager, tagManager } from '../data/json';
 import { scanVideoFiles } from '../utils/fileScanner';
 import { StartupResult, VideoFile } from '../../shared/models';// 引入共享类型
 import { ipcMain } from 'electron';
@@ -19,7 +14,8 @@ export class StartupService {
   async startup(): Promise<StartupResult> {
      // 统一初始化所有管理器
     await Promise.all([
-      settingsManager.load(),
+      storageManager.load(),
+      preferenceManager.load(),
       fileProfileManager.init(),
       annotationManager.init(),
       historyManager.load(),
@@ -30,10 +26,10 @@ export class StartupService {
     log.info('=== Startup: Direct Physical Mapping ===');
 
     // 1. 获取基础配置
-    const videoSource = settingsManager.getVideoSourcePath();
+    const videoSource = storageManager.getVideoSourcePath();
     const blacklist = [
-      settingsManager.getStagedPath(), 
-      settingsManager.getScreenshotExportPath()
+      storageManager.getStagedPath(), 
+      storageManager.getScreenshotExportPath()
     ].filter(Boolean);
 
     // 2. 物理扫描 (快速获取当前磁盘上的文件列表)
@@ -66,12 +62,12 @@ export class StartupService {
       return video;
     }));
 
-    log.info(`Startup successful. Total: ${videoList.length}, Recognized (Hashed): ${videoList.filter(v => v.hash).length}`);
+    log.info(`Startup successful. Total: ${videoList.length}`);
 
     const result: StartupResult = {
         videoList,
         history: historyManager.getHistory(),
-        settings: settingsManager.get(),
+        preferenceStettings: preferenceManager.get(),
         tagLibrary: tagManager.getLibrary()
       };
 

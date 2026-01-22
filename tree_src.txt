@@ -1,6 +1,5 @@
-Folder PATH listing for volume ¿ª·¢
-Volume serial number is 000000A9 8E27:C003
-E:\GO_REEL\SRC
+Volume serial number is 0000F50C C282:B5EC
+E:\100_MYPROJECTS\GO_REEL\SRC
 +---main
 |   |   index.ts
 |   |   
@@ -17,6 +16,7 @@ E:\GO_REEL\SRC
 |   |   \---json
 |   |           AnnotationManager.ts
 |   |           BaseJsonManager.ts
+|   |           BaseShardedJsonManager.ts
 |   |           FileProfileManager.ts
 |   |           HistoryManager.ts
 |   |           index.ts
@@ -44,11 +44,12 @@ E:\GO_REEL\SRC
 |   |       VideoExportService.ts
 |   |       
 |   \---utils
-|           ffmpeg-setup.ts
+|           ffmpegUtils.ts
 |           fileScanner.ts
 |           handlerHelper.ts
 |           hash.ts
 |           index.ts
+|           migrateScreenshots.ts
 |           ScreenshotGenerator.ts
 |           videoUtils.ts
 |           
@@ -65,10 +66,7 @@ E:\GO_REEL\SRC
 |       |   main.tsx
 |       |   
 |       +---assets
-|       |       base.css
-|       |       electron.svg
 |       |       main.css
-|       |       wavy-lines.svg
 |       |       
 |       +---components
 |       |   |   index.ts
@@ -90,7 +88,9 @@ E:\GO_REEL\SRC
 |       |   |       
 |       |   +---Tag
 |       |   |       TagCard.tsx
+|       |   |       TagCropView.tsx
 |       |   |       TagFilterGrid.tsx
+|       |   |       TagInfoView.tsx
 |       |   |       
 |       |   \---Video
 |       |           CoverCard.module.css
@@ -134,17 +134,20 @@ E:\GO_REEL\SRC
 |       |   |   VideoPlayer.tsx
 |       |   |   VideoViewport.tsx
 |       |   |   
-|       |   \---hooks
-|       |           index.ts
-|       |           usePlayerActions.ts
-|       |           useVideoCrop.ts
-|       |           useVideoData.ts
-|       |           useVideoShortcuts.ts
-|       |           useVideoVisuals.ts
+|       |   +---hooks
+|       |   |       index.ts
+|       |   |       usePlayerActions.ts
+|       |   |       useVideoData.ts
+|       |   |       useVideoFrameCapture.ts
+|       |   |       useVideoShortcuts.ts
+|       |   |       useVideoVisuals.ts
+|       |   |       
+|       |   \---sidebars
+|       |           NewestSidebar.tsx
+|       |           SidebarVideoList.tsx
 |       |           
 |       +---stores
 |       |       clipStore.ts
-|       |       historyStore.ts
 |       |       index.ts
 |       |       navigationStore.ts
 |       |       playerStore.ts
@@ -158,16 +161,11 @@ E:\GO_REEL\SRC
 |       |       videoFileRegistryStore.ts
 |       |       
 |       \---utils
-|               cover.ts
 |               format.ts
 |               index.ts
 |               KeyBindingManager.ts
 |               pathUtils.ts
-|               screenshot.ts
 |               skipFrame.ts
-|               tagUtils.ts
-|               thumbnail.ts
-|               viewport.ts
 |               
 \---shared
         constants.ts

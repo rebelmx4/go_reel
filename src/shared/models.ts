@@ -1,4 +1,4 @@
-import { AppSettings } from './settings.schema'; 
+import { PreferenceSettings } from './settings.schema'; 
 
 
 export interface Annotation {
@@ -40,7 +40,7 @@ export type HistoryStore = string[];
 export interface StartupResult {
   videoList: VideoFile[];
   history: HistoryStore;
-  settings: AppSettings;
+  preferenceStettings: PreferenceSettings;
   tagLibrary: TagLibrary; 
 }
 

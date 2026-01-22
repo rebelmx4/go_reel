@@ -1,250 +1,157 @@
-import { SettingsManager } from '../data/json/SettingsManager';
-import { AnnotationManager } from '../data/json/AnnotationManager';
-import { calculateFastHash } from '../utils/hash';
-import * as fs from 'fs-extra';
-import * as path from 'path';
-import { app, BrowserWindow } from 'electron';
+// main/services/VideoExportService.ts
+
+import path from 'path';
+import fs from 'fs-extra';
 import log from 'electron-log';
-import ffmpeg from 'fluent-ffmpeg';
+import { ipcMain } from 'electron';
+import { screenshotManager } from '../data/assets/ScreenshotManager';
+import { coverManager } from '../data/assets/CoverManager';
+import { storageManager, annotationManager, fileProfileManager } from '../data/json';
+import { VideoMetadataUtils } from '../utils/ffmpegUtils';
+import { calculateFastHash } from '../utils/hash';
 
-
-export interface VideoClip {
-  startTime: number;
-  endTime: number;
-  state: 'keep' | 'remove';
-}
-
-export interface ExportResult {
-  success: boolean;
-  newHash?: string;
-  error?: string;
+export interface ExportRange {
+  start: number;
+  end: number;
 }
 
 export class VideoExportService {
-  private mainWindow: BrowserWindow | null = null;
-
-  constructor(
-    private settingsManager: SettingsManager,
-    private metadataManager: AnnotationManager
-  ) {}
-
-  setMainWindow(window: BrowserWindow) {
-    this.mainWindow = window;
-  }
-
   /**
-   * Export video with clips
+   * 核心导出方法
+   * @param sourcePath 视频绝对路径
+   * @param logicRanges 用户选择的保留片段
    */
-  async exportVideo(videoPath: string, clips: VideoClip[]): Promise<ExportResult> {
-    log.info('=== Starting video export ===');
-    log.info(`Video: ${videoPath}`);
-    log.info(`Clips: ${clips.length}`);
+  public async exportVideo(sourcePath: string, logicRanges: ExportRange[]) {
+    // 1. 获取原视频信息（通过路径获取，用于确定临时目录名）
+    const oldProfile = await fileProfileManager.getProfile(sourcePath);
+    if (!oldProfile) throw new Error("无法定位视频档案");
+
+    // 2. 创建基于隔离工作空间（临时目录）
+    const tempDir = path.join(storageManager.getCropWorkRoot(), oldProfile.hash);
+    await fs.ensureDir(tempDir);
+
+    const keyframes = await VideoMetadataUtils.getKeyframes(sourcePath);
+    const pRanges = logicRanges.map(r => 
+      VideoMetadataUtils.getPhysicalRange(keyframes, r.start, r.end)
+    );
+
+    const tempFiles: string[] = [];
+    const fileListPath = path.join(tempDir, `concat_list.txt`);
+    const finalTempOutput = path.join(tempDir, path.basename(sourcePath));
 
     try {
-      // Filter keep clips
-      const keepClips = clips.filter(c => c.state === 'keep').sort((a, b) => a.startTime - b.startTime);
-      
-      if (keepClips.length === 0) {
-        throw new Error('No clips to keep');
+      // 3. 提取物理片段
+      for (let i = 0; i < pRanges.length; i++) {
+        const range = pRanges[i];
+        const tempOut = path.join(tempDir, `seg_${i}.mp4`);
+        await VideoMetadataUtils.extractSegment(sourcePath, range.pStart, range.pEnd - range.pStart, tempOut);
+        tempFiles.push(tempOut);
       }
 
-      // Calculate old hash
-      const oldHash = await calculateFastHash(videoPath);
-      log.info(`Old hash: ${oldHash}`);
+      // 4. 合并片段
+      const listContent = tempFiles.map(f => `file '${path.resolve(f).replace(/\\/g, '/')}'`).join('\n');
+      await fs.writeFile(fileListPath, listContent);
+      await VideoMetadataUtils.concatFiles(fileListPath, finalTempOutput);
 
-      // Create temp directory
-      const tempDir = path.join(app.getPath('temp'), `video_export_${Date.now()}`);
-      await fs.ensureDir(tempDir);
+      // 5. 资产迁移 (通过原路径和生成的临时文件路径进行)
+      await this.migrateAssets(sourcePath, finalTempOutput, pRanges);
 
-      // Step 1: Extract clip segments
-      const segmentPaths: string[] = [];
-      for (let i = 0; i < keepClips.length; i++) {
-        const clip = keepClips[i];
-        const segmentPath = path.join(tempDir, `segment_${i}.mp4`);
-        
-        await this.extractSegment(videoPath, clip.startTime, clip.endTime, segmentPath);
-        segmentPaths.push(segmentPath);
-        
-        this.sendProgress({
-          phase: 'extracting',
-          current: i + 1,
-          total: keepClips.length
-        });
+      // 6. 备份旧逻辑数据 (此时 sourcePath 还是旧视频)
+      const oldAnnotation = await annotationManager.getAnnotation(sourcePath);
+
+      // 7. 物理文件交换
+      // 将原视频移入“已编辑”目录
+      await storageManager.moveToEdited(sourcePath);
+      // 将新视频从临时目录移回原位置
+      await fs.move(finalTempOutput, sourcePath);
+
+      // 8. 更新逻辑数据
+      if (oldAnnotation) {
+        // 由于 sourcePath 的文件已换，updateAnnotation 内部通过 fileProfileManager 获取时会得到新 Hash
+        // 从而实现将旧的 Annotation 数据（标签、收藏等）写入到新 Hash 的记录中
+        await annotationManager.updateAnnotation(sourcePath, oldAnnotation);
       }
 
-      // Step 2: Concatenate segments
-      const outputPath = path.join(tempDir, 'output.mp4');
-      await this.concatenateSegments(segmentPaths, outputPath);
+      // 9. 强制刷新档案 (让 FileProfileManager 记录新文件的 Hash、大小等)
+      await fileProfileManager.getProfile(sourcePath);
 
-      // Step 3: Archive old file
-      const editedPath = this.settingsManager.getProcessedPath();
-      const videoDir = path.dirname(videoPath);
-      const videoName = path.basename(videoPath);
-      const archivePath = path.join(editedPath, videoName);
-      
-      await fs.ensureDir(editedPath);
-      await fs.move(videoPath, archivePath, { overwrite: true });
-      log.info(`Archived old file to: ${archivePath}`);
-
-      // Step 4: Move new file to original location
-      await fs.move(outputPath, videoPath, { overwrite: true });
-      log.info(`Saved new file to: ${videoPath}`);
-
-      // Step 5: Calculate new hash
-      const newHash = await calculateFastHash(videoPath);
-      log.info(`New hash: ${newHash}`);
-
-      // Step 6: Migrate metadata
-      await this.migrateMetadata(oldHash, newHash, keepClips);
-
-      // Cleanup temp directory
-      await fs.remove(tempDir);
-
-      log.info('=== Export complete ===');
-      return { success: true, newHash };
+      log.info(`[Export] 裁剪合并成功: ${sourcePath}`);
     } catch (error) {
-      log.error('Export failed:', error);
-      return { success: false, error: String(error) };
+      log.error(`[Export] 导出失败:`, error);
+      throw error;
+    } finally {
+      // 10. 清理临时目录
+      await fs.remove(tempDir).catch(() => {});
     }
   }
 
   /**
-   * Extract a segment from video
+   * 资产迁移：封面复制，截图过滤并重命名
+   * @param oldPath 原视频路径
+   * @param newTempPath 刚生成的临时视频路径
+   * @param pRanges 物理切割范围
    */
-  private extractSegment(inputPath: string, startTime: number, endTime: number, outputPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const duration = endTime - startTime;
-      
-      ffmpeg(inputPath)
-        .setStartTime(startTime)
-        .setDuration(duration)
-        .output(outputPath)
-        .videoCodec('copy')
-        .audioCodec('copy')
-        .on('end', () => {
-          log.info(`Extracted segment: ${startTime}s - ${endTime}s`);
-          resolve();
-        })
-        .on('error', (err) => {
-          log.error(`Failed to extract segment:`, err);
-          reject(err);
-        })
-        .run();
-    });
-  }
+  private async migrateAssets(oldPath: string, newTempPath: string, pRanges: any[]) {
+    // 1. 封面迁移：Manager 内部根据路径处理
+    // 假设 coverManager 已经支持通过路径或其内部维护的 Hash 逻辑
+    const oldCover = await coverManager.getCover(oldPath); // 这会返回 file:// 协议路径
+    const oldCoverPath = oldCover.replace('file://', '');
+    
+    // 计算新视频的临时 Hash 用以确定新封面存储位置
+    const newHash = await calculateFastHash(newTempPath);
+    // 这里我们直接利用 Manager 的内部方法拼出新封面路径 (绕过对外部暴露 Hash 逻辑)
+    const newCoverPath = coverManager['getCoverPath'](newHash);
 
-  /**
-   * Concatenate multiple video segments
-   */
-  private concatenateSegments(segmentPaths: string[], outputPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Create concat file
-      const concatFilePath = path.join(path.dirname(outputPath), 'concat.txt');
-      const concatContent = segmentPaths.map(p => `file '${p}'`).join('\n');
-      fs.writeFileSync(concatFilePath, concatContent);
-
-      ffmpeg()
-        .input(concatFilePath)
-        .inputOptions(['-f concat', '-safe 0'])
-        .outputOptions('-c copy')
-        .output(outputPath)
-        .on('end', () => {
-          log.info('Concatenation complete');
-          fs.unlinkSync(concatFilePath);
-          resolve();
-        })
-        .on('error', (err) => {
-          log.error('Concatenation failed:', err);
-          reject(err);
-        })
-        .run();
-    });
-  }
-
-  /**
-   * Migrate metadata from old hash to new hash
-   */
-  private async migrateMetadata(oldHash: string, newHash: string, keepClips: VideoClip[]): Promise<void> {
-    log.info('Migrating metadata...');
-
-    const userDataPath = app.getPath('userData');
-
-    // 2. Migrate covers
-    const coversDir = path.join(userDataPath, 'data', 'covers');
-    const oldCover = path.join(coversDir, `${oldHash}.webp`);
-    const newCover = path.join(coversDir, `${newHash}.webp`);
-    const oldCoverD = path.join(coversDir, `${oldHash}_d.webp`);
-    const newCoverD = path.join(coversDir, `${newHash}_d.webp`);
-
-    if (await fs.pathExists(oldCover)) {
-      await fs.move(oldCover, newCover, { overwrite: true });
-      log.info('Cover migrated');
-    }
-    if (await fs.pathExists(oldCoverD)) {
-      await fs.move(oldCoverD, newCoverD, { overwrite: true });
-      log.info('Cover (dark) migrated');
+    if (await fs.pathExists(oldCoverPath)) {
+      await fs.ensureDir(path.dirname(newCoverPath));
+      await fs.copy(oldCoverPath, newCoverPath);
     }
 
-    // 3. Migrate screenshots
-    const screenshotsDir = path.join(userDataPath, 'data', 'screenshots');
-    const oldScreenshotDir = path.join(screenshotsDir, oldHash);
-    const newScreenshotDir = path.join(screenshotsDir, newHash);
+    // 2. 截图迁移
+    const oldScreenshots = await screenshotManager.loadScreenshots(oldPath);
+    const oldProfile = await fileProfileManager.getProfile(oldPath);
+    const oldHash = oldProfile!.hash;
+    
+    let cumulativeOffsetMs = 0;
 
-    if (await fs.pathExists(oldScreenshotDir)) {
-      // Calculate time offset for each clip
-      const screenshots = await fs.readdir(oldScreenshotDir);
-      await fs.ensureDir(newScreenshotDir);
+    for (const range of pRanges) {
+      const pStartMs = range.pStart * 1000;
+      const pEndMs = range.pEnd * 1000;
 
-      for (const screenshot of screenshots) {
-        // Parse timestamp from filename (e.g., i_120000.webp -> 120000ms)
-        const match = screenshot.match(/i_(\d+)\.webp/);
-        if (match) {
-          const oldTimestamp = parseInt(match[1]);
-          const newTimestamp = this.calculateNewTimestamp(oldTimestamp, keepClips);
+      // 过滤：仅保留落在当前物理保留片段内的截图
+      const inRange = oldScreenshots.filter(s => s.timestamp >= pStartMs && s.timestamp <= pEndMs);
 
-          const oldPath = path.join(oldScreenshotDir, screenshot);
-          const newPath = path.join(newScreenshotDir, `i_${newTimestamp}.webp`);
-          
-          await fs.move(oldPath, newPath);
-        }
+      for (const s of inRange) {
+        // 时间轴平移计算
+        const newTimestamp = (s.timestamp - pStartMs) + cumulativeOffsetMs;
+        const newFilename = `${Math.floor(newTimestamp).toString().padStart(8, '0')}.webp`;
+        
+        // 物理搬运
+        const src = screenshotManager['getFilePathInHash'](oldHash, s.filename);
+        const dest = screenshotManager['getFilePathInHash'](newHash, newFilename);
+        
+        await fs.ensureDir(path.dirname(dest));
+        await fs.copy(src, dest);
       }
-
-      // Remove old directory
-      await fs.remove(oldScreenshotDir);
-      log.info('Screenshots migrated and timestamps adjusted');
+      cumulativeOffsetMs += (pEndMs - pStartMs);
     }
   }
+}
 
-  /**
-   * Calculate new timestamp after removing clips
-   */
-  private calculateNewTimestamp(oldTimestamp: number, keepClips: VideoClip[]): number {
-    let cumulativeOffset = 0;
-    let newTimestamp = oldTimestamp;
+// 导出单例实例
+export const videoExportService = new VideoExportService();
 
-    for (const clip of keepClips) {
-      const clipStartMs = clip.startTime * 1000;
-      const clipEndMs = clip.endTime * 1000;
-
-      if (oldTimestamp >= clipStartMs && oldTimestamp <= clipEndMs) {
-        // Screenshot is in this keep clip
-        newTimestamp = oldTimestamp - cumulativeOffset;
-        break;
-      } else if (oldTimestamp > clipEndMs) {
-        // Screenshot is after this clip, continue accumulating
-        continue;
-      }
+/**
+ * 注册 IPC 处理程序
+ */
+export function registerVideoExportHandlers() {
+  ipcMain.handle('video-export:execute', async (_, { sourcePath, ranges }) => {
+    try {
+      // 使用导出的实例调用方法
+      return await videoExportService.exportVideo(sourcePath, ranges);
+    } catch (err: any) {
+      log.error('[IPC] video-export:execute failed:', err);
+      return { success: false, error: err.message };
     }
-
-    return newTimestamp;
-  }
-
-  /**
-   * Send progress to renderer
-   */
-  private sendProgress(progress: any) {
-    if (this.mainWindow) {
-      this.mainWindow.webContents.send('export-progress', progress);
-    }
-  }
+  });
 }

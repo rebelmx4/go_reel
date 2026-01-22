@@ -28,7 +28,7 @@ const bootstrap = async () => {
       return;
     }
 
-    const { videoList, history, settings, tagLibrary } = result;
+    const { videoList, history, preferenceStettings, tagLibrary } = result;
 
     // 3. 分发数据到 VideoFileRegistryStore (档案库)
     videoRegistry.setInitialData(videoList);
@@ -37,19 +37,19 @@ const bootstrap = async () => {
     playlist.setHistoryPaths(history);
 
     // 5. 应用用户设置 (Settings)
-    if (settings) {
+    if (preferenceStettings) {
       // 配置快捷键管理器
-      if (settings.key_bindings) {
-        keyBindingManager.bootstrap(settings.key_bindings);
+      if (preferenceStettings.key_bindings) {
+        keyBindingManager.bootstrap(preferenceStettings.key_bindings);
       }
 
       // 恢复播放器全局设置
-      if (settings.playback) {
-        if (settings.playback.global_volume !== undefined) {
-          player.setVolume(settings.playback.global_volume);
+      if (preferenceStettings.playback) {
+        if (preferenceStettings.playback.global_volume !== undefined) {
+          player.setVolume(preferenceStettings.playback.global_volume);
         }
-        if (settings.playback.default_rate !== undefined) {
-          player.setPlaybackRate(settings.playback.default_rate);
+        if (preferenceStettings.playback.default_rate !== undefined) {
+          player.setPlaybackRate(preferenceStettings.playback.default_rate);
         }
       }
     }

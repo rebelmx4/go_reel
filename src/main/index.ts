@@ -3,8 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { startupService, RefreshService, VideoExportService, registerFileSytemHandlers,  registerStartupServiceHandlers } from './services';
-import { settingsManager, annotationManager } from './data';
+import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers } from './services';
 import {
   registerWindowHandlers,
   registerMetadataHandler,
@@ -18,28 +17,7 @@ import {
 
 import { setupFfmpeg } from './utils';
 
-
 setupFfmpeg()
-
-let refreshService: RefreshService | null = null;
-let videoExportService: VideoExportService | null = null;
-
-log.info('Initializing startup service...');
-
-// Create refresh service
-refreshService = new RefreshService(
-  settingsManager,
-  annotationManager
-);
-
-// Create video export service
-videoExportService = new VideoExportService(
-  settingsManager,
-  annotationManager
-  );
-
-log.info('Startup service initialized');
-
 
 function createWindow(): void {
   // Create the browser window.
@@ -92,6 +70,8 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window);
   });
 
+  log.info('startupService start...');
+
   await startupService.startup();
 
   // IPC handlers
@@ -100,15 +80,10 @@ app.whenReady().then(async () => {
   createWindow();
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -120,7 +95,6 @@ app.on('window-all-closed', () => {
  * Setup IPC handlers
  */
 function setupIpcHandlers() {
-  // Register all IPC handler modules
   registerMetadataHandler();
   registerScreenshotHandlers();
   registerCoverHandlers();
@@ -130,6 +104,7 @@ function setupIpcHandlers() {
   registerHistoryHandlers();
   registerFileSytemHandlers();
   registerStartupServiceHandlers();
+  registerVideoExportHandlers()
   
 
   // Select directory
@@ -144,45 +119,4 @@ function setupIpcHandlers() {
 
     return result.filePaths[0];
   });
-
-  // Refresh files
-  ipcMain.handle('refresh-files', async () => {
-    try {
-      if (!refreshService) {
-        throw new Error('Refresh service not initialized');
-      }
-      
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        refreshService.setMainWindow(mainWindow);
-      }
-      const result = await refreshService.refresh();
-      return result;
-    } catch (error) {
-      console.error('Failed to refresh files:', error);
-      return { success: false, totalFiles: 0, newFiles: 0, movedFiles: 0, deletedFiles: 0, duplicateFiles: 0, error: String(error) };
-    }
-  });
-
-  // Export video
-  ipcMain.handle('export-video', async (_event, videoPath: string, clips: any[]) => {
-    try {
-      if (!videoExportService) {
-        throw new Error('Video export service not initialized');
-      }
-      
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        videoExportService.setMainWindow(mainWindow);
-      }
-      
-      const result = await videoExportService.exportVideo(videoPath, clips);
-      return result;
-    } catch (error) {
-      console.error('Failed to export video:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  // Note: Window controls are now handled by windowHandlers module
 }
