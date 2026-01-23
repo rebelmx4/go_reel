@@ -1,19 +1,20 @@
 import { Box } from '@mantine/core';
 import { usePlayerStore } from '../stores';
 import { useVideoVisuals } from './hooks';
+import { useVideoContext } from './contexts';
+
 
 interface VideoViewportProps {
-    videoRef: React.RefObject<HTMLVideoElement | null>;
-    containerRef: React.RefObject<HTMLDivElement | null>;
     videoSrc: string;
     onTimeUpdate: (time: number) => void;
 }
 
-export function VideoViewport({ videoRef, containerRef, videoSrc, onTimeUpdate }: VideoViewportProps) {
+export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
+    const { videoRef, containerRef } = useVideoContext();
     const { rotation, isPlaying, setPlaying, setDuration } = usePlayerStore();
 
     // 视觉变换逻辑
-    const { onVisualLoadedMetadata } = useVideoVisuals({ videoRef, containerRef, rotation });
+    const { onVisualLoadedMetadata } = useVideoVisuals({ rotation });
 
 
     // 防止播放循环的 handler

@@ -1,7 +1,7 @@
-// src/renderer/src/hooks/useVideoData.ts
-
-import { useEffect, RefObject } from 'react';
+import { useEffect } from 'react';
 import { usePlayerStore, useVideoFileRegistryStore, usePlaylistStore } from '../../stores';
+import { useVideoContext } from '../contexts';
+
 
 /**
  * 视频数据同步 Hook
@@ -9,7 +9,9 @@ import { usePlayerStore, useVideoFileRegistryStore, usePlaylistStore } from '../
  * 1. 当视频路径变化时，从 Registry 同步注解信息（如旋转）到播放器
  * 2. 异步获取视频的物理帧率（FPS）
  */
-export function useVideoData(videoRef: RefObject<HTMLVideoElement | null>) {
+export function useVideoData() {
+    const { videoRef } = useVideoContext();
+
   // 从各个 Store 获取所需的 Action 和数据
   const currentPath = usePlaylistStore((state) => state.currentPath);
   const setFramerate = usePlayerStore((state) => state.setFramerate);

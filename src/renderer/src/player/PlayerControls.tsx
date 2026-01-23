@@ -12,11 +12,13 @@ import {
     useVideoFileRegistryStore,
     usePlaylistStore,
 } from '../stores';
-import { RefObject, useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
 import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 import { PlaybackTimeLabel } from './PlaybackTimeLabel';
+import { useVideoContext } from './contexts';
+
 
 /**
  * 防抖 Hook 用于持久化设置
@@ -31,7 +33,6 @@ function useDebouncedEffect(callback: () => void, delay: number, deps: React.Dep
 }
 
 interface PlayerControlsProps {
-    videoRef: RefObject<HTMLVideoElement | null>;
     onScreenshot: () => void;
     onNext: () => void;
     onRotate: () => void;
@@ -39,7 +40,9 @@ interface PlayerControlsProps {
     onToggleFavorite: () => void;
 }
 
-export function PlayerControls({ videoRef, onScreenshot, onNext, onRotate, onDelete, onToggleFavorite }: PlayerControlsProps) {
+export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onToggleFavorite }: PlayerControlsProps) {
+    const { videoRef } = useVideoContext();
+
     // --- 1. Store 数据订阅 ---
     // 状态值
     const volume = usePlayerStore(state => state.volume);

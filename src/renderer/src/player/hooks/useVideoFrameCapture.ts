@@ -1,8 +1,12 @@
-// src/renderer/src/player/hooks/useVideoFrameCapture.ts
 import { useCallback } from 'react';
+import { useVideoContext } from '../contexts';
+
 
 export function useVideoFrameCapture() {
-    const captureFrame = useCallback((video: HTMLVideoElement, rotation: number): string => {
+    const { videoRef } = useVideoContext();
+
+    const captureFrame = useCallback((rotation: number): string => {
+        const video = videoRef.current
         if (!video || video.readyState < 2) return '';
 
         const is90 = rotation === 90 || rotation === 270;

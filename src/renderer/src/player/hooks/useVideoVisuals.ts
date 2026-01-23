@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useRef, RefObject, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { useVideoContext } from '../contexts';
 
 interface UseVideoVisualsProps {
-    videoRef: RefObject<HTMLVideoElement | null>;
-    containerRef: RefObject<HTMLDivElement | null>;
     rotation: number;
 }
 
-export function useVideoVisuals({ videoRef, containerRef, rotation }: UseVideoVisualsProps) {
+export function useVideoVisuals({ rotation }: UseVideoVisualsProps) {
+    const { videoRef, containerRef } = useVideoContext();
+
     const [visualRotation, setVisualRotation] = useState<number>(rotation);
     const prevRotationRef = useRef(rotation);
     

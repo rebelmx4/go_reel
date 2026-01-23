@@ -1,14 +1,18 @@
-// src/renderer/src/player/hooks/usePlayerActions.ts
 import { useCallback } from 'react';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useToastStore, useVideoFileRegistryStore } from '../../stores';
 import {useVideoFrameCapture} from "./useVideoFrameCapture"
+import { useVideoContext } from '../contexts';
+
 
 interface PlayerActionOptions {
     onOpenAssignTag: () => void;
     onOpenCreateTag: (cover?: string) => void;
 }
 
-export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | null>,  options?: PlayerActionOptions ) {
+export function usePlayerActions( options?: PlayerActionOptions ) {
+    const { videoRef } = useVideoContext();
+
+    
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
     const { rotation, setRotation, setPlaying, isPlaying} = usePlayerStore();
@@ -28,7 +32,7 @@ export function usePlayerActions(videoRef: React.RefObject<HTMLVideoElement | nu
         setPlaying(false);
         
         // 关键步骤：在这里抓取当前带有旋转角度的图片
-        const frameBase64 = captureFrame(videoRef.current, rotation);
+        const frameBase64 = captureFrame(rotation);
         
         options?.onOpenCreateTag(frameBase64); 
     }, [setPlaying, options, rotation, videoRef, captureFrame]);
