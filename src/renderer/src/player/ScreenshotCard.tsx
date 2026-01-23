@@ -34,10 +34,8 @@ export function ScreenshotCard({
     onDelete,
 }: ScreenshotCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    // 存储图片加载后的原始宽高比
     const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-    // 判断当前是否处于“竖向旋转”状态 (90度或270度)
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
     // 计算容器宽度：

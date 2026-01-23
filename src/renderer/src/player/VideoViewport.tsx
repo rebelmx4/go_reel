@@ -35,7 +35,7 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
             <video
                 ref={videoRef}
                 src={videoSrc}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none', transformOrigin: 'center center' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none', transformOrigin: 'center center', transition: 'transform 0.3s ease-in-out' }}
                 onPlay={handleVideoPlay}
                 onPause={handleVideoPause}
                 onTimeUpdate={() => onTimeUpdate(videoRef.current?.currentTime || 0)}

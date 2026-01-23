@@ -1,5 +1,3 @@
-// src/components/player/ScreenshotTrack.tsx
-
 import { Box, Text, Loader, Center, Group } from '@mantine/core';
 import { usePlayerStore, useScreenshotStore, useToastStore, usePlaylistStore } from '../stores';
 import { ScreenshotCard } from './ScreenshotCard';

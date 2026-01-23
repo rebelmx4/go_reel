@@ -85,6 +85,7 @@ export function useVideoVisuals({ rotation }: UseVideoVisualsProps) {
         
         prevRotationRef.current = rotation;
     }, [rotation]);
+    
 
     // 5. 应用样式 (参考 old_players.ts 的核心逻辑)
     // 确保在任何尺寸或旋转变化时，都直接操作 style 保证最高优先级

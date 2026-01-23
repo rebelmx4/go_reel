@@ -28,10 +28,12 @@ export function usePlayerActions( options?: PlayerActionOptions ) {
     }, [setPlaying, options]);
 
     const openCreateTag = useCallback(() => {
-        if (!videoRef.current) return;
+        const video = videoRef.current;
+        if (!video) return;
+        video.pause(); 
+
         setPlaying(false);
         
-        // 关键步骤：在这里抓取当前带有旋转角度的图片
         const frameBase64 = captureFrame(rotation);
         
         options?.onOpenCreateTag(frameBase64); 
