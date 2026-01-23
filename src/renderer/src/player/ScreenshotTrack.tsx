@@ -1,3 +1,5 @@
+// src/components/player/ScreenshotTrack.tsx
+
 import { Box, Text, Loader, Center, Group } from '@mantine/core';
 import { usePlayerStore, useScreenshotStore, useToastStore, usePlaylistStore } from '../stores';
 import { ScreenshotCard } from './ScreenshotCard';
@@ -145,40 +147,35 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
     };
 
     return (
-        <>
+        <Box style={{ position: 'relative' }}>
             <Box
                 ref={trackRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUpOrLeave}
                 onMouseLeave={handleMouseUpOrLeave}
+                // 使用 className 配合下方的 style 标签
+                className="custom-screenshot-track"
                 style={{
-                    height: 360, // 卡片高度 320 + 上下 padding 约 40
-                    backgroundColor: 'rgba(26, 26, 26, 0.8)',
-                    borderRadius: 8,
+                    height: 380,
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                    borderRadius: 12,
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '0 16px', // 左右留白
+                    padding: '0 20px',
                     border: '1px solid #333',
                     overflowX: 'auto',
                     userSelect: 'none',
-                    cursor: 'grab',
-                    position: 'relative',
-                    scrollbarWidth: 'thin', // 允许显示细滚动条
+                    cursor: dragInfo.current.isDragging ? 'grabbing' : 'grab',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#444 transparent',
                 }}
             >
+                {/* 内容渲染逻辑保持不变 */}
                 {isLoading && screenshots.length === 0 ? (
-                    <Center style={{ width: '100%' }}>
-                        <Group gap="xs">
-                            <Loader size="sm" color="blue" />
-                            <Text size="sm" c="dimmed">正在生成预览...</Text>
-                        </Group>
-                    </Center>
-                ) : screenshots.length === 0 ? (
-                    <Text size="sm" c="dimmed" style={{ margin: '0 auto' }}>无可用预览截图</Text>
+                    <Center style={{ width: '100%' }}><Loader size="sm" /></Center>
                 ) : (
-                    // 使用 flex 布局，gap 会自动处理卡片间距
-                    <Box style={{ display: 'flex', gap: 12, height: 320 }}>
+                    <Box style={{ display: 'flex', gap: 16, height: 320, padding: '10px 0' }}>
                         {screenshots.map((s) => (
                             <ScreenshotCard
                                 key={s.filename}
@@ -194,34 +191,29 @@ export function ScreenshotTrack({ onScreenshotClick }: ScreenshotTrackProps) {
                 )}
             </Box>
 
+            {/* 将 CSS 嵌入组件内部，解决 sx 报错且不增加外部文件 */}
             <style>{`
-                /* 隐藏横向滚动条但保留功能 */
-                ::-webkit-scrollbar {
+                .custom-screenshot-track::-webkit-scrollbar {
                     height: 6px;
                 }
-                ::-webkit-scrollbar-track {
+                .custom-screenshot-track::-webkit-scrollbar-track {
                     background: transparent;
                 }
-                ::-webkit-scrollbar-thumb {
+                .custom-screenshot-track::-webkit-scrollbar-thumb {
                     background: #444;
                     border-radius: 10px;
                 }
-                ::-webkit-scrollbar-thumb:hover {
+                .custom-screenshot-track::-webkit-scrollbar-thumb:hover {
                     background: #666;
                 }
-
+                /* 统一处理卡片悬停，不再散落在各处 */
                 .screenshot-card-container {
-                    transition: transform 0.2s ease, width 0.3s ease;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 }
-
                 .screenshot-card-container:hover {
-                    transform: translateY(-4px); /* 悬停稍微上浮感 */
-                }
-
-                .screenshot-card-container:hover .screenshot-card-image {
-                    filter: brightness(0.7); /* 悬停变暗 */
+                    transform: translateY(-5px);
                 }
             `}</style>
-        </>
+        </Box>
     );
 }

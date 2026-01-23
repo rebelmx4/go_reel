@@ -1,7 +1,8 @@
 import { Box, ActionIcon } from '@mantine/core';
 import { IconPhoto, IconTrash, IconCheck } from '@tabler/icons-react';
 import { Screenshot } from '../stores/screenshotStore';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { formatDuration } from '../utils/format';
 
 interface ScreenshotCardProps {
     screenshot: Screenshot;
@@ -19,10 +20,9 @@ const formatMSTime = (ms: number) => {
     const seconds = totalSeconds % 60;
     const paddedMinutes = String(minutes).padStart(2, '0');
     const paddedSeconds = String(seconds).padStart(2, '0');
-    if (hours > 0) {
-        return `${String(hours).padStart(2, '0')}:${paddedMinutes}:${paddedSeconds}`;
-    }
-    return `${paddedMinutes}:${paddedSeconds}`;
+    return hours > 0
+        ? `${String(hours).padStart(2, '0')}:${paddedMinutes}:${paddedSeconds}`
+        : `${paddedMinutes}:${paddedSeconds}`;
 };
 
 export function ScreenshotCard({
@@ -36,18 +36,27 @@ export function ScreenshotCard({
     const [isHovered, setIsHovered] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-    const isRotatedVertical = (rotation / 90) % 2 !== 0;
+    // --- 平滑旋转核心逻辑 ---
+    const [visualRotation, setVisualRotation] = useState(rotation);
+    const prevRotationRef = useRef(rotation);
 
-    // 计算容器宽度：
-    // 如果旋转了90/270度，视觉宽度 = 高度 / 原始宽高比
-    // 如果是0/180度，视觉宽度 = 高度 * 原始宽高比
+    useEffect(() => {
+        const prev = prevRotationRef.current;
+        let delta = rotation - prev;
+        if (delta === -270) delta = 90;       // 处理 270 -> 0 顺时针
+        else if (delta === 270) delta = -90;  // 处理 0 -> 270 逆时针
+
+        setVisualRotation(v => v + delta);
+        prevRotationRef.current = rotation;
+    }, [rotation]);
+
+    const isRotatedVertical = (rotation / 90) % 2 !== 0;
     const cardHeight = 320;
+
+    // 计算容器宽度
     const cardWidth = useMemo(() => {
-        if (isRotatedVertical) {
-            return cardHeight / aspectRatio;
-        }
-        return cardHeight * aspectRatio;
-    }, [aspectRatio, isRotatedVertical, cardHeight]);
+        return isRotatedVertical ? cardHeight / aspectRatio : cardHeight * aspectRatio;
+    }, [aspectRatio, isRotatedVertical]);
 
     return (
         <Box
@@ -57,18 +66,17 @@ export function ScreenshotCard({
             onMouseLeave={() => setIsHovered(false)}
             style={{
                 position: 'relative',
-                cursor: 'pointer',
-                border: `3px solid ${isActive ? 'red' : 'transparent'}`,
-                borderRadius: 8,
-                overflow: 'hidden',
                 flexShrink: 0,
-                transition: 'width 0.3s ease, border-color 0.2s', // 宽度变化也加个过渡
-                backgroundColor: '#000',
                 height: `${cardHeight}px`,
                 width: `${cardWidth}px`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: '#000',
+                borderRadius: 8,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                border: `3px solid ${isActive ? '#228be6' : 'transparent'}`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: isHovered ? 'translateY(-4px)' : 'none',
+                boxShadow: isHovered ? '0 10px 15px -3px rgba(0,0,0,0.4)' : 'none',
             }}
         >
             <img
@@ -76,63 +84,54 @@ export function ScreenshotCard({
                 alt="Screenshot"
                 onLoad={(e) => {
                     const img = e.currentTarget;
-                    if (img.naturalHeight > 0) {
-                        setAspectRatio(img.naturalWidth / img.naturalHeight);
-                    }
+                    if (img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight);
                 }}
                 style={{
                     position: 'absolute',
-                    // 当旋转 90/270度时，图片的长边要对齐容器的短边，反之亦然
-                    // 这里直接用 scale 配合旋转是最简单的做法
+                    top: '50%',
+                    left: '50%',
+                    // 关键：旋转时需要交换宽高
                     width: isRotatedVertical ? `${cardHeight}px` : '100%',
                     height: isRotatedVertical ? `${cardWidth}px` : '100%',
                     objectFit: 'cover',
-                    transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease, width 0.3s ease, height 0.3s ease, filter 0.2s ease-in-out',
+                    transform: `translate(-50%, -50%) rotate(${visualRotation}deg)`,
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    filter: isHovered ? 'brightness(0.7)' : 'none',
                 }}
-                className="screenshot-card-image"
             />
 
-            {/* 底部信息栏层级设高一点 */}
+            {/* 底部信息栏 - 只有 Hover 时显示按钮 */}
             <Box style={{
-                position: 'absolute', bottom: 0, left: 0,
-                boxSizing: 'border-box',
-                width: '100%',
-                backgroundColor: 'rgba(0,0,0,0.3)', // 加一点极浅阴影增强文字识别
-                color: 'white',
-                fontSize: '12px',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textShadow: '0px 1px 3px rgba(0,0,0,1)',
-                pointerEvents: 'none',
-                zIndex: 2
+                position: 'absolute', bottom: 0, left: 0, width: '100%',
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                color: 'white', padding: '8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                zIndex: 2, pointerEvents: 'none'
             }}>
-                <span style={{ fontWeight: 500 }}>{formatMSTime(screenshot.timestamp)}</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                    {formatDuration(screenshot.timestamp, 'ms')}
+                </span>
 
-                {isHovered && (
-                    <Box style={{ display: 'flex', gap: '4px', pointerEvents: 'auto' }}>
-                        <ActionIcon
-                            variant="filled"
-                            size="sm"
-                            color={isCover ? "green" : "blue"}
-                            onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
-                            title={isCover ? "当前封面" : "设为封面"}
-                        >
-                            {isCover ? <IconCheck size={16} /> : <IconPhoto size={16} />}
-                        </ActionIcon>
-                        <ActionIcon
-                            variant="filled"
-                            size="sm"
-                            color="red"
-                            onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
-                            title="删除"
-                        >
-                            <IconTrash size={16} />
-                        </ActionIcon>
-                    </Box>
-                )}
+                <Box style={{
+                    display: 'flex', gap: '4px', pointerEvents: 'auto',
+                    opacity: isHovered ? 1 : 0,
+                    transform: isHovered ? 'translateX(0)' : 'translateX(10px)',
+                    transition: 'all 0.2s ease'
+                }}>
+                    <ActionIcon
+                        variant="filled" size="sm"
+                        color={isCover ? "green" : "blue"}
+                        onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
+                    >
+                        {isCover ? <IconCheck size={14} /> : <IconPhoto size={14} />}
+                    </ActionIcon>
+                    <ActionIcon
+                        variant="filled" size="sm" color="red"
+                        onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
+                    >
+                        <IconTrash size={14} />
+                    </ActionIcon>
+                </Box>
             </Box>
         </Box>
     );
