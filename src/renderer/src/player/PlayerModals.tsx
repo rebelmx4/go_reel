@@ -1,4 +1,3 @@
-// src/renderer/src/player/PlayerModals.tsx
 import { ExportScreenshotDialog } from '../components/Dialog/ExportScreenshotDialog';
 import { AssignTagDialog } from '../components/Dialog/AssignTagDialog';
 import { CreateTagDialog } from '../components/Dialog/CreateTagDialog';
@@ -26,7 +25,6 @@ export function PlayerModals(props: PlayerModalsProps) {
                 opened={props.showExport}
                 onClose={() => props.setShowExport(false)}
                 videoPath={props.currentPath}
-                defaultRotation={props.rotation}
             />
             <AssignTagDialog
                 opened={props.showTag}

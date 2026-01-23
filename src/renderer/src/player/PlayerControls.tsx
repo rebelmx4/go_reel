@@ -1,6 +1,4 @@
-// src/components/player/PlayerControls.tsx
-
-import { Group, ActionIcon, Tooltip, Box, Button, Slider } from '@mantine/core';
+import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/core';
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
@@ -8,7 +6,6 @@ import {
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
-    useScreenshotStore,
     useVideoFileRegistryStore,
     usePlaylistStore,
 } from '../stores';
@@ -18,6 +15,8 @@ import { ScreenshotTrack } from './ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 import { PlaybackTimeLabel } from './PlaybackTimeLabel';
 import { useVideoContext } from './contexts';
+import { STEP_OPTIONS } from '../../../shared/constants';
+import { formatPlaybackStep } from '../utils/format';
 
 
 /**
@@ -46,15 +45,16 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
     // --- 1. Store 数据订阅 ---
     // 状态值
     const volume = usePlayerStore(state => state.volume);
-    const stepMode = usePlayerStore(state => state.stepMode);
     const skipFrameMode = usePlayerStore(state => state.skipFrameMode);
 
     // 方法 (Actions 通常是静态的，不会触发重绘)
     const setVolume = usePlayerStore(state => state.setVolume);
-    const setStepMode = usePlayerStore(state => state.setStepMode);
     const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
     const volumeUp = usePlayerStore(state => state.volumeUp);
     const volumeDown = usePlayerStore(state => state.volumeDown);
+
+    const stepMode = usePlayerStore(state => state.stepMode);
+    const setStepMode = usePlayerStore(state => state.setStepMode);
 
     const showSidebar = usePlayerStore(state => state.showSidebar);
     const toggleSidebar = usePlayerStore(state => state.toggleSidebar);
@@ -148,13 +148,42 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                         </ActionIcon>
                     </Tooltip>
 
-                    <Button
-                        variant="light" color="gray" size="compact-xs"
-                        onClick={() => setStepMode(stepMode === 'frame' ? 'second' : 'frame')}
-                        style={{ fontSize: '10px' }}
-                    >
-                        {stepMode === 'frame' ? 'FRAME' : 'SEC'}
-                    </Button>
+                    {/* 步进模式选择器 */}
+                    <Menu shadow="md" width={100} position="top" withArrow>
+                        <Menu.Target>
+                            <Tooltip label="选择步进单位">
+                                <Button
+                                    variant="light"
+                                    color="gray"
+                                    size="compact-xs"
+                                    style={{
+                                        fontSize: '10px',
+                                        minWidth: '40px',
+                                        padding: '0 4px'
+                                    }}
+                                >
+                                    {formatPlaybackStep(stepMode)}
+                                </Button>
+                            </Tooltip>
+                        </Menu.Target>
+
+                        <Menu.Dropdown style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}>
+                            <Menu.Label>步进单位</Menu.Label>
+                            {STEP_OPTIONS.map((option) => (
+                                <Menu.Item
+                                    key={option}
+                                    onClick={() => setStepMode(option)}
+                                    style={{
+                                        fontSize: '12px',
+                                        color: stepMode === option ? '#228be6' : '#eee',
+                                        backgroundColor: stepMode === option ? 'rgba(34, 139, 230, 0.1)' : 'transparent',
+                                    }}
+                                >
+                                    {formatPlaybackStep(option)}
+                                </Menu.Item>
+                            ))}
+                        </Menu.Dropdown>
+                    </Menu>
 
                     {/* 旋转 */}
                     <Tooltip label={getTooltipLabel(`旋转视频`, 'rotate_video')}>
@@ -183,7 +212,7 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                         <ActionIcon
                             variant="subtle"
                             size="lg"
-                            color="red" // 使用红色表示危险操作
+                            color="red"
                             onClick={onDelete}
                         >
                             <IconTrash size={20} />

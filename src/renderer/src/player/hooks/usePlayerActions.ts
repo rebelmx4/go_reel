@@ -16,7 +16,9 @@ export function usePlayerActions( ) {
 
     
 
-    const { rotation, setRotation, setPlaying, toggleSidebar, isPlaying, stepMode, framerate, openAssignTagModal, openCreateTagModal} = usePlayerStore();
+    const { rotation, setRotation, setPlaying, toggleSidebar, isPlaying, stepMode, framerate, 
+        openAssignTagModal, openCreateTagModal} = usePlayerStore();
+
     const { captureManual } = useScreenshotStore();
     const { showToast } = useToastStore();
     const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
@@ -41,10 +43,16 @@ export function usePlayerActions( ) {
     const stepFrame = useCallback((direction: 1 | -1) => {
         if (!videoRef.current) return;
         
-        // 计算步长：如果是帧模式，步长 = 1/帧率；否则默认为 5秒(或1秒)
-        const step = stepMode === 'frame' ? (1 / framerate) : 5; 
+        let skipSeconds = 0;
+        if (stepMode === 'frame') {
+            // 帧模式：1 / fps
+            skipSeconds = 1 / framerate;
+        } else {
+            // 数值模式：stepMode 本身就是秒数 (1, 5, 10, 30, 60...)
+            skipSeconds = stepMode as number;
+        }
         
-        videoRef.current.currentTime += direction * step;
+        videoRef.current.currentTime += direction * skipSeconds;
     }, [videoRef, stepMode, framerate]);
 
     const rotateVideo = useCallback(async () => {

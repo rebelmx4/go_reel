@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { StepValue, DEFAULT_STEP_GRADIENT } from '../../../shared/constants';
+
 
 export type SidebarTab = 'newest' | 'elite';
 
@@ -24,7 +26,6 @@ interface PlayerState {
   sidebarTab: SidebarTab; // 记录当前/上次选中的标签
   
   // 帧控制技术参数
-  stepMode: 'frame' | 'second';
   skipFrameMode: boolean; 
   framerate: number;
   
@@ -40,7 +41,8 @@ interface PlayerState {
   setFramerate: (fps: number) => void;
   setPlaybackRate: (rate: number) => void;
 
-  setStepMode: (mode: 'frame' | 'second') => void; 
+  stepMode: StepValue; 
+  setStepMode: (mode: StepValue) => void;
 
   // 侧边栏控制逻辑
   setShowSidebar: (show: boolean) => void;
@@ -74,11 +76,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   playbackRate: 1.0,
   rotation: 0,
-  stepMode: 'frame',
   framerate: 30,
-  skipFrameMode: false, // 初始化
+  skipFrameMode: false, 
   showSidebar: false, 
-  sidebarTab: 'newest', // 默认选中“最新”
+  sidebarTab: 'newest', 
+
+  stepMode: 'frame',
+  setStepMode: (stepMode) => set({ stepMode }),
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
@@ -91,12 +95,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ volume: Math.max(volume - 5, 0) });
   },
   setCurrentTime: (currentTime) => set({ currentTime }),
-  setDuration: (duration) => set({ duration }),
   setRotation: (rotation) => set({ rotation }),
-  setStepMode: (mode) => set({ stepMode: mode }),
-  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }), // 补回此方法
+  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }), 
   setFramerate: (framerate) => set({ framerate }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
+
+  setDuration: (duration) => {
+        // 1. 设置时长
+        set({ duration });
+
+        // 2. 自动根据时长选择合适的步进梯度
+        if (duration > 0) {
+            const matched = DEFAULT_STEP_GRADIENT.find(g => duration <= g.threshold);
+            if (matched) {
+                set({ stepMode: matched.step });
+            }
+        }
+    },
 
   // 侧边栏控制 (新增)
    setShowSidebar: (showSidebar) => set({ showSidebar }),

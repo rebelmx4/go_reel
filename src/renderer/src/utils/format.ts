@@ -24,3 +24,15 @@ export const formatDuration = (time: number, unit: 's' | 'ms' = 's') => {
   // 如果超过 1 小时，显示 HH:mm:ss，否则显示 mm:ss
   return format(helperDate, seconds >= 3600 ? 'HH:mm:ss' : 'mm:ss');
 };
+
+
+/**
+ * 格式化播放步进标签
+ * @param value 秒数或 'frame'
+ * @returns 格式化后的字符串: F, 5s, 1m, 10m 等
+ */
+export const formatPlaybackStep = (value: number | 'frame'): string => {
+  if (value === 'frame') return 'F';
+  if (value < 60) return `${value}s`;
+  return `${Math.floor(value / 60)}m`;
+};

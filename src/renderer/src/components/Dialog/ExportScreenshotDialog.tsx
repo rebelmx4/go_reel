@@ -1,5 +1,3 @@
-// src/renderer/src/components/Dialog/ExportScreenshotDialog.tsx
-
 import { Modal, Button, Box, Text, Group, ScrollArea, SimpleGrid, UnstyledButton } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { IconCheck } from '@tabler/icons-react';
@@ -9,14 +7,12 @@ interface ExportScreenshotDialogProps {
     opened: boolean;
     onClose: () => void;
     videoPath: string | null;
-    defaultRotation: number;
 }
 
 export function ExportScreenshotDialog({
     opened,
     onClose,
     videoPath,
-    defaultRotation: number
 }: ExportScreenshotDialogProps) {
     const [selectedRotation, setSelectedRotation] = useState<0 | 90 | 180 | 270>(0);
     const [loading, setLoading] = useState(false);
@@ -24,7 +20,7 @@ export function ExportScreenshotDialog({
     const showToast = useToastStore((state) => state.showToast);
     const screenshots = useScreenshotStore((state) => state.screenshots);
     const firstScreenshot = screenshots.length > 0 ? screenshots[0] : null;
-    const [isInitializing, setIsInitializing] = useState(true);
+    const [_, setIsInitializing] = useState(true);
     const videoFile = useVideoFileRegistryStore((state) => videoPath ? state.videos[videoPath] : null);
 
     useEffect(() => {

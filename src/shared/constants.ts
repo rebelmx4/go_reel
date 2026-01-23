@@ -12,6 +12,26 @@ export const DEFAULT_ANNOTATION: Annotation = {
   tags: []
 };
 
+// 定义步进值：'frame' 或 秒数 (1, 5, 10, 30, 60, 90, 120, 300, 600)
+export type StepValue = 'frame' | 1 | 5 | 10 | 30 | 60 | 90 | 120 | 300 | 600;
+
+export const STEP_OPTIONS: StepValue[] = ['frame', 1, 5, 10, 30, 60, 90, 120, 300, 600];
+
+/**
+ * 智能梯度配置：视频时长(秒) -> 推荐的步进值
+ */
+export const DEFAULT_STEP_GRADIENT: { threshold: number; step: StepValue }[] = [
+    { threshold: 60, step: 1 },      // 1分钟内：用帧
+    { threshold: 300, step: 5 },          // 5分钟内：用5s
+    { threshold: 900, step: 10 },         // 15分钟内：用10s
+    { threshold: 1800, step: 30 },        // 30分钟内：用30s
+    { threshold: 3600, step: 60 },        // 1小时内：用1m
+    { threshold: 5400, step: 90 },        // 1.5小时内：用1.5m
+    { threshold: 7200, step: 120 },       // 2小时内：用2m
+    { threshold: 18000, step: 300 },      // 5小时内：用5m
+    { threshold: Infinity, step: 600 },   // 更长：用10m
+];
+
 /**
  * AppSettings 默认配置
  * 注意：所有 key_bindings 现在的取值都是 string[]
