@@ -47,7 +47,7 @@ const api = {
   getCover: (filePath: string) =>
     ipcRenderer.invoke('get-cover', filePath),
   setManualCover: (filePath: string, screenshotPath: string) =>
-    ipcRenderer.invoke('set-manual-cover', screenshotPath, filePath),
+    ipcRenderer.invoke('set-manual-cover', filePath, screenshotPath),
   
   
   // Video Metadata

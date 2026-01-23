@@ -5,7 +5,6 @@ import { fileProfileManager } from './FileProfileManager';
 
 export class AnnotationManager extends BaseShardedJsonManager<Annotation> {
   constructor() {
-    // 只需要告诉父类存储在 'Annotation' 文件夹
     super('Annotation');
   }
 
