@@ -80,10 +80,10 @@ export interface KeyBindingsConfig {
     system: SystemActions;
   };
   dialog_assign_tag: {
-    quick_assign_tags: Record<string, string>; // 比如 slot_1, slot_2...
+    quick_assign_tags: Record<string, MultiKey>; // 比如 slot_1, slot_2...
     system: {
-      confirm: string;
-      cancel: string;
+      confirm: MultiKey;
+      cancel: MultiKey;
     };
   };
 }

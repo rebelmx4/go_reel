@@ -26,6 +26,7 @@ export function PlayerModals(props: PlayerModalsProps) {
                 opened={props.showExport}
                 onClose={() => props.setShowExport(false)}
                 videoPath={props.currentPath}
+                defaultRotation={props.rotation}
             />
             <AssignTagDialog
                 opened={props.showTag}

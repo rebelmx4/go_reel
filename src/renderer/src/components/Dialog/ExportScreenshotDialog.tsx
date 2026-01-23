@@ -9,17 +9,14 @@ interface ExportScreenshotDialogProps {
     opened: boolean;
     onClose: () => void;
     videoPath: string | null;
-    /** 
-     * 外部传入的默认角度。
-     * 外部逻辑：如果有存过的值就传存过的值，没有就传根据宽高计算的 0 或 90。
-     */
     defaultRotation: number;
 }
 
 export function ExportScreenshotDialog({
     opened,
     onClose,
-    videoPath
+    videoPath,
+    defaultRotation: number
 }: ExportScreenshotDialogProps) {
     const [selectedRotation, setSelectedRotation] = useState<0 | 90 | 180 | 270>(0);
     const [loading, setLoading] = useState(false);
