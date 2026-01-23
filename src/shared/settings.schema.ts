@@ -8,62 +8,63 @@ export interface StorageSettings {
 }
 
 
+type MultiKey = string | string[];
 /**
  * 1. 定义具体的动作分类接口
  * 这里的属性名（Key）就是你在代码中直接使用的“变量名”/“动作名”
  */
 
 export interface ViewNavActions {
-  player_page: string;   
-  history_page: string;
-  newest_page: string;
-  search_page: string;
-  tag_search_page: string;
-  liked_page: string;
-  elite_page: string;
-  settings_page: string; 
+  player_page: MultiKey;   
+  history_page: MultiKey;
+  newest_page: MultiKey;
+  search_page: MultiKey;
+  tag_search_page: MultiKey;
+  liked_page: MultiKey;
+  elite_page: MultiKey;
+  settings_page: MultiKey; 
 }
 
 
 
 export interface PlayControlActions {
-  toggle_play: string;
-  step_backward: string;
-  step_forward: string;
-  volume_up: string;
-  volume_down: string;
-  rotate_video: string;
-  play_next: string;
-  toggle_sidebar: string;
+  toggle_play: MultiKey;
+  step_backward: MultiKey;
+  step_forward: MultiKey;
+  volume_up: MultiKey;
+  volume_down: MultiKey;
+  rotate_video: MultiKey;
+  play_next: MultiKey;
+  toggle_sidebar: MultiKey;
 }
 
 export interface CaptureActions {
-  screenshot: string;
-  export_screenshot: string;
-  export_screenshot_with_dialog: string;
-  record_clip: string;
-  cancel_record: string;
+  screenshot: MultiKey;
+  export_screenshot: MultiKey;
+  export_screenshot_with_dialog: MultiKey;
+  record_clip: MultiKey;
+  cancel_record: MultiKey;
 }
 
 export interface InteractActions {
-  like: string;
-  favorite: string;
+  like: MultiKey;
+  favorite: MultiKey;
 }
 
 export interface EditTagActions {
-  toggle_track: string;
-  cut_segment: string;
-  merge_segments: string;
-  create_tag_from_selection: string;
-  open_assign_tag_dialog: string;
-  quick_tag_1: string;
-  quick_tag_2: string;
+  toggle_track: MultiKey;
+  cut_segment: MultiKey;
+  merge_segments: MultiKey;
+  create_tag_from_selection: MultiKey;
+  open_assign_tag_dialog: MultiKey;
+  quick_tag_1: MultiKey;
+  quick_tag_2: MultiKey;
 }
 
 export interface SystemActions {
-  refresh: string;
-  soft_delete: string;
-  open_video_dir: string,
+  refresh: MultiKey;
+  soft_delete: MultiKey;
+  open_video_dir: MultiKey,
 }
 
 /**

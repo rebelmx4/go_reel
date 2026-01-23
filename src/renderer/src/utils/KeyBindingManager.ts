@@ -168,11 +168,16 @@ export class KeyBindingManager {
         
         // 遍历具体的 Action (toggle_play, slot_1 等)
         for (const actionKey in groupObj) {
-          const keyString = groupObj[actionKey];
-          if (keyString && typeof keyString === 'string') {
-            // 存储规范化后的键位映射
-            contextMap.set(this.normalizeKey(keyString), actionKey as AppAction);
-          }
+          const keyData = groupObj[actionKey]; 
+          
+          if (!keyData) continue;
+
+          // 如果是数组，遍历所有键位并映射到同一个 actionKey
+          keyData.forEach(keyString => {
+            if (typeof keyString === 'string') {
+              contextMap.set(this.normalizeKey(keyString), actionKey as AppAction);
+            }
+          });
         }
       }
       this.keyToAction.set(contextKey, contextMap);
