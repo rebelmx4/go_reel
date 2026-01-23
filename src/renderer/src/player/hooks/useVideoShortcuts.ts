@@ -7,11 +7,11 @@ import { AppAction } from '../../../../shared/settings.schema';
 interface ShortcutHandlers {
     togglePlayPause: () => void;
     rotateVideo: () => void;
-    stepFrame: (dir: number) => void;
+    stepFrame: (dir: 1 | -1) => void;
     takeScreenshot: () => void;
     openCreateTag: () => void;
     openAssignTag: () => void;   
-    playNextVideo: () => void;
+    playNext: () => void;
     softDelete: () => void; 
     toggleFavorite: () => void; 
     toggleSidebar: () => void;
@@ -44,7 +44,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
 
             // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
             // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
-            play_next: () => handlersRef.current.playNextVideo(), 
+            play_next: () => handlersRef.current.playNext(), 
             soft_delete: () => handlersRef.current.softDelete(),
             toggle_favorite: () => handlersRef.current.toggleFavorite(), 
             toggle_sidebar: () => handlersRef.current.toggleSidebar(), 

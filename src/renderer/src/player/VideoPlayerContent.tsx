@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Center, Text } from '@mantine/core';
 import { IconClock, IconStar } from '@tabler/icons-react';
 import { Stack, ActionIcon, Tooltip, rem } from '@mantine/core';
@@ -14,8 +14,7 @@ import { PlayerModals } from './PlayerModals';
 import { NewestSidebar } from './sidebars/NewestSidebar';
 
 // Hooks
-import { useVideoShortcuts } from './hooks';
-import { usePlayerActions } from './hooks/usePlayerActions'; // 建议放在 player/hooks 下
+import { useVideoShortcuts, usePlayerActions } from './hooks';
 import { useScreenshotExport } from '../hooks';
 
 
@@ -27,25 +26,15 @@ export const VideoPlayerContent = () => {
     const playNext = usePlaylistStore(state => state.next);
     const {
         isPlaying, volume, rotation, showSidebar, sidebarTab,
-        setPlaying, setCurrentTime, reset, toggleSidebar, handleSidebarTabClick
+        setPlaying, setCurrentTime, reset, handleSidebarTabClick, modals,
+        closeAssignTagModal,
+        closeCreateTagModal,
+        setTagCoverImage
     } = usePlayerStore();
 
     const { loadScreenshots, clear } = useScreenshotStore();
 
-    // --- 3. UI 局部状态 (弹窗控制) ---
-    const [modals, setModals] = useState({
-        tag: false,
-        createTag: false,
-        cover: ''
-    });
-
     // --- 4. 业务逻辑 Hooks ---
-
-    // 封装所有业务操作 (旋转、收藏、删除、截图)
-    const actions = usePlayerActions({
-        onOpenAssignTag: () => setModals(m => ({ ...m, tag: true })),
-        onOpenCreateTag: (cover) => setModals(m => ({ ...m, createTag: true, cover: cover || '' }))
-    });
 
     // 处理截图导出弹窗逻辑
     const { showExportDialog, setShowExportDialog } = useScreenshotExport(currentPath);
@@ -69,19 +58,9 @@ export const VideoPlayerContent = () => {
     }, [volume]);
 
     // 快捷键监听
+    const actions = usePlayerActions();
+    useVideoShortcuts({ ...actions });
 
-    useVideoShortcuts({
-        ...actions, // 自动包含 togglePlayPause, rotateVideo, softDelete, toggleFavorite, takeScreenshot
-        toggleSidebar: toggleSidebar,
-        playNextVideo: playNext,
-        stepFrame: (dir) => {
-            if (videoRef.current) {
-                const state = usePlayerStore.getState();
-                const step = state.stepMode === 'frame' ? (1 / state.framerate) : 1;
-                videoRef.current.currentTime += dir * step;
-            }
-        },
-    });
     // 路径切换时的资源清理与加载
     useEffect(() => {
         if (!currentPath) {
@@ -191,12 +170,16 @@ export const VideoPlayerContent = () => {
                 rotation={rotation}
                 showExport={showExportDialog}
                 setShowExport={setShowExportDialog}
-                showTag={modals.tag}
-                setShowTag={(v) => setModals(m => ({ ...m, tag: v }))}
-                showCreateTag={modals.createTag}
-                setShowCreateTag={(v) => setModals(m => ({ ...m, createTag: v }))}
-                tagCoverImage={modals.cover}
-                setTagCoverImage={(v) => setModals(m => ({ ...m, cover: v }))}
+                showTag={modals.isAssignTagOpen}
+                setShowTag={(v) => !v && closeAssignTagModal()}
+
+                // 2. 创建标签弹窗
+                showCreateTag={modals.isCreateTagOpen}
+                setShowCreateTag={(v) => !v && closeCreateTagModal()}
+
+                // 3. 封面图数据
+                tagCoverImage={modals.tagCoverImage}
+                setTagCoverImage={setTagCoverImage}
             />
         </Box>
     );

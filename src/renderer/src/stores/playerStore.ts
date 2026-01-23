@@ -1,10 +1,14 @@
-// src/stores/playerStore.ts
-
 import { create } from 'zustand';
 
 export type SidebarTab = 'newest' | 'elite';
 
 interface PlayerState {
+  modals: {
+    isAssignTagOpen: boolean;
+    isCreateTagOpen: boolean;
+    tagCoverImage: string; // 只有创建标签时需要暂存这个截图
+  };
+
   // 基础状态
   isPlaying: boolean;
   volume: number;
@@ -47,9 +51,23 @@ interface PlayerState {
   // 快捷操作
   togglePlay: () => void;
   reset: () => void; // 切换视频时重置状态
+
+  // 专门控制弹窗的方法
+  openAssignTagModal: () => void;
+  closeAssignTagModal: () => void;
+  
+  openCreateTagModal: (coverImage: string) => void;
+  closeCreateTagModal: () => void;
+  setTagCoverImage: (cover: string) => void; 
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
+   modals: {
+    isAssignTagOpen: false,
+    isCreateTagOpen: false,
+    tagCoverImage: ''
+  },
+
   isPlaying: false,
   volume: 80,
   currentTime: 0,
@@ -107,5 +125,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     duration: 0,
     isPlaying: false,
     rotation: 0 // 切换时先归零，后续由组件根据 Annotation 补齐
-  })
+  }),
+
+   openAssignTagModal: () => set((state) => ({ 
+    modals: { ...state.modals, isAssignTagOpen: true },
+    isPlaying: false // 打开弹窗自动暂停，逻辑内聚
+  })),
+  
+  closeAssignTagModal: () => set((state) => ({ 
+    modals: { ...state.modals, isAssignTagOpen: false } 
+  })),
+
+  openCreateTagModal: (coverImage) => set((state) => ({ 
+    modals: { ...state.modals, isCreateTagOpen: true, tagCoverImage: coverImage },
+    isPlaying: false // 打开弹窗自动暂停
+  })),
+  
+  closeCreateTagModal: () => set((state) => ({ 
+    modals: { ...state.modals, isCreateTagOpen: false, tagCoverImage: '' } 
+  })),
+
+   setTagCoverImage: (cover) => set((state) => ({
+    modals: { ...state.modals, tagCoverImage: cover }
+  })),
 }));

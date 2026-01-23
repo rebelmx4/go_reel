@@ -4,40 +4,48 @@ import {useVideoFrameCapture} from "./useVideoFrameCapture"
 import { useVideoContext } from '../contexts';
 
 
-interface PlayerActionOptions {
-    onOpenAssignTag: () => void;
-    onOpenCreateTag: (cover?: string) => void;
-}
-
-export function usePlayerActions( options?: PlayerActionOptions ) {
+export function usePlayerActions( ) {
     const { videoRef } = useVideoContext();
 
     
     const currentPath = usePlaylistStore(state => state.currentPath);
-    const playNext = usePlaylistStore(state => state.next);
-    const { rotation, setRotation, setPlaying, isPlaying} = usePlayerStore();
+    const playNextOriginal = usePlaylistStore(state => state.next);
+     const playNext = useCallback(() => {
+        playNextOriginal();
+    }, [playNextOriginal]);
+
+    
+
+    const { rotation, setRotation, setPlaying, toggleSidebar, isPlaying, stepMode, framerate, openAssignTagModal, openCreateTagModal} = usePlayerStore();
     const { captureManual } = useScreenshotStore();
     const { showToast } = useToastStore();
     const updateAnnotation = useVideoFileRegistryStore(s => s.updateAnnotation);
     const videoFile = useVideoFileRegistryStore(s => currentPath ? s.videos[currentPath] : null);
     const { captureFrame } = useVideoFrameCapture();
 
-     const openAssignTag = useCallback(() => {
-        setPlaying(false); 
-        options?.onOpenAssignTag();
-    }, [setPlaying, options]);
+    const openAssignTag = useCallback(() => {
+        // 暂停逻辑已经内聚在 Store 的 openAssignTagModal 里了，或者在这里显式调用也可以
+        openAssignTagModal();
+    }, [openAssignTagModal]);
 
     const openCreateTag = useCallback(() => {
-        const video = videoRef.current;
-        if (!video) return;
-        video.pause(); 
-
-        setPlaying(false);
+        if (!videoRef.current) return;
         
+        // 1. 截图 (业务逻辑)
         const frameBase64 = captureFrame(rotation);
         
-        options?.onOpenCreateTag(frameBase64); 
-    }, [setPlaying, options, rotation, videoRef, captureFrame]);
+        // 2. 打开弹窗并存入数据 (UI 状态更新)
+        openCreateTagModal(frameBase64); 
+    }, [videoRef, rotation, captureFrame, openCreateTagModal]);
+
+    const stepFrame = useCallback((direction: 1 | -1) => {
+        if (!videoRef.current) return;
+        
+        // 计算步长：如果是帧模式，步长 = 1/帧率；否则默认为 5秒(或1秒)
+        const step = stepMode === 'frame' ? (1 / framerate) : 5; 
+        
+        videoRef.current.currentTime += direction * step;
+    }, [videoRef, stepMode, framerate]);
 
     const rotateVideo = useCallback(async () => {
         if (!currentPath) return;
@@ -77,6 +85,9 @@ export function usePlayerActions( options?: PlayerActionOptions ) {
 
 
     return {
+        playNext,      
+        stepFrame,    
+        toggleSidebar, 
         rotateVideo,
         softDelete,
         toggleFavorite,
