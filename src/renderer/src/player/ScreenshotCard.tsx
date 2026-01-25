@@ -26,7 +26,6 @@ export function ScreenshotCard({
     const [isHovered, setIsHovered] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-    // 平滑旋转
     const [visualRotation, setVisualRotation] = useState(rotation);
     const prevRotationRef = useRef(rotation);
 
@@ -41,18 +40,14 @@ export function ScreenshotCard({
 
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
-    // 计算容器高度
-    const containerHeight = useMemo(() => {
-        if (mode === 'preview') return 320;
-        return isRotatedVertical ? 120 : 100;
-    }, [mode, isRotatedVertical]);
+    // 1. 确定容器高度 (预览模式固定 320，导航模式根据旋转 100/120)
+    const containerHeight = mode === 'preview' ? 320 : (isRotatedVertical ? 120 : 100);
 
-    // 计算容器宽度
-    const containerWidth = useMemo(() => {
-        if (mode === 'preview') return '100%'; // 预览模式交由 Grid 控制
-        // 导航模式下，根据比例算出宽度，旋转后比例翻转
-        return isRotatedVertical ? containerHeight / aspectRatio : containerHeight * aspectRatio;
-    }, [containerHeight, aspectRatio, isRotatedVertical, mode]);
+    // 2. 动态计算逻辑宽度 (用于旋转后的尺寸补偿)
+    const logicalWidth = useMemo(() => {
+        const currentRatio = isRotatedVertical ? (1 / aspectRatio) : aspectRatio;
+        return containerHeight * currentRatio;
+    }, [containerHeight, aspectRatio, isRotatedVertical]);
 
     return (
         <Box
@@ -64,7 +59,8 @@ export function ScreenshotCard({
                 position: 'relative',
                 flexShrink: 0,
                 height: `${containerHeight}px`,
-                width: typeof containerWidth === 'number' ? `${containerWidth}px` : containerWidth,
+                // 预览模式填满 Grid，导航模式固定计算出的宽度
+                width: mode === 'preview' ? '100%' : `${logicalWidth}px`,
                 backgroundColor: '#000',
                 borderRadius: mode === 'nav' ? 4 : 8,
                 overflow: 'hidden',
@@ -84,16 +80,14 @@ export function ScreenshotCard({
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    // 关键修复：旋转时图片的长宽映射
-                    // 如果旋转了，图片的宽度应该对应容器的高度，高度对应容器的宽度
-                    width: isRotatedVertical ? `${containerHeight}px` : '100%',
-                    height: isRotatedVertical ? 'auto' : '100%',
-                    maxHeight: isRotatedVertical ? '100vw' : '100%',
-                    // 使用 contain 确保旋转后长边不会被切掉
-                    objectFit: 'contain',
+                    objectFit: 'cover',
                     transform: `translate(-50%, -50%) rotate(${visualRotation}deg)`,
                     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     filter: isHovered ? 'brightness(0.7)' : 'none',
+                    // --- 修复重复键错误，将逻辑合并 ---
+                    // 当旋转 90/270 度时，img 标签的 CSS 宽度需要等于容器的高度，CSS 高度等于容器的宽度
+                    width: isRotatedVertical ? `${containerHeight}px` : '100%',
+                    height: isRotatedVertical ? `${logicalWidth}px` : '100%',
                 }}
             />
 

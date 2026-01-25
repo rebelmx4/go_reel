@@ -84,8 +84,10 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
             <Collapse in={opened}>
                 <Box style={{
                     borderTop: '1px solid #333',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    overflow: 'hidden'
+                    backgroundColor: '#000', // 预览模式用纯黑背景更专业
+                    overflow: 'hidden',
+                    height: opened ? (viewMode === 'nav' ? 124 : 320) : 0, // 明确高度防止抖动
+                    transition: 'height 0.2s ease'
                 }}>
                     {isLoading && screenshots.length === 0 ? (
                         <Center h={viewMode === 'nav' ? 120 : 320}><Loader size="sm" /></Center>
