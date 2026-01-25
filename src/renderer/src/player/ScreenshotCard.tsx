@@ -26,9 +26,10 @@ export function ScreenshotCard({
     const [isHovered, setIsHovered] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-    // 平滑旋转逻辑
+    // 平滑旋转
     const [visualRotation, setVisualRotation] = useState(rotation);
     const prevRotationRef = useRef(rotation);
+
     useEffect(() => {
         const prev = prevRotationRef.current;
         let delta = rotation - prev;
@@ -40,14 +41,18 @@ export function ScreenshotCard({
 
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
-    // 1. 确定容器高度
-    const containerHeight = mode === 'preview' ? 320 : (isRotatedVertical ? 120 : 100);
+    // 计算容器高度
+    const containerHeight = useMemo(() => {
+        if (mode === 'preview') return 320;
+        return isRotatedVertical ? 120 : 100;
+    }, [mode, isRotatedVertical]);
 
-    // 2. 动态计算容器宽度 (关键：旋转后比例要取反)
+    // 计算容器宽度
     const containerWidth = useMemo(() => {
-        const currentRatio = isRotatedVertical ? (1 / aspectRatio) : aspectRatio;
-        return containerHeight * currentRatio;
-    }, [containerHeight, aspectRatio, isRotatedVertical]);
+        if (mode === 'preview') return '100%'; // 预览模式交由 Grid 控制
+        // 导航模式下，根据比例算出宽度，旋转后比例翻转
+        return isRotatedVertical ? containerHeight / aspectRatio : containerHeight * aspectRatio;
+    }, [containerHeight, aspectRatio, isRotatedVertical, mode]);
 
     return (
         <Box
@@ -59,9 +64,7 @@ export function ScreenshotCard({
                 position: 'relative',
                 flexShrink: 0,
                 height: `${containerHeight}px`,
-                // 预览模式下，由外部 Grid 决定宽度，但我们要提供一个基础宽度
-                width: mode === 'preview' ? '100%' : `${containerWidth}px`,
-                maxWidth: mode === 'preview' ? 'none' : `${containerWidth}px`,
+                width: typeof containerWidth === 'number' ? `${containerWidth}px` : containerWidth,
                 backgroundColor: '#000',
                 borderRadius: mode === 'nav' ? 4 : 8,
                 overflow: 'hidden',
@@ -81,24 +84,16 @@ export function ScreenshotCard({
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    // 核心：旋转时，图片的高度必须撑满容器的宽或高
-                    width: isRotatedVertical ? `${containerHeight}px` : `100%`,
-                    height: isRotatedVertical ? `100%` : `100%`,
-                    // 旋转后，原本的宽变成了高，原本的高变成了宽
-                    // 必须让图片在旋转后的视觉尺寸填满容器
-                    objectFit: 'cover',
-                    transform: `translate(-50%, -50%) rotate(${visualRotation}deg) scale(${isRotatedVertical ? (containerWidth / containerHeight) * (aspectRatio) : 1})`,
-                    // 上面的 scale 是为了处理旋转后的比例补偿，更简单的办法是：
+                    // 关键修复：旋转时图片的长宽映射
+                    // 如果旋转了，图片的宽度应该对应容器的高度，高度对应容器的宽度
+                    width: isRotatedVertical ? `${containerHeight}px` : '100%',
+                    height: isRotatedVertical ? 'auto' : '100%',
+                    maxHeight: isRotatedVertical ? '100vw' : '100%',
+                    // 使用 contain 确保旋转后长边不会被切掉
+                    objectFit: 'contain',
+                    transform: `translate(-50%, -50%) rotate(${visualRotation}deg)`,
                     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     filter: isHovered ? 'brightness(0.7)' : 'none',
-                    // 如果 scale 复杂，我们换个思路：直接根据旋转状态交换宽高
-                    ...(isRotatedVertical ? {
-                        width: `${containerHeight}px`,
-                        height: `${containerWidth}px`,
-                    } : {
-                        width: '100%',
-                        height: '100%',
-                    })
                 }}
             />
 
