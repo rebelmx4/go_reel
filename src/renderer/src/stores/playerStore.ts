@@ -28,6 +28,9 @@ interface PlayerState {
   // 帧控制技术参数
   skipFrameMode: boolean; 
   framerate: number;
+
+  showClipTrack: boolean;
+   toggleClipTrack: () => void; 
   
   // Setters
   setPlaying: (playing: boolean) => void;
@@ -43,6 +46,9 @@ interface PlayerState {
 
   stepMode: StepValue; 
   setStepMode: (mode: StepValue) => void;
+
+  isHoverSeekMode: boolean; 
+  setHoverSeekMode: (enabled: boolean) => void;
 
   // 侧边栏控制逻辑
   setShowSidebar: (show: boolean) => void;
@@ -82,7 +88,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   sidebarTab: 'newest', 
 
   stepMode: 'frame',
+
+  showClipTrack: false,
+  toggleClipTrack: () => set((state) => ({ showClipTrack: !state.showClipTrack })),
+  
   setStepMode: (stepMode) => set({ stepMode }),
+
+  isHoverSeekMode: false,
+  setHoverSeekMode: (isHoverSeekMode) => set({ isHoverSeekMode }),
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),

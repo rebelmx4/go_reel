@@ -16,6 +16,7 @@ export interface VideoFile {
   mtime: number;     
   size: number;      
   annotation?: Annotation;  
+  coverVersion?: number; 
 }
 
 export interface Tag {

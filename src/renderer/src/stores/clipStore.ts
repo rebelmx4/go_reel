@@ -1,35 +1,43 @@
 import { create } from 'zustand';
+import { VideoClip } from '../../../shared/models';
 
-export interface VideoClip {
-  id: string;
-  startTime: number;
-  endTime: number;
-  state: 'keep' | 'remove'; // 保留或删除
-}
 
 interface ClipState {
   clips: VideoClip[];
-  
+   isEditing: boolean; // 新增：是否处于编辑模式（编辑模式不触发自动跳过）
   // Actions
-  initializeClips: (duration: number) => void;
+
+  setClips: (clips: VideoClip[]) => void;
+  setIsEditing: (val: boolean) => void;
+  initializeClips: (duration: number, existingClips?: VideoClip[]) => void;
   splitClip: (clipId: string, splitTime: number) => void;
   toggleClipState: (clipId: string) => void;
   mergeClip: (clipId: string) => void;
+  getClipAtTime: (time: number) => VideoClip | undefined;
   clearClips: () => void;
 }
 
 export const useClipStore = create<ClipState>((set, get) => ({
   clips: [],
 
-  initializeClips: (duration) => {
-    set({
-      clips: [{
-        id: `clip_${Date.now()}`,
-        startTime: 0,
-        endTime: duration,
-        state: 'keep'
-      }]
-    });
+   isEditing: false,
+
+  setIsEditing: (isEditing) => set({ isEditing }),
+  setClips: (clips) => set({ clips }),
+
+  initializeClips: (duration, existingClips) => {
+    if (existingClips && existingClips.length > 0) {
+      set({ clips: existingClips });
+    } else {
+      set({
+        clips: [{
+          id: `clip_${Date.now()}`,
+          startTime: 0,
+          endTime: duration,
+          state: 'keep'
+        }]
+      });
+    }
   },
 
   splitClip: (clipId, splitTime) => {
@@ -105,6 +113,10 @@ export const useClipStore = create<ClipState>((set, get) => ({
     }
 
     set({ clips: newClips });
+  },
+
+    getClipAtTime: (time) => {
+    return get().clips.find(c => time >= c.startTime && time < c.endTime);
   },
 
   clearClips: () => {

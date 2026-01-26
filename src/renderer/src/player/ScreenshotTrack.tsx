@@ -1,9 +1,10 @@
 import { Box, Group, ActionIcon, Tooltip, Loader, Center, Collapse, UnstyledButton } from '@mantine/core';
 import { IconLayoutGrid, IconLayoutNavbar, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
-import { usePlayerStore, useScreenshotStore, useToastStore, usePlaylistStore } from '../stores';
+import { usePlayerStore, useScreenshotStore, useToastStore, usePlaylistStore, useVideoFileRegistryStore } from '../stores';
 import { useMemo, useState, useEffect } from 'react';
 import { ScreenshotNavView } from './ScreenshotNavView';
 import { ScreenshotGalleryView } from './ScreenshotGalleryView';
+import { useClipStore } from '../stores/clipStore';
 
 export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts: number) => void }) {
     const [viewMode, setViewMode] = useState<'nav' | 'preview'>('nav');
@@ -14,10 +15,23 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
     const currentTime = usePlayerStore(state => state.currentTime);
     const rotation = usePlayerStore(state => state.rotation);
     const showToast = useToastStore(state => state.showToast);
+    const clips = useClipStore(state => state.clips);
 
     useEffect(() => {
         if (currentVideoPath) loadScreenshots(currentVideoPath);
     }, [currentVideoPath, loadScreenshots]);
+
+
+    const screenshotsWithState = useMemo(() => {
+        return screenshots.map(s => {
+            const timestampSec = s.timestamp / 1000;
+            const parentClip = clips.find(c => timestampSec >= c.startTime && timestampSec < c.endTime);
+            return {
+                ...s,
+                isRemoved: parentClip?.state === 'remove'
+            };
+        });
+    }, [screenshots, clips]);
 
     const activeScreenshot = useMemo(() => {
         if (screenshots.length === 0) return null;
@@ -94,20 +108,36 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                     ) : (
                         viewMode === 'nav' ? (
                             <ScreenshotNavView
-                                screenshots={screenshots}
+                                screenshots={screenshotsWithState as any}
                                 activeFilename={activeScreenshot?.filename}
                                 rotation={rotation}
                                 onScreenshotClick={onScreenshotClick}
-                                onSetCover={s => setAsCover(currentVideoPath!, s.path.replace('file://', ''))}
+                                onSetCover={async (s) => {
+                                    const screenshotRawPath = s.path.replace('file://', '');
+                                    const success = await setAsCover(currentVideoPath!, screenshotRawPath);
+
+                                    if (success) {
+                                        // 核心：只更新内存中的状态，不涉及 Annotation 数据库
+                                        useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
+                                    }
+                                }}
                                 onDelete={s => deleteScreenshot(currentVideoPath!, s.filename)}
                             />
                         ) : (
                             <ScreenshotGalleryView
-                                screenshots={screenshots}
+                                screenshots={screenshotsWithState as any}
                                 activeFilename={activeScreenshot?.filename}
                                 rotation={rotation}
                                 onScreenshotClick={onScreenshotClick}
-                                onSetCover={s => setAsCover(currentVideoPath!, s.path.replace('file://', ''))}
+                                onSetCover={async (s) => {
+                                    const screenshotRawPath = s.path.replace('file://', '');
+                                    const success = await setAsCover(currentVideoPath!, screenshotRawPath);
+
+                                    if (success) {
+                                        // 核心：只更新内存中的状态，不涉及 Annotation 数据库
+                                        useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
+                                    }
+                                }}
                                 onDelete={s => deleteScreenshot(currentVideoPath!, s.filename)}
                             />
                         )

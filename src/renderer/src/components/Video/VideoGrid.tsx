@@ -4,6 +4,8 @@ import { VideoCard } from './VideoCard';
 
 interface VideoGridProps {
     videos: VideoFile[];
+    selectedPaths?: Set<string>; // 新增
+    onSelect?: (index: number, event: React.MouseEvent) => void; // 新增
     onPlay: (video: VideoFile) => void;
     onToggleLike?: (video: VideoFile) => void;
     onToggleElite?: (video: VideoFile) => void;
@@ -12,6 +14,8 @@ interface VideoGridProps {
 
 export function VideoGrid({
     videos,
+    selectedPaths,
+    onSelect,
     onPlay,
     onToggleLike,
     onToggleElite,
@@ -42,10 +46,12 @@ export function VideoGrid({
                 padding: 20,
             }}
         >
-            {videos.map(video => (
+            {videos.map((video, index) => (
                 <VideoCard
                     key={video.path}
                     video={video}
+                    isSelected={!!selectedPaths?.has(video.path)}
+                    onClick={(e) => onSelect?.(index, e)}
                     onPlay={onPlay}
                     onToggleLike={onToggleLike}
                     onToggleElite={onToggleElite}

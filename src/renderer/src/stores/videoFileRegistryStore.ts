@@ -33,6 +33,8 @@ interface VideoFileRegistryState {
   getVideoByPath: (path: string) => VideoFile | undefined;
 
   removeVideo: (path: string) => void;
+
+  refreshCover: (path: string) => void;
 }
 
 export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, get) => ({
@@ -110,6 +112,24 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
       };
     });
   },
+  
+  refreshCover: (path) => {
+      set((state) => {
+        const video = state.videos[path];
+        if (!video) return state;
+
+        return {
+          videos: {
+            ...state.videos,
+            [path]: {
+              ...video,
+              // 改变这个值会触发 React 对该 VideoFile 的响应式重绘
+              coverVersion: Date.now() 
+            }
+          }
+        };
+      });
+    },
 }));
 
 /**

@@ -1,76 +1,149 @@
-import { useMemo } from 'react';
-import { Box, Text } from '@mantine/core';
+import { useMemo, useState, useCallback } from 'react';
+import { Box, Text, Button, Group } from '@mantine/core';
+import { IconCamera, IconSquareX } from '@tabler/icons-react';
 import {
     useVideoFileRegistryStore,
     usePlaylistStore,
-    useNavigationStore
+    useNavigationStore,
+    useToastStore
 } from '../stores';
 
 import { VideoGrid } from '../components/Video/VideoGrid';
 import { VideoFile } from '../../../shared/models';
 
 export function HistoryPage() {
-    // 1. 从 PlaylistStore 获取历史足迹
     const historyPaths = usePlaylistStore((state) => state.historyPaths);
     const jumpTo = usePlaylistStore((state) => state.jumpTo);
-
-    // 2. 从 RegistryStore 获取视频档案数据
     const videoMap = useVideoFileRegistryStore((state) => state.videos);
     const updateAnnotation = useVideoFileRegistryStore((state) => state.updateAnnotation);
-
-    // 3. 页面视图控制
     const setView = useNavigationStore((state) => state.setView);
+    const showToast = useToastStore((state) => state.showToast);
 
-    // 4. 将路径列表转换为视频对象列表 (数据派生)
+    // --- 多选状态 ---
+    const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+    const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
     const historyVideos = useMemo(() => {
         return historyPaths
             .map(path => videoMap[path])
-            // 过滤掉可能已经在磁盘上删除但在历史记录中还存在的视频
             .filter((v): v is VideoFile => v !== undefined);
     }, [historyPaths, videoMap]);
 
     // --- 交互处理 ---
 
+    const handleSelect = useCallback((index: number, event: React.MouseEvent) => {
+        const path = historyVideos[index].path;
+        const newSelected = new Set(selectedPaths);
+
+        if (event.shiftKey && lastSelectedIndex !== null) {
+            // Shift 连选
+            const start = Math.min(lastSelectedIndex, index);
+            const end = Math.max(lastSelectedIndex, index);
+            for (let i = start; i <= end; i++) {
+                newSelected.add(historyVideos[i].path);
+            }
+        } else if (event.ctrlKey || event.metaKey) {
+            // Ctrl/Cmd 切换
+            if (newSelected.has(path)) newSelected.delete(path);
+            else newSelected.add(path);
+        } else {
+            // 单选（清除其他）
+            newSelected.clear();
+            newSelected.add(path);
+        }
+
+        setSelectedPaths(newSelected);
+        setLastSelectedIndex(index);
+    }, [historyVideos, selectedPaths, lastSelectedIndex]);
+
     const handlePlay = (video: VideoFile) => {
-        /**
-         * 核心：按照你的需求逻辑
-         * 1. 调用 jumpTo：切换视频，并强制将播放模式设为 'all'
-         * 2. 切换页面到播放器
-         */
         jumpTo(video.path, 'all');
         setView('player_page');
     };
 
-    const handleToggleLike = (video: VideoFile) => {
-        const currentLike = video.annotation?.like_count ?? 0;
-        updateAnnotation(video.path, {
-            like_count: currentLike > 0 ? 0 : 1
-        });
-    };
+    const handleBatchExport = async () => {
+        if (selectedPaths.size === 0) return;
 
-    const handleToggleElite = (video: VideoFile) => {
-        const currentFavorite = !!video.annotation?.is_favorite;
-        updateAnnotation(video.path, {
-            is_favorite: !currentFavorite
-        });
+        const paths = Array.from(selectedPaths);
+        showToast({ message: `准备导出 ${paths.length} 个视频的截图...`, type: 'info' });
+
+        let successCount = 0;
+        for (let i = 0; i < paths.length; i++) {
+            const path = paths[i];
+            const video = videoMap[path];
+            if (!video) continue;
+
+            try {
+                // 1. 确定旋转角度 (逻辑同 Dialog)
+                let rotation: number = video.annotation?.screenshot_rotation ?? -1;
+
+                if (rotation === -1) {
+                    const metadata = await window.api.getVideoMetadata(path);
+                    if (metadata) {
+                        rotation = metadata.width > metadata.height ? 90 : 0;
+                    } else {
+                        rotation = 0;
+                    }
+                }
+
+                // 2. 直接导出
+                await window.api.exportScreenshots(path, rotation);
+                successCount++;
+
+                // 可选：更新进度提示
+                if (paths.length > 1) {
+                    showToast({ message: `正在导出 (${successCount}/${paths.length})`, type: 'info' });
+                }
+            } catch (err) {
+                console.error(`Export failed for ${path}:`, err);
+            }
+        }
+
+        showToast({ message: `成功导出 ${successCount} 个视频的截图`, type: 'success' });
+        setSelectedPaths(new Set());
     };
 
     return (
-        <Box style={{ height: '100%', overflow: 'auto' }}>
-            <Box style={{ padding: '20px 20px 0 20px' }}>
-                <Text size="xl" fw={700} mb={4}>最近播放</Text>
-                <Text size="sm" c="dimmed" mb={16}>
-                    保留最近 100 条播放记录
-                </Text>
+        <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box style={{ padding: '20px 20px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <Box>
+                    <Text size="xl" fw={700} mb={4}>最近播放</Text>
+                    <Text size="sm" c="dimmed">
+                        {selectedPaths.size > 0 ? `已选中 ${selectedPaths.size} 项` : '保留最近 100 条播放记录'}
+                    </Text>
+                </Box>
+
+                {selectedPaths.size > 0 && (
+                    <Group gap="xs">
+                        <Button
+                            variant="light"
+                            color="gray"
+                            leftSection={<IconSquareX size={16} />}
+                            onClick={() => setSelectedPaths(new Set())}
+                        >
+                            取消选中
+                        </Button>
+                        <Button
+                            leftSection={<IconCamera size={16} />}
+                            onClick={handleBatchExport}
+                        >
+                            批量导出截图
+                        </Button>
+                    </Group>
+                )}
             </Box>
 
-            <VideoGrid
-                videos={historyVideos}
-                onPlay={handlePlay}
-                onToggleLike={handleToggleLike}
-                onToggleElite={handleToggleElite}
-                emptyMessage="暂无播放记录，快去观看视频吧！"
-            />
+            <Box style={{ flex: 1, overflow: 'auto' }}>
+                <VideoGrid
+                    videos={historyVideos}
+                    selectedPaths={selectedPaths}
+                    onSelect={handleSelect}
+                    onPlay={handlePlay}
+                    onToggleLike={(v) => updateAnnotation(v.path, { like_count: (v.annotation?.like_count ?? 0) > 0 ? 0 : 1 })}
+                    onToggleElite={(v) => updateAnnotation(v.path, { is_favorite: !v.annotation?.is_favorite })}
+                    emptyMessage="暂无播放记录，快去观看视频吧！"
+                />
+            </Box>
         </Box>
     );
 }

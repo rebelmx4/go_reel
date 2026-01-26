@@ -9,6 +9,7 @@ interface ScreenshotCardProps {
     isActive: boolean;
     isCover: boolean;
     rotation: number;
+    isRemoved?: boolean;
     mode: 'nav' | 'preview';
     onSetCover: (screenshot: Screenshot) => void;
     onDelete: (screenshot: Screenshot) => void;
@@ -19,10 +20,12 @@ export function ScreenshotCard({
     isActive,
     isCover,
     rotation,
+    isRemoved,
     mode,
     onSetCover,
     onDelete,
 }: ScreenshotCardProps) {
+
     const [isHovered, setIsHovered] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
@@ -66,9 +69,16 @@ export function ScreenshotCard({
                 overflow: 'hidden',
                 cursor: 'pointer',
                 border: `2px solid ${isActive ? '#228be6' : 'transparent'}`,
-                transition: 'all 0.3s ease',
+                filter: isRemoved ? 'grayscale(100%) opacity(0.4)' : 'none',
+                transition: 'filter 0.3s ease'
             }}
         >
+            {/* 如果是被删除的，可以加个小图标提示 */}
+            {isRemoved && (
+                <Box style={{ position: 'absolute', top: 5, right: 5, zIndex: 10 }}>
+                    <IconTrash size={14} color="red" />
+                </Box>
+            )}
             <img
                 src={screenshot.path}
                 alt="Screenshot"

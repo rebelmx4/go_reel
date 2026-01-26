@@ -1,7 +1,7 @@
 import { Box, Group, Text, Button, ActionIcon, Tooltip } from '@mantine/core';
 import { IconTrash, IconAlertTriangle, IconPlayerPlay } from '@tabler/icons-react';
 import { useClipStore } from '../stores/clipStore';
-import { usePlayerStore, useScreenshotStore } from '../stores';
+import { usePlayerStore, useScreenshotStore, usePlaylistStore } from '../stores';
 import { useEffect } from 'react';
 
 export function ClipTrack() {
@@ -14,6 +14,7 @@ export function ClipTrack() {
     const duration = usePlayerStore((state) => state.duration);
     const currentTime = usePlayerStore((state) => state.currentTime);
     const screenshots = useScreenshotStore((state) => state.screenshots);
+    const setIsEditing = useClipStore(state => state.setIsEditing);
 
     // Initialize clips when duration changes
     useEffect(() => {
@@ -21,6 +22,13 @@ export function ClipTrack() {
             initializeClips(duration);
         }
     }, [duration, clips.length, initializeClips]);
+
+    useEffect(() => {
+        setIsEditing(true);
+        return () => setIsEditing(false);
+    }, []);
+
+
 
     // Handle Q key for splitting
     useEffect(() => {
@@ -57,43 +65,21 @@ export function ClipTrack() {
     };
 
     const handleExecute = async () => {
-        // Check for screenshots in remove clips
-        const hasScreenshotsInRemove = clips.some(clip => {
-            if (clip.state === 'remove') {
-                return screenshots.some(s => s.timestamp >= clip.startTime && s.timestamp <= clip.endTime);
-            }
-            return false;
-        });
+        const currentPath = usePlaylistStore.getState().currentPath;
+        if (!currentPath) return;
 
-        if (hasScreenshotsInRemove) {
-            alert('无法裁剪：待删除片段中包含截图，请先处理截图或保留片段');
-            return;
-        }
-
-        if (confirm('将对视频进行裁剪合并，原文件将移入已编辑目录，确认？')) {
+        if (confirm('确认保存裁剪配置？保存后播放将自动跳过标记为删除的片段。')) {
             try {
-                // Get current video path
-                const currentVideoPath = usePlayerStore.getState().currentVideoPath;
-                if (!currentVideoPath) {
-                    alert('未找到当前视频');
-                    return;
-                }
+                // 将当前的 clips 数组保存到数据库/文件的 annotation 中
+                const result = await window.api.updateAnnotation(currentPath, {
+                    clips: clips
+                });
 
-                // Call export IPC
-                if (window.api?.exportVideo) {
-                    const result = await window.api.exportVideo(currentVideoPath, clips);
-
-                    if (result.success) {
-                        alert('视频裁剪成功！');
-                        // Reload video or refresh
-                        window.location.reload();
-                    } else {
-                        alert(`裁剪失败：${result.error}`);
-                    }
+                if (result.success) {
+                    alert('裁剪配置已保存！');
                 }
             } catch (error) {
-                console.error('Export error:', error);
-                alert(`裁剪失败：${error}`);
+                alert(`保存失败：${error}`);
             }
         }
     };

@@ -2,7 +2,7 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled, IconLayoutSidebarRightExpand,
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -17,6 +17,7 @@ import { PlaybackTimeLabel } from './PlaybackTimeLabel';
 import { useVideoContext } from './contexts';
 import { STEP_OPTIONS } from '../../../shared/constants';
 import { formatPlaybackStep } from '../utils/format';
+import { IconScissors } from '@tabler/icons-react';
 
 
 /**
@@ -52,6 +53,11 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
     const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
     const volumeUp = usePlayerStore(state => state.volumeUp);
     const volumeDown = usePlayerStore(state => state.volumeDown);
+    const isHoverSeekMode = usePlayerStore(state => state.isHoverSeekMode);
+    const setHoverSeekMode = usePlayerStore(state => state.setHoverSeekMode);
+
+    const showClipTrack = usePlayerStore(state => state.showClipTrack);
+    const toggleClipTrack = usePlayerStore(state => state.toggleClipTrack);
 
     const stepMode = usePlayerStore(state => state.stepMode);
     const setStepMode = usePlayerStore(state => state.setStepMode);
@@ -216,6 +222,24 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                             onClick={onDelete}
                         >
                             <IconTrash size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={getTooltipLabel(showClipTrack ? "关闭裁剪轨道" : "打开裁剪轨道", 'toggle_track')}>
+                        <ActionIcon
+                            variant={showClipTrack ? "filled" : "subtle"}
+                            color={showClipTrack ? "blue" : "gray"}
+                            onClick={toggleClipTrack}
+                        >
+                            <IconScissors size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={isHoverSeekMode ? "关闭磁吸预览" : "开启磁吸预览 (鼠标跟随)"}>
+                        <ActionIcon
+                            variant={isHoverSeekMode ? "filled" : "subtle"}
+                            color={isHoverSeekMode ? "orange" : "gray"}
+                            onClick={() => setHoverSeekMode(!isHoverSeekMode)}
+                        >
+                            <IconMagnet size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>

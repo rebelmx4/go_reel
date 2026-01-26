@@ -3,9 +3,11 @@ import { Box, Center, Text } from '@mantine/core';
 import { IconClock, IconStar } from '@tabler/icons-react';
 import { Stack, ActionIcon, Tooltip, rem } from '@mantine/core';
 import { EliteSidebar } from './sidebars/EliteSidebar';
-import { usePlayerStore, useScreenshotStore, usePlaylistStore } from '../stores';
+import { usePlayerStore, useScreenshotStore, usePlaylistStore, useClipStore } from '../stores';
+import { useVideoAutoSkip } from './hooks/useVideoAutoSkip';
 
 import { useVideoContext } from './contexts';
+import { ClipTrack } from './ClipTrack';
 
 // Sub-Components
 import { PlayerControls } from './PlayerControls';
@@ -32,14 +34,19 @@ export const VideoPlayerContent = () => {
         setTagCoverImage
     } = usePlayerStore();
 
+    const initializeClips = useClipStore(state => state.initializeClips);
+    const clearClips = useClipStore(state => state.clearClips);
+    const duration = usePlayerStore(state => state.duration);
+
     const { loadScreenshots, clear } = useScreenshotStore();
 
+    const showClipTrack = usePlayerStore(state => state.showClipTrack);
     // --- 4. 业务逻辑 Hooks ---
 
     // 处理截图导出弹窗逻辑
     const { showExportDialog, setShowExportDialog } = useScreenshotExport(currentPath);
 
-    // --- 5. 交互与副作用 ---
+    useVideoAutoSkip();
 
     // 物理播放控制 (确保 Store 状态与 HTMLVideoElement 同步)
     useEffect(() => {
@@ -80,6 +87,25 @@ export const VideoPlayerContent = () => {
         return () => v.removeEventListener('ended', onEnded);
     }, [playNext]);
 
+    useEffect(() => {
+        if (!currentPath) {
+            clearClips();
+            return;
+        }
+
+        const loadVideoData = async () => {
+            // 获取 Annotation 中的 clips
+            const anno = await window.api.getAnnotation(currentPath);
+            // 这里有个时序：需要等待 duration 获取到后再 initialize
+            // 或者在 initializeClips 逻辑里处理
+            if (duration > 0) {
+                initializeClips(duration, anno?.clips);
+            }
+        };
+
+        loadVideoData();
+    }, [currentPath, duration, initializeClips, clearClips]);
+
     // --- 6. 渲染层 ---
 
     if (!currentPath) {
@@ -101,6 +127,12 @@ export const VideoPlayerContent = () => {
                     onTimeUpdate={setCurrentTime}
                 />
 
+                {showClipTrack && (
+                    <Box style={{ padding: '0 20px', backgroundColor: '#000', borderTop: '1px solid #333' }}>
+                        <ClipTrack />
+                    </Box>
+                )}
+
                 {/* 2. 底部控制栏 */}
                 <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
                     <PlayerControls
@@ -112,8 +144,6 @@ export const VideoPlayerContent = () => {
                     />
                 </Box>
             </Box>
-
-
 
             {/* 3. 右侧：侧边栏内容区 */}
             {showSidebar && (

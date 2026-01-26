@@ -142,7 +142,7 @@ export function TagCard({
                 <Image
                     src={toFileUrl(tag.imagePath)}
                     alt={tag.keywords}
-                    fit="cover"
+                    fit="contain"
                     height={90} // 16:9 比例下的合理高度
                     fallbackSrc="https://placehold.co/160x90/1a1a1a/666?text=No+Image"
                 />

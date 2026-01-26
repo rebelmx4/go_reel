@@ -3,8 +3,12 @@ import { useEffect, useRef, useMemo } from 'react';
 import { ScreenshotCard } from './ScreenshotCard';
 import { Screenshot } from '../stores/screenshotStore';
 
+interface AugmentedScreenshot extends Screenshot {
+    isRemoved?: boolean;
+}
+
 interface GalleryViewProps {
-    screenshots: Screenshot[];
+    screenshots: AugmentedScreenshot[];
     activeFilename?: string;
     rotation: number;
     onScreenshotClick: (ts: number) => void;
@@ -86,6 +90,7 @@ export function ScreenshotGalleryView({
                     <ScreenshotCard
                         screenshot={s}
                         mode="preview"
+                        isRemoved={s.isRemoved}
                         isActive={activeFilename === s.filename}
                         isCover={false} // 后续由 Store 逻辑判断
                         rotation={rotation}

@@ -4,14 +4,20 @@ import { useRef, useEffect } from 'react';
 import { ScreenshotCard } from './ScreenshotCard';
 import { Screenshot } from '../stores/screenshotStore';
 
+interface AugmentedScreenshot extends Screenshot {
+    isRemoved?: boolean;
+}
+
 interface NavViewProps {
-    screenshots: Screenshot[];
+    screenshots: AugmentedScreenshot[];
     activeFilename?: string;
     rotation: number;
     onScreenshotClick: (ts: number) => void;
     onSetCover: (s: Screenshot) => void;
     onDelete: (s: Screenshot) => void;
 }
+
+
 
 export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScreenshotClick, onSetCover, onDelete }: NavViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,6 +74,7 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
                             mode="nav"
                             isActive={activeFilename === s.filename}
                             isCover={false}
+                            isRemoved={s.isRemoved}
                             rotation={rotation}
                             onSetCover={onSetCover}
                             onDelete={onDelete}
