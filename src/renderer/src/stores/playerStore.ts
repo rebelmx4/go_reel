@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { StepValue, DEFAULT_STEP_GRADIENT } from '../../../shared/constants';
 
 
-export type SidebarTab = 'newest' | 'elite';
+export type SidebarTab = 'newest' | 'elite' | 'history';
 
 interface PlayerState {
   modals: {

@@ -2,7 +2,7 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack,
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -53,8 +53,11 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
     const setSkipFrameMode = usePlayerStore(state => state.setSkipFrameMode);
     const volumeUp = usePlayerStore(state => state.volumeUp);
     const volumeDown = usePlayerStore(state => state.volumeDown);
+    const historyPaths = usePlaylistStore(state => state.historyPaths);
     const isHoverSeekMode = usePlayerStore(state => state.isHoverSeekMode);
     const setHoverSeekMode = usePlayerStore(state => state.setHoverSeekMode);
+    const historyIndex = usePlaylistStore(state => state.historyIndex);
+    const prev = usePlaylistStore(state => state.prev);
 
     const showClipTrack = usePlayerStore(state => state.showClipTrack);
     const toggleClipTrack = usePlayerStore(state => state.toggleClipTrack);
@@ -71,6 +74,7 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
         currentPath ? state.videos[currentPath] : null, [currentPath]
     ));
 
+    const canPrev = historyIndex < historyPaths.length - 1;
 
     // --- 2. 状态派生 (不再需要 useState) ---
     const isFavorite = videoFile?.annotation?.is_favorite || false;
@@ -248,9 +252,25 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                     <Group gap="xs">
                         <Slider value={volume} onChange={setVolume} style={{ width: 100 }} size="xs" color="blue" />
                     </Group>
-                    <ActionIcon variant="subtle" color="gray" size="lg" onClick={onNext}>
-                        <IconPlayerSkipForward size={22} />
-                    </ActionIcon>
+
+                    {/* 按钮组：上一个 和 下一个 */}
+                    <Group gap={5}>
+                        <Tooltip label="上一个 (历史回退)">
+                            <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                size="lg"
+                                onClick={prev}
+                                disabled={!canPrev} // 如果没有更旧的历史，禁用
+                            >
+                                <IconPlayerSkipBack size={22} />
+                            </ActionIcon>
+                        </Tooltip>
+
+                        <ActionIcon variant="subtle" color="gray" size="lg" onClick={onNext}>
+                            <IconPlayerSkipForward size={22} />
+                        </ActionIcon>
+                    </Group>
                 </Group>
             </Group>
         </Box>

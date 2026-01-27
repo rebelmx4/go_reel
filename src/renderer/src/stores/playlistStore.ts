@@ -16,6 +16,7 @@ interface PlaylistState {
   mode: PlaylistMode;
   historyPaths: string[]; // 历史足迹存储在此
   searchQuery: string;
+  historyIndex: number; 
 
   // --- 基础 Actions ---
   setMode: (mode: PlaylistMode) => void;
@@ -45,6 +46,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   mode: 'all',
   historyPaths: [],
   searchQuery: '',
+  historyIndex: 0,
 
   // --- 基础设置 ---
   setMode: (mode) => set({ mode }),
@@ -72,7 +74,8 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   jumpTo: (path, targetMode) => {
     set((state) => ({
       currentPath: path,
-      mode: targetMode ?? state.mode
+      mode: targetMode ?? state.mode,
+      historyIndex: 0 
     }));
     get()._internalUpdateHistory(path);
   },
@@ -80,40 +83,18 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   // --- 导航逻辑 ---
 
   next: () => {
-    const { mode, currentPath, searchQuery } = get();
-    const registry = useVideoFileRegistryStore.getState();
-    
-    // 1. 获取当前模式下的队列
-    let queue: string[] = [];
-    switch (mode) {
-      case 'liked': queue = selectLikedPaths(registry); break;
-      case 'elite': queue = selectElitePaths(registry); break;
-      case 'search': queue = selectSearchPaths(registry, searchQuery); break;
-      default: queue = registry.videoPaths; // 'all' 模式
+    const { mode, currentPath, searchQuery, historyIndex, historyPaths } = get();
+
+    // --- 逻辑 A: 如果正在回看历史 ---
+    if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        const targetPath = historyPaths[newIndex];
+        set({ historyIndex: newIndex, currentPath: targetPath });
+        return; 
     }
 
-    if (queue.length === 0) return;
-
-    // 2. 根据模式决定“下一首”的算法
-    let nextPath: string;
-    if (mode === 'all') {
-      // 全部模式下：本质是随机模式
-      nextPath = queue[Math.floor(Math.random() * queue.length)];
-    } else {
-      // 筛选模式下：顺序循环
-      const currentIndex = currentPath ? queue.indexOf(currentPath) : -1;
-      const nextIndex = (currentIndex + 1) % queue.length;
-      nextPath = queue[nextIndex];
-    }
-
-    set({ currentPath: nextPath });
-    get()._internalUpdateHistory(nextPath);
-  },
-
-  prev: () => {
-    const { mode, currentPath, searchQuery } = get();
+    // --- 逻辑 B: 正常产生新片 (Index === 0) ---
     const registry = useVideoFileRegistryStore.getState();
-    
     let queue: string[] = [];
     switch (mode) {
       case 'liked': queue = selectLikedPaths(registry); break;
@@ -122,16 +103,38 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       default: queue = registry.videoPaths;
     }
 
-    if (queue.length === 0 || !currentPath) return;
+    if (queue.length === 0) return;
 
-    const currentIndex = queue.indexOf(currentPath);
-    // (currentIndex - 1 + length) % length 确保循环到末尾
-    const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-    const prevPath = queue[prevIndex];
+    let nextPath: string;
+    if (mode === 'all') {
+      nextPath = queue[Math.floor(Math.random() * queue.length)];
+    } else {
+      const currentIndex = currentPath ? queue.indexOf(currentPath) : -1;
+      const nextIndex = (currentIndex + 1) % queue.length;
+      nextPath = queue[nextIndex];
+    }
 
-    set({ currentPath: prevPath });
-    get()._internalUpdateHistory(prevPath);
+    // 产生新片，更新历史并重置索引
+    set({ currentPath: nextPath, historyIndex: 0 });
+    get()._internalUpdateHistory(nextPath);
   },
+
+   prev: () => {
+    const { historyIndex, historyPaths } = get();
+    
+    // 如果后面还有历史记录
+    if (historyIndex < historyPaths.length - 1) {
+        const newIndex = historyIndex + 1;
+        const targetPath = historyPaths[newIndex];
+        
+        // 注意：这里只更新路径和索引，不触发 _internalUpdateHistory (不重排)
+        set({ 
+            historyIndex: newIndex, 
+            currentPath: targetPath 
+        });
+    }
+  },
+
 
   /**
    * 内部私有方法：处理历史记录更新

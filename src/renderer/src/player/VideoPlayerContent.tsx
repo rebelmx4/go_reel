@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Box, Center, Text } from '@mantine/core';
-import { IconClock, IconStar } from '@tabler/icons-react';
+import { IconClock, IconStar, IconHistory } from '@tabler/icons-react';
 import { Stack, ActionIcon, Tooltip, rem } from '@mantine/core';
 import { EliteSidebar } from './sidebars/EliteSidebar';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useClipStore } from '../stores';
@@ -16,8 +16,9 @@ import { PlayerModals } from './PlayerModals';
 import { NewestSidebar } from './sidebars/NewestSidebar';
 
 // Hooks
-import { useVideoShortcuts, usePlayerActions } from './hooks';
+import { useVideoShortcuts, usePlayerActions, useVideoData } from './hooks';
 import { useScreenshotExport } from '../hooks';
+import { HistorySidebar } from './sidebars/HistorySidebar';
 
 
 export const VideoPlayerContent = () => {
@@ -45,6 +46,9 @@ export const VideoPlayerContent = () => {
 
     // 处理截图导出弹窗逻辑
     const { showExportDialog, setShowExportDialog } = useScreenshotExport(currentPath);
+
+
+    useVideoData();
 
     useVideoAutoSkip();
 
@@ -150,6 +154,7 @@ export const VideoPlayerContent = () => {
                 <Box style={{ height: '100%' }}>
                     {sidebarTab === 'newest' && <NewestSidebar />}
                     {sidebarTab === 'elite' && <EliteSidebar />}
+                    {sidebarTab === 'history' && <HistorySidebar />}
                 </Box>
             )}
 
@@ -189,6 +194,17 @@ export const VideoPlayerContent = () => {
                             color={showSidebar && sidebarTab === 'elite' ? 'blue' : 'gray'}
                         >
                             <IconStar style={{ width: rem(20), height: rem(20) }} />
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="播放历史" position="left" withArrow>
+                        <ActionIcon
+                            variant={showSidebar && sidebarTab === 'history' ? 'filled' : 'light'}
+                            size="lg"
+                            onClick={() => handleSidebarTabClick('history')}
+                            color={showSidebar && sidebarTab === 'history' ? 'blue' : 'gray'}
+                        >
+                            <IconHistory style={{ width: rem(20), height: rem(20) }} />
                         </ActionIcon>
                     </Tooltip>
                 </Stack>

@@ -119,173 +119,171 @@ export function VideoCard({ video, isSelected, onClick, onPlay, onToggleLike, on
     };
 
     return (
-        <Tooltip label={video.path.split(/[\\/]/).pop()} position="top" openDelay={600}>
-            <Box
-                ref={containerRef}
-                onMouseEnter={startHover}
-                onMouseLeave={stopHover}
-                onContextMenu={handleContextMenu}
-                // --- 核心改动：单击选择，双击播放 ---
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onClick?.(e);
-                }}
-                onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    onPlay(video);
-                }}
-                // ------------------------------------
+        <Box
+            ref={containerRef}
+            onMouseEnter={startHover}
+            onMouseLeave={stopHover}
+            onContextMenu={handleContextMenu}
+            // --- 核心改动：单击选择，双击播放 ---
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick?.(e);
+            }}
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                onPlay(video);
+            }}
+            // ------------------------------------
+            style={{
+                position: 'relative',
+                borderRadius: 8,
+                overflow: 'hidden',
+                // 选中状态边框变色
+                border: isSelected
+                    ? '2px solid var(--mantine-color-blue-6)'
+                    : '2px solid #2C2E33',
+                cursor: 'pointer',
+                backgroundColor: '#000',
+                aspectRatio: '16/9',
+                // 选中时稍微增加阴影或缩放感
+                boxShadow: isSelected ? '0 0 10px rgba(34, 139, 230, 0.5)' : 'none',
+                transition: 'all 0.1s ease'
+            }}
+        >
+            {isSelected && (
+                <Box style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'rgba(34, 139, 230, 0.1)',
+                    pointerEvents: 'none',
+                    zIndex: 2
+                }} />
+            )}
+
+            {/* 封面图 */}
+            <Image
+                src={coverUrl}
+                height="100%"
+                fit="contain"
                 style={{
-                    position: 'relative',
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    // 选中状态边框变色
-                    border: isSelected
-                        ? '2px solid var(--mantine-color-blue-6)'
-                        : '2px solid #2C2E33',
-                    cursor: 'pointer',
-                    backgroundColor: '#000',
-                    aspectRatio: '16/9',
-                    // 选中时稍微增加阴影或缩放感
-                    boxShadow: isSelected ? '0 0 10px rgba(34, 139, 230, 0.5)' : 'none',
-                    transition: 'all 0.1s ease'
+                    display: isHovered ? 'none' : 'block',
+                    opacity: isLoadingCover ? 0.3 : 1,
+                    transition: 'opacity 0.2s'
+                }}
+            />
+
+            {/* 视频预览层 */}
+            {isHovered && (
+                <video
+                    ref={videoRef}
+                    src={videoSrc}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0
+                    }}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    onTimeUpdate={syncProgress}
+                />
+            )}
+
+            {/* 交互按钮 (右下角) */}
+            <Group
+                gap={0}
+                style={{
+                    position: 'absolute',
+                    bottom: isHovered ? 16 : 0,
+                    right: 0,
+                    zIndex: 10,
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    padding: '2px 4px',
+                    borderTopLeftRadius: 8,
+                    transition: 'bottom 0.1s ease',
                 }}
             >
-                {isSelected && (
-                    <Box style={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundColor: 'rgba(34, 139, 230, 0.1)',
-                        pointerEvents: 'none',
-                        zIndex: 2
-                    }} />
-                )}
+                <ActionIcon variant="subtle" size="sm" color={isLiked ? 'red' : 'white'} onClick={(e) => { e.stopPropagation(); onToggleLike?.(video); }}>
+                    {isLiked ? <IconHeartFilled size={16} /> : <IconHeart size={16} />}
+                </ActionIcon>
+                <ActionIcon variant="subtle" size="sm" color={isFavorite ? 'yellow' : 'white'} onClick={(e) => { e.stopPropagation(); onToggleElite?.(video); }}>
+                    {isFavorite ? <IconStarFilled size={16} /> : <IconStar size={16} />}
+                </ActionIcon>
+            </Group>
 
-                {/* 封面图 */}
-                <Image
-                    src={coverUrl}
-                    height="100%"
-                    fit="contain"
-                    style={{
-                        display: isHovered ? 'none' : 'block',
-                        opacity: isLoadingCover ? 0.3 : 1,
-                        transition: 'opacity 0.2s'
-                    }}
-                />
+            {/* 精品标记 */}
+            {isFavorite && (
+                <Box style={{ position: 'absolute', top: 8, left: 8, backgroundColor: '#FFD700', color: '#000', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', zIndex: 5 }}>
+                    精品
+                </Box>
+            )}
 
-                {/* 视频预览层 */}
-                {isHovered && (
-                    <video
-                        ref={videoRef}
-                        src={videoSrc}
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0
-                        }}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        onTimeUpdate={syncProgress}
-                    />
-                )}
-
-                {/* 交互按钮 (右下角) */}
-                <Group
-                    gap={0}
+            {/* 加高进度条 (Scrubbing 区域) */}
+            {isHovered && (
+                <Box
+                    onMouseMove={handleScrubbing}
+                    onClick={(e) => e.stopPropagation()}
                     style={{
                         position: 'absolute',
-                        bottom: isHovered ? 16 : 0,
+                        bottom: 0,
+                        left: 0,
                         right: 0,
-                        zIndex: 10,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        padding: '2px 4px',
-                        borderTopLeftRadius: 8,
-                        transition: 'bottom 0.1s ease',
+                        height: 16, // 足够的高度方便鼠标操作
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        zIndex: 20,
+                        cursor: 'ew-resize'
                     }}
                 >
-                    <ActionIcon variant="subtle" size="sm" color={isLiked ? 'red' : 'white'} onClick={(e) => { e.stopPropagation(); onToggleLike?.(video); }}>
-                        {isLiked ? <IconHeartFilled size={16} /> : <IconHeart size={16} />}
-                    </ActionIcon>
-                    <ActionIcon variant="subtle" size="sm" color={isFavorite ? 'yellow' : 'white'} onClick={(e) => { e.stopPropagation(); onToggleElite?.(video); }}>
-                        {isFavorite ? <IconStarFilled size={16} /> : <IconStar size={16} />}
-                    </ActionIcon>
-                </Group>
-
-                {/* 精品标记 */}
-                {isFavorite && (
-                    <Box style={{ position: 'absolute', top: 8, left: 8, backgroundColor: '#FFD700', color: '#000', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', zIndex: 5 }}>
-                        精品
-                    </Box>
-                )}
-
-                {/* 加高进度条 (Scrubbing 区域) */}
-                {isHovered && (
                     <Box
-                        onMouseMove={handleScrubbing}
-                        onClick={(e) => e.stopPropagation()}
+                        ref={progressBarRef}
                         style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: 16, // 足够的高度方便鼠标操作
-                            backgroundColor: 'rgba(255,255,255,0.1)',
-                            zIndex: 20,
-                            cursor: 'ew-resize'
+                            width: '0%',
+                            height: '100%',
+                            backgroundColor: '#228be6',
+                            pointerEvents: 'none' // 避免干扰父级 mousemove
+                        }}
+                    />
+                </Box>
+            )}
+
+            {/* 右键菜单 */}
+            {menuPos && (
+                <Portal>
+                    {/* 遮罩：点击任意处关闭菜单 */}
+                    <Box
+                        style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+                        onClick={() => setMenuPos(null)}
+                        onContextMenu={(e) => { e.preventDefault(); setMenuPos(null); }}
+                    />
+                    <Paper
+                        ref={menuRef}
+                        shadow="xl"
+                        withBorder
+                        style={{
+                            position: 'fixed',
+                            top: menuPos.y,
+                            left: menuPos.x,
+                            zIndex: 1000,
+                            backgroundColor: '#1A1B1E',
+                            padding: 4,
+                            minWidth: 140,
+                            border: '1px solid #373A40'
                         }}
                     >
-                        <Box
-                            ref={progressBarRef}
-                            style={{
-                                width: '0%',
-                                height: '100%',
-                                backgroundColor: '#228be6',
-                                pointerEvents: 'none' // 避免干扰父级 mousemove
-                            }}
-                        />
-                    </Box>
-                )}
-
-                {/* 右键菜单 */}
-                {menuPos && (
-                    <Portal>
-                        {/* 遮罩：点击任意处关闭菜单 */}
-                        <Box
-                            style={{ position: 'fixed', inset: 0, zIndex: 999 }}
-                            onClick={() => setMenuPos(null)}
-                            onContextMenu={(e) => { e.preventDefault(); setMenuPos(null); }}
-                        />
-                        <Paper
-                            ref={menuRef}
-                            shadow="xl"
-                            withBorder
-                            style={{
-                                position: 'fixed',
-                                top: menuPos.y,
-                                left: menuPos.x,
-                                zIndex: 1000,
-                                backgroundColor: '#1A1B1E',
-                                padding: 4,
-                                minWidth: 140,
-                                border: '1px solid #373A40'
-                            }}
-                        >
-                            <Stack gap={1}>
-                                <MenuBtn icon={<IconFolderOpen size={16} />} label="打开文件夹" onClick={() => handleShowInExplorer(video.path)} />
-                                <MenuBtn icon={<IconTrash size={16} />} label="移至待删除" color="red.5" onClick={() => handleDelete(video)} />
-                                <Box style={{ height: 1, backgroundColor: '#373A40', margin: '4px 2px' }} />
-                                <MenuBtn icon={<IconX size={16} />} label="取消菜单" onClick={() => setMenuPos(null)} />
-                            </Stack>
-                        </Paper>
-                    </Portal>
-                )}
-            </Box>
-        </Tooltip>
+                        <Stack gap={1}>
+                            <MenuBtn icon={<IconFolderOpen size={16} />} label="打开文件夹" onClick={() => { handleShowInExplorer(video.path); setMenuPos(null); }} />
+                            <MenuBtn icon={<IconTrash size={16} />} label="移至待删除" color="red.5" onClick={() => { handleDelete(video); setMenuPos(null); }} />
+                            <Box style={{ height: 1, backgroundColor: '#373A40', margin: '4px 2px' }} />
+                            <MenuBtn icon={<IconX size={16} />} label="取消菜单" onClick={() => setMenuPos(null)} />
+                        </Stack>
+                    </Paper>
+                </Portal>
+            )}
+        </Box>
     );
 }
 
