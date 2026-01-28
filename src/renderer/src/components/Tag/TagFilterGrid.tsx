@@ -22,16 +22,15 @@ export function TagFilterGrid({
     draggable = false,
     onTagDragStart
 }: TagFilterGridProps) {
-    const [groupFilter, setGroupFilter] = useState(''); // 搜索分组名的输入框状态
-    const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null); // 当前选中的分组筛选
+    const [groupFilter, setGroupFilter] = useState('');
+    const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null);
 
-    // 1. 处理标签筛选逻辑：同时受“搜索关键词”和“选中的分组”影响
+    // 1. 处理标签筛选逻辑
     const filteredData = useMemo(() => {
         const result: TagsData = {};
         const lowerKeyword = filterKeyword.trim().toLowerCase();
 
         Object.entries(allTagsData).forEach(([group, tags]) => {
-            // 如果选中了某个分组，且当前分组不是选中的那个，则跳过
             if (selectedGroupName && group !== selectedGroupName) return;
 
             const filteredTags = tags.filter(tag => {
@@ -48,7 +47,7 @@ export function TagFilterGrid({
         return result;
     }, [allTagsData, filterKeyword, excludedIds, selectedGroupName]);
 
-    // 2. 顶部显示的“分组按钮列表”：仅受“搜索分组”输入框影响
+    // 2. 顶部显示的“分组按钮列表”
     const availableGroups = useMemo(() => {
         const groups = Object.keys(allTagsData);
         if (!groupFilter) return groups;
@@ -56,9 +55,7 @@ export function TagFilterGrid({
         return groups.filter(g => g.toLowerCase().includes(lowerFilter));
     }, [allTagsData, groupFilter]);
 
-    // 切换分组筛选
     const handleGroupClick = (group: string) => {
-        // 如果点击已选中的分组，则取消筛选，显示全部
         setSelectedGroupName(prev => prev === group ? null : group);
     };
 
@@ -68,11 +65,15 @@ export function TagFilterGrid({
             flexDirection: 'column',
             height: '100%',
             width: '100%',
-            overflow: 'hidden' // 确保父级不溢出
+            overflow: 'hidden'
         }}>
-
-            {/* 顶部固定区：搜索框 + 分组按钮 */}
-            <Box style={{ flexShrink: 0, paddingBottom: 16, borderBottom: '1px solid #222', marginBottom: 12 }}>
+            {/* 顶部固定区：flex-shrink: 0 保证它不被压缩 */}
+            <Box style={{
+                flexShrink: 0,
+                paddingBottom: 16,
+                borderBottom: '1px solid #222',
+                marginBottom: 12
+            }}>
                 <Group gap="xs" align="flex-start">
                     <TextInput
                         placeholder="搜索分组..."
@@ -91,7 +92,6 @@ export function TagFilterGrid({
                     />
 
                     <Box style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
-                        {/* “全部”按钮 */}
                         <UnstyledButton
                             onClick={() => setSelectedGroupName(null)}
                             style={{
@@ -138,18 +138,16 @@ export function TagFilterGrid({
                 </Group>
             </Box>
 
-            {/* 下方标签滚动区 */}
-            {/* 修复滚动：flex: 1 + min-height: 0 是关键 */}
-            <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {/* 下方标签滚动区：flex: 1 占据剩余空间 */}
+            <Box style={{ flex: 1, minHeight: 0 }}>
                 <ScrollArea
-                    style={{ height: '100%' }}
+                    h="100%"
                     scrollbarSize={8}
-                    type="always" // 强制显示滚动条以便调试
+                    type="hover"
                 >
-                    <Box style={{ paddingRight: 12 }}>
+                    <Box style={{ paddingRight: 16 }}>
                         {Object.entries(filteredData).map(([group, tags]) => (
                             <Box key={group} style={{ marginBottom: 24 }}>
-                                {/* 极简分组标题行 */}
                                 <Box style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -163,7 +161,6 @@ export function TagFilterGrid({
                                     <Box style={{ flex: 1, height: 1, backgroundColor: '#222' }} />
                                 </Box>
 
-                                {/* 标签网格 */}
                                 <Box
                                     style={{
                                         display: 'grid',
