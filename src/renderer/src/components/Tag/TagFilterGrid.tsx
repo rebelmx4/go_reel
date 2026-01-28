@@ -1,7 +1,6 @@
-// src/renderer/src/player/components/TagFilterGrid.tsx
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Box, TextInput, ScrollArea, Text, UnstyledButton, Group, Divider } from '@mantine/core';
-import { IconSearch, IconFolder } from '@tabler/icons-react';
+import { useState, useMemo } from 'react';
+import { Box, TextInput, ScrollArea, Text, UnstyledButton, Group } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { TagsData } from '../../stores/tagStore';
 import { TagCard } from './TagCard';
 import { Tag } from '../../../../shared/models';
@@ -23,17 +22,18 @@ export function TagFilterGrid({
     draggable = false,
     onTagDragStart
 }: TagFilterGridProps) {
-    const [groupFilter, setGroupFilter] = useState('');
-    const [activeGroup, setActiveGroup] = useState<string | null>(null);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const groupRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const [groupFilter, setGroupFilter] = useState(''); // 搜索分组名的输入框状态
+    const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null); // 当前选中的分组筛选
 
-    // 1. 根据关键词和排除列表过滤标签内容
+    // 1. 处理标签筛选逻辑：同时受“搜索关键词”和“选中的分组”影响
     const filteredData = useMemo(() => {
         const result: TagsData = {};
         const lowerKeyword = filterKeyword.trim().toLowerCase();
 
         Object.entries(allTagsData).forEach(([group, tags]) => {
+            // 如果选中了某个分组，且当前分组不是选中的那个，则跳过
+            if (selectedGroupName && group !== selectedGroupName) return;
+
             const filteredTags = tags.filter(tag => {
                 if (excludedIds.has(tag.id)) return false;
                 if (!lowerKeyword) return true;
@@ -42,158 +42,136 @@ export function TagFilterGrid({
                     tag.description?.toLowerCase().includes(lowerKeyword)
                 );
             });
+
             if (filteredTags.length > 0) result[group] = filteredTags;
         });
         return result;
-    }, [allTagsData, filterKeyword, excludedIds]);
+    }, [allTagsData, filterKeyword, excludedIds, selectedGroupName]);
 
-    // 2. 过滤分组索引名称
-    const filteredGroupNames = useMemo(() => {
-        const groups = Object.keys(filteredData);
+    // 2. 顶部显示的“分组按钮列表”：仅受“搜索分组”输入框影响
+    const availableGroups = useMemo(() => {
+        const groups = Object.keys(allTagsData);
         if (!groupFilter) return groups;
         const lowerFilter = groupFilter.toLowerCase();
         return groups.filter(g => g.toLowerCase().includes(lowerFilter));
-    }, [filteredData, groupFilter]);
+    }, [allTagsData, groupFilter]);
 
-    // 3. 滚动跳转逻辑
-    const scrollToGroup = (group: string) => {
-        const element = groupRefs.current.get(group);
-        if (element && scrollAreaRef.current) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setActiveGroup(group);
-        }
+    // 切换分组筛选
+    const handleGroupClick = (group: string) => {
+        // 如果点击已选中的分组，则取消筛选，显示全部
+        setSelectedGroupName(prev => prev === group ? null : group);
     };
 
-    // 4. 监听滚动以更新当前激活的分组
-    useEffect(() => {
-        const viewport = scrollAreaRef.current;
-        if (!viewport) return;
-
-        const handleScroll = () => {
-            let currentGroup = activeGroup;
-            const containerTop = viewport.getBoundingClientRect().top;
-
-            for (const [group, el] of groupRefs.current.entries()) {
-                const rect = el.getBoundingClientRect();
-                if (rect.top <= containerTop + 40) {
-                    currentGroup = group;
-                }
-            }
-            if (currentGroup !== activeGroup) setActiveGroup(currentGroup);
-        };
-
-        viewport.addEventListener('scroll', handleScroll);
-        return () => viewport.removeEventListener('scroll', handleScroll);
-    }, [activeGroup, filteredGroupNames]);
-
     return (
-        <Box style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 10 }}>
+        <Box style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            width: '100%',
+            overflow: 'hidden' // 确保父级不溢出
+        }}>
 
-            {/* 顶部：分组导航面板 (自动宽度标签感) */}
-            <Box style={{
-                padding: '10px 0',
-                borderBottom: '1px solid #333',
-                backgroundColor: '#0b0c0d'
-            }}>
-                <Group justify="space-between" mb="xs" px="xs">
-                    <Group gap={6}>
-                        <IconFolder size={14} color="#999" />
-                        <Text size="xs" fw={700} c="dimmed">分组快速索引</Text>
-                    </Group>
+            {/* 顶部固定区：搜索框 + 分组按钮 */}
+            <Box style={{ flexShrink: 0, paddingBottom: 16, borderBottom: '1px solid #222', marginBottom: 12 }}>
+                <Group gap="xs" align="flex-start">
                     <TextInput
                         placeholder="搜索分组..."
                         value={groupFilter}
                         onChange={(e) => setGroupFilter(e.currentTarget.value)}
                         size="xs"
-                        leftSection={<IconSearch size={12} />}
+                        leftSection={<IconSearch size={14} />}
                         styles={{
                             input: {
                                 backgroundColor: '#1a1b1e',
                                 border: '1px solid #373a40',
-                                height: 26,
-                                minHeight: 26,
-                                width: 180
+                                width: 140,
+                                height: 30
                             }
                         }}
                     />
-                </Group>
 
-                <ScrollArea h={60} type="hover" px="xs">
-                    <Group gap="xs" pb="xs">
-                        {filteredGroupNames.map(group => {
-                            const isActive = activeGroup === group;
+                    <Box style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
+                        {/* “全部”按钮 */}
+                        <UnstyledButton
+                            onClick={() => setSelectedGroupName(null)}
+                            style={{
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                backgroundColor: selectedGroupName === null ? 'rgba(0, 255, 0, 0.15)' : 'transparent',
+                                border: `1px solid ${selectedGroupName === null ? '#00ff00' : '#333'}`,
+                                height: 30
+                            }}
+                        >
+                            <Text size="xs" c={selectedGroupName === null ? '#00ff00' : 'gray.5'} fw={selectedGroupName === null ? 700 : 400}>
+                                全部
+                            </Text>
+                        </UnstyledButton>
+
+                        {availableGroups.map(group => {
+                            const isActive = selectedGroupName === group;
                             return (
                                 <UnstyledButton
                                     key={group}
-                                    onClick={() => scrollToGroup(group)}
+                                    onClick={() => handleGroupClick(group)}
                                     style={{
                                         padding: '4px 10px',
                                         borderRadius: 4,
-                                        backgroundColor: isActive ? 'rgba(0, 255, 0, 0.15)' : '#1a1b1e',
+                                        backgroundColor: isActive ? 'rgba(0, 255, 0, 0.15)' : 'transparent',
                                         border: `1px solid ${isActive ? '#00ff00' : '#333'}`,
-                                        transition: 'all 0.2s',
+                                        transition: 'all 0.1s',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6
+                                        gap: 6,
+                                        height: 30
                                     }}
                                 >
-                                    <Text size="xs" c={isActive ? '#00ff00' : 'gray.4'} fw={isActive ? 600 : 400}>
+                                    <Text size="xs" c={isActive ? '#00ff00' : 'gray.5'} fw={isActive ? 700 : 400}>
                                         {group}
                                     </Text>
-                                    <Text size="10px" c="dimmed" style={{ opacity: 0.7 }}>
-                                        {filteredData[group]?.length}
+                                    <Text size="10px" c="dimmed" style={{ opacity: 0.5 }}>
+                                        {allTagsData[group]?.length}
                                     </Text>
                                 </UnstyledButton>
                             );
                         })}
-                    </Group>
-                </ScrollArea>
+                    </Box>
+                </Group>
             </Box>
 
-            {/* 下方：标签内容展示网格 */}
-            <Box style={{ flex: 1, overflow: 'hidden' }}>
+            {/* 下方标签滚动区 */}
+            {/* 修复滚动：flex: 1 + min-height: 0 是关键 */}
+            <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <ScrollArea
                     style={{ height: '100%' }}
-                    viewportRef={scrollAreaRef}
+                    scrollbarSize={8}
+                    type="always" // 强制显示滚动条以便调试
                 >
-                    <Box style={{ padding: '0 12px 40px 0' }}>
-                        {filteredGroupNames.map(group => (
-                            <Box
-                                key={group}
-                                ref={(el) => {
-                                    if (el) groupRefs.current.set(group, el);
-                                    else groupRefs.current.delete(group);
-                                }}
-                                style={{ marginBottom: 28 }}
-                            >
-                                {/* 分组标题行 - 吸顶 */}
+                    <Box style={{ paddingRight: 12 }}>
+                        {Object.entries(filteredData).map(([group, tags]) => (
+                            <Box key={group} style={{ marginBottom: 24 }}>
+                                {/* 极简分组标题行 */}
                                 <Box style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 12,
-                                    marginBottom: 14,
-                                    position: 'sticky',
-                                    top: 0,
-                                    backgroundColor: '#0b0c0d',
-                                    zIndex: 5,
-                                    padding: '8px 0'
+                                    gap: 8,
+                                    marginBottom: 10,
+                                    padding: '4px 0'
                                 }}>
-                                    <Text size="sm" fw={800} style={{ color: '#fff', letterSpacing: 0.5 }}>
-                                        {group}
+                                    <Text size="xs" fw={700} c="dimmed" style={{ letterSpacing: 1 }}>
+                                        {group.toUpperCase()}
                                     </Text>
-                                    <Box style={{ flex: 1, height: 1, backgroundColor: '#333' }} />
-                                    <Text size="xs" c="dimmed">{filteredData[group].length} 个标签</Text>
+                                    <Box style={{ flex: 1, height: 1, backgroundColor: '#222' }} />
                                 </Box>
 
-                                {/* 标签卡片网格 */}
+                                {/* 标签网格 */}
                                 <Box
                                     style={{
                                         display: 'grid',
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                                        gap: 16,
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                                        gap: 12,
                                     }}
                                 >
-                                    {filteredData[group].map(tag => (
+                                    {tags.map(tag => (
                                         <TagCard
                                             key={tag.id}
                                             tag={tag}
@@ -206,22 +184,9 @@ export function TagFilterGrid({
                             </Box>
                         ))}
 
-                        {/* 空状态 */}
-                        {filteredGroupNames.length === 0 && (
-                            <Box
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    height: 300,
-                                    gap: 10
-                                }}
-                            >
-                                <IconSearch size={40} color="#333" />
-                                <Text c="dimmed" size="sm">
-                                    {filterKeyword ? `未找到匹配 "${filterKeyword}" 的标签` : '库中暂无数据'}
-                                </Text>
+                        {Object.keys(filteredData).length === 0 && (
+                            <Box style={{ textAlign: 'center', paddingTop: 60 }}>
+                                <Text c="dimmed">无匹配标签</Text>
                             </Box>
                         )}
                     </Box>
