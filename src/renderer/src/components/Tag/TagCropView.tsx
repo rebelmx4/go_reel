@@ -1,8 +1,8 @@
 // src/renderer/src/player/components/TagCropView.tsx
 import { useState } from 'react';
-import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Box, Button, Group, ActionIcon, Tooltip } from '@mantine/core';
+import { Box, Button, Group } from '@mantine/core';
 import { IconAspectRatio, IconMaximize } from '@tabler/icons-react';
 
 interface TagCropViewProps {
@@ -15,21 +15,8 @@ export function TagCropView({ src, onConfirm }: TagCropViewProps) {
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
     const [aspect, setAspect] = useState<number | undefined>(undefined);
 
-    const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        const { width, height } = e.currentTarget;
-        // 默认给一个 80% 的框，防止初始状态看不到
-        const initialCrop = centerCrop(
-            makeAspectCrop({ unit: '%', width: 80 }, aspect || 16 / 9, width, height),
-            width,
-            height
-        );
-        setCrop(initialCrop);
-    };
-
     const handleConfirm = () => {
-        // 如果用户没动，completedCrop 可能是空的，我们需要手动构造一个覆盖全图的裁剪
         const targetCrop = completedCrop;
-
         const img = document.getElementById('crop-target-img') as HTMLImageElement;
         if (!img) return;
 
@@ -37,7 +24,7 @@ export function TagCropView({ src, onConfirm }: TagCropViewProps) {
         const scaleX = img.naturalWidth / img.width;
         const scaleY = img.naturalHeight / img.height;
 
-        // 如果用户没选，默认裁剪全图
+        // 如果没有选区(targetCrop)，则裁剪全图
         const cropX = targetCrop ? targetCrop.x * scaleX : 0;
         const cropY = targetCrop ? targetCrop.y * scaleY : 0;
         const cropW = targetCrop ? targetCrop.width * scaleX : img.naturalWidth;
@@ -74,7 +61,7 @@ export function TagCropView({ src, onConfirm }: TagCropViewProps) {
                     <img
                         id="crop-target-img"
                         src={src}
-                        onLoad={onImageLoad}
+                        // 删除了 onLoad 里的初始 crop 设置
                         style={{
                             display: 'block',
                             maxWidth: '100%',

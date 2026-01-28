@@ -2,6 +2,8 @@
 
 import { ipcMain } from 'electron';
 import { tagManager } from '../data/json/TagManager';
+import { safeInvoke } from '../utils/handlerHelper';
+
 
 export function registerTagHandlers() {
   /**
@@ -54,4 +56,11 @@ export function registerTagHandlers() {
     tagManager.setPinnedTags(pinnedTags);
     return { success: true };
   });
+
+  ipcMain.handle('update-tag', async (_, tagId: number, updates: any) => {
+      return safeInvoke(async () => {
+        await tagManager.updateTag(tagId, updates);
+        return { success: true };
+      }, { success: false });
+    });
 }

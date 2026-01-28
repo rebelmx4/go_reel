@@ -1,4 +1,4 @@
-Volume serial number is 0000F50C C282:B5EC
+Volume serial number is 0000E2DC C282:B5EC
 E:\100_MYPROJECTS\GO_REEL\SRC
 +---main
 |   |   index.ts
@@ -20,7 +20,8 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |   |           FileProfileManager.ts
 |   |           HistoryManager.ts
 |   |           index.ts
-|   |           SettingsManager.ts
+|   |           PreferenceManager.ts
+|   |           StorageManager.ts
 |   |           TagManager.ts
 |   |           VideoMetadataManager.ts
 |   |           
@@ -78,6 +79,7 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   |   
 |       |   +---Dialog
 |       |   |       AssignTagDialog.tsx
+|       |   |       BatchAssignTagDialog.tsx
 |       |   |       CreateTagDialog.tsx
 |       |   |       ExportScreenshotDialog.tsx
 |       |   |       RefreshProgressDialog.tsx
@@ -99,21 +101,14 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |           VideoCard.tsx
 |       |           VideoGrid.tsx
 |       |           
-|       +---contexts
-|       |       index.ts
-|       |       VideoContext.tsx
-|       |       
 |       +---hooks
 |       |       index.ts
 |       |       useFileActions.ts
 |       |       useScreenshotExport.ts
-|       |       useVideoCrop.ts
-|       |       useVideoData.ts
-|       |       useVideoShortcuts.ts
-|       |       useVideoVisuals.ts
 |       |       
 |       +---pages
 |       |       ElitePage.tsx
+|       |       FolderPage.tsx
 |       |       HistoryPage.tsx
 |       |       index.ts
 |       |       LikedPage.tsx
@@ -130,19 +125,29 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   |   ProgressBarWithThumbnail.tsx
 |       |   |   RecordingIndicator.tsx
 |       |   |   ScreenshotCard.tsx
+|       |   |   ScreenshotGalleryView.tsx
+|       |   |   ScreenshotNavView.tsx
 |       |   |   ScreenshotTrack.tsx
 |       |   |   VideoPlayer.tsx
+|       |   |   VideoPlayerContent.tsx
 |       |   |   VideoViewport.tsx
 |       |   |   
+|       |   +---contexts
+|       |   |       index.ts
+|       |   |       VideoContext.tsx
+|       |   |       
 |       |   +---hooks
 |       |   |       index.ts
 |       |   |       usePlayerActions.ts
+|       |   |       useVideoAutoSkip.ts
 |       |   |       useVideoData.ts
 |       |   |       useVideoFrameCapture.ts
 |       |   |       useVideoShortcuts.ts
 |       |   |       useVideoVisuals.ts
 |       |   |       
 |       |   \---sidebars
+|       |           EliteSidebar.tsx
+|       |           HistorySidebar.tsx
 |       |           NewestSidebar.tsx
 |       |           SidebarVideoList.tsx
 |       |           

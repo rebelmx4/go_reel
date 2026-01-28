@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { usePlayerStore, useScreenshotStore, usePlaylistStore, useToastStore, useVideoFileRegistryStore } from '../../stores';
+import { usePlayerStore, useScreenshotStore, usePlaylistStore, useToastStore, useVideoFileRegistryStore, useClipStore } from '../../stores';
 import {useVideoFrameCapture} from "./useVideoFrameCapture"
 import { useVideoContext } from '../contexts';
 
@@ -7,7 +7,9 @@ import { useVideoContext } from '../contexts';
 export function usePlayerActions( ) {
     const { videoRef } = useVideoContext();
 
-    
+    const { showClipTrack, toggleClipTrack, currentTime } = usePlayerStore();
+    const { clips, splitClip, mergeClip } = useClipStore();
+
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNextOriginal = usePlaylistStore(state => state.next);
      const playNext = useCallback(() => {
@@ -92,6 +94,23 @@ export function usePlayerActions( ) {
     }, [currentPath, videoFile, updateAnnotation, showToast]);
 
 
+     const cutSegment = useCallback(() => {
+        // 1. 如果轨道没开，打开它
+        if (!showClipTrack) {
+            toggleClipTrack();
+        }
+        // 2. 执行分割
+        const clip = clips.find(c => currentTime >= c.startTime && currentTime <= c.endTime);
+        if (clip) {
+            splitClip(clip.id, currentTime);
+        }
+    }, [showClipTrack, toggleClipTrack, clips, currentTime, splitClip]);
+
+    const mergeSegment = useCallback(() => {
+        mergeClip(currentTime);
+    }, [currentTime, mergeClip]);
+
+
     return {
         playNext,      
         stepFrame,    
@@ -102,6 +121,9 @@ export function usePlayerActions( ) {
         takeScreenshot,
         togglePlayPause: () => setPlaying(!isPlaying),
         openAssignTag,   
-        openCreateTag    
+        openCreateTag,
+        cutSegment,
+        mergeSegment,
+        toggleClipTrack,    
     };
 }

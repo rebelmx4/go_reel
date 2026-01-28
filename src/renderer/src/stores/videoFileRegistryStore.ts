@@ -28,6 +28,7 @@ interface VideoFileRegistryState {
    * 采用“乐观更新”策略：先改 UI，再发 IPC，失败则回滚
    */
   updateAnnotation: (path: string, updates: Partial<Annotation>) => Promise<void>;
+  batchUpdateAnnotation: (paths: string[], addedTags: number[]) => void;
 
   /** 辅助方法：非 Hook 环境下获取单个文件 */
   getVideoByPath: (path: string) => VideoFile | undefined;
@@ -96,6 +97,33 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
         }
       }));
     }
+  },
+
+
+  batchUpdateAnnotation: (paths, addedTags) => {
+    set((state) => {
+      const newVideos = { ...state.videos };
+      
+      paths.forEach(path => {
+        const originalFile = newVideos[path];
+        if (originalFile) {
+          const oldTags = originalFile.annotation?.tags || [];
+          // 合并并去重
+          const mergedTags = Array.from(new Set([...oldTags, ...addedTags]));
+          
+          newVideos[path] = {
+            ...originalFile,
+            annotation: {
+              ...DEFAULT_ANNOTATION,
+              ...(originalFile.annotation || {}),
+              tags: mergedTags
+            }
+          };
+        }
+      });
+
+      return { videos: newVideos };
+    });
   },
 
   getVideoByPath: (path) => get().videos[path],

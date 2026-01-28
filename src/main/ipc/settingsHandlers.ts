@@ -9,6 +9,7 @@ import path from 'path';
 import { preferenceManager, storageManager } from '../data/json'; 
 import { PreferenceSettings } from '../../shared';
 
+
 /**
  * 注册所有与设置相关的 IPC 处理器
  */

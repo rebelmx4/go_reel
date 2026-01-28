@@ -152,3 +152,96 @@ export function toFileUrl(filePath: string): string {
   // 为了最大的兼容性，通常使用 file:// + 路径
   return `file://${normalized}`;
 }
+
+ export interface FolderTreeNode {
+  label: string;
+  value: string; // 存储完整路径
+  children?: FolderTreeNode[];
+}
+
+/**
+ * 将平铺的视频路径数组构建为文件夹树
+ * @param videoPaths 所有的视频完整路径
+ * @param rootPath 视频源根目录 (如 C:/Videos)
+ */
+export function buildFolderTree(videoPaths: string[], rootPath: string): FolderTreeNode[] {
+  const normalizedRoot = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
+  const treeMap: Record<string, FolderTreeNode> = {};
+  const roots: FolderTreeNode[] = [];
+
+  videoPaths.forEach((fullPath) => {
+    const normalizedPath = fullPath.replace(/\\/g, '/');
+    if (!normalizedPath.startsWith(normalizedRoot)) return;
+
+    // 获取相对于根目录的路径部分
+    // 例如: root="C:/V", full="C:/V/Action/test.mp4" -> relativeDir="Action"
+    const relativePath = normalizedPath.substring(normalizedRoot.length).replace(/^\//, '');
+    const segments = relativePath.split('/');
+    segments.pop(); // 移除文件名，只保留目录部分
+
+    let currentPath = normalizedRoot;
+
+    segments.forEach((segment) => {
+      const parentPath = currentPath;
+      currentPath = `${parentPath}/${segment}`;
+
+      if (!treeMap[currentPath]) {
+        const newNode: FolderTreeNode = {
+          label: segment,
+          value: currentPath,
+          children: []
+        };
+        treeMap[currentPath] = newNode;
+
+        if (parentPath === normalizedRoot) {
+          roots.push(newNode);
+        } else {
+          const parentNode = treeMap[parentPath];
+          if (parentNode) {
+            parentNode.children = parentNode.children || [];
+            parentNode.children.push(newNode);
+          }
+        }
+      }
+    });
+  });
+
+  // 对每一层级进行字母排序
+  const sortNodes = (nodes: FolderTreeNode[]) => {
+    nodes.sort((a, b) => a.label.localeCompare(b.label));
+    nodes.forEach((node) => {
+      if (node.children) sortNodes(node.children);
+    });
+  };
+
+  sortNodes(roots);
+  return roots;
+}
+
+/**
+ * 获取包含视频的最浅层文件夹路径
+ * 用于页面初始化时定位到第一个有内容的目录
+ */
+export function getShallowestVideoFolder(videoPaths: string[], rootPath: string): string {
+  if (videoPaths.length === 0) return rootPath;
+
+  const normalizedRoot = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
+  let shallowestPath = '';
+  let minDepth = Infinity;
+
+  videoPaths.forEach((fullPath) => {
+    const dir = getDirectory(fullPath).replace(/\\/g, '/');
+    if (!dir.startsWith(normalizedRoot)) return;
+
+    // 计算深度：相对于 rootPath 有几级目录
+    const relative = dir.substring(normalizedRoot.length).replace(/^\//, '');
+    const depth = relative === '' ? 0 : relative.split('/').length;
+
+    if (depth < minDepth) {
+      minDepth = depth;
+      shallowestPath = dir;
+    }
+  });
+
+  return shallowestPath || normalizedRoot;
+}

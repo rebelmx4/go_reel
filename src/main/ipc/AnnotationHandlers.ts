@@ -18,4 +18,11 @@ export function registerAnnotationHandlers() {
       return await annotationManager.getAnnotation(filePath);
     }, null);
   });
+
+   ipcMain.handle('update-annotations-batch', async (_, filePaths: string[], updates: Partial<Annotation>) => {
+    return safeInvoke(async () => {
+      await annotationManager.updateAnnotationsBatch(filePaths, updates);
+      return { success: true };
+    }, { success: false });
+  });
 }

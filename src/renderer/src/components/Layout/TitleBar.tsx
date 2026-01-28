@@ -20,7 +20,9 @@ const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
     { value: 'history_page', label: '历史', shortcut: '1' },
     { value: 'newest_page', label: '最新', shortcut: '2' },
     { value: 'tag_search_page', label: '标签搜索', shortcut: '3' },
+    { value: 'folder_page', label: '文件夹', shortcut: '4' },
     { value: 'settings_page', label: '设置', shortcut: '8' },
+    { value: 'tag_manage_page', label: '标签管理', shortcut: '7' },
 ];
 
 export function TitleBar() {

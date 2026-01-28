@@ -59,6 +59,7 @@ declare global {
       // annotation
       updateAnnotation: (fielPath: string, updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>
       getAnnotation: (fielPath: string) => Promise<Annotation | null>
+      updateAnnotationsBatch: (filePaths: string[], updates: Partial<Annotation>) => Promise<{ success: boolean; error?: string }>
       
       // File Profile 相关接口...
       getFileProfile: (filePath: string) => Promise<FileProfile | null>
@@ -91,6 +92,8 @@ declare global {
       savePinnedTags: (pinnedTags: PinnedTag[]) => Promise<void>
       /** 视频-标签关联关系 */
       loadVideoTags: (filePath: string) => Promise<number[]>
+       updateTag: (tagId: number, updates: { keywords?: string; group?: string; description?: string }) => Promise<{ success: boolean; error?: string }>
+      
       
       // Refresh
       refreshFiles: () => Promise<any>

@@ -71,6 +71,8 @@ const api = {
     ipcRenderer.invoke('update-annotation', filePath, updates),
   getAnnotation: (filePath: string) => 
     ipcRenderer.invoke('get-annotation', filePath),
+  updateAnnotationsBatch: (filePaths, updates) => 
+    ipcRenderer.invoke('update-annotations-batch', filePaths, updates),
     
   // File Profile
   getFileProfile: (filePath: string) => 
@@ -94,6 +96,7 @@ const api = {
   loadPinnedTags: () => ipcRenderer.invoke('load-pinned-tags'),
   savePinnedTags: (pinnedTags) => ipcRenderer.invoke('save-pinned-tags', pinnedTags),
   loadVideoTags: (filePath) => ipcRenderer.invoke('load-video-tags', filePath),
+  updateTag: (tagId, updates) => ipcRenderer.invoke('update-tag', tagId, updates),
   
   // Video Export
   exportVideo: (videoPath: string, clips: any[]) =>

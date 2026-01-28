@@ -12,7 +12,7 @@ interface ClipState {
   initializeClips: (duration: number, existingClips?: VideoClip[]) => void;
   splitClip: (clipId: string, splitTime: number) => void;
   toggleClipState: (clipId: string) => void;
-  mergeClip: (clipId: string) => void;
+  mergeClip: (time: number) => void; 
   getClipAtTime: (time: number) => VideoClip | undefined;
   clearClips: () => void;
 }
@@ -82,37 +82,34 @@ export const useClipStore = create<ClipState>((set, get) => ({
     }));
   },
 
-  mergeClip: (clipId) => {
+  mergeClip: (time: number) => {
     const state = get();
-    const clipIndex = state.clips.findIndex(c => c.id === clipId);
+    // 找到当前时间所在的片段索引
+    const clipIndex = state.clips.findIndex(c => time >= c.startTime && time <= c.endTime);
     if (clipIndex === -1) return;
 
     let newClips = [...state.clips];
     
-    // Determine merge direction
-    if (clipIndex === 0) {
-      // First clip: merge with right
-      if (clipIndex + 1 < newClips.length) {
-        const rightClip = newClips[clipIndex + 1];
-        newClips[clipIndex] = {
-          ...newClips[clipIndex],
-          endTime: rightClip.endTime,
-          state: rightClip.state // Inherit right clip's state
-        };
-        newClips.splice(clipIndex + 1, 1);
-      }
-    } else {
-      // Other clips: merge with left
+    if (clipIndex > 0) {
+      // 向左愈合：前一个片段延伸到当前片段的末尾
       const leftClip = newClips[clipIndex - 1];
       newClips[clipIndex - 1] = {
         ...leftClip,
         endTime: newClips[clipIndex].endTime,
-        // Keep left clip's state
       };
       newClips.splice(clipIndex, 1);
+      set({ clips: newClips });
+    } else if (clipIndex === 0 && newClips.length > 1) {
+        // 如果是第一段，尝试合并右侧
+        const currentClip = newClips[0];
+        const rightClip = newClips[1];
+        newClips[0] = {
+            ...currentClip,
+            endTime: rightClip.endTime,
+        };
+        newClips.splice(1, 1);
+        set({ clips: newClips });
     }
-
-    set({ clips: newClips });
   },
 
     getClipAtTime: (time) => {

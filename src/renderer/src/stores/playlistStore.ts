@@ -83,17 +83,8 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   // --- 导航逻辑 ---
 
   next: () => {
-    const { mode, currentPath, searchQuery, historyIndex, historyPaths } = get();
+    const { mode, currentPath, searchQuery} = get();
 
-    // --- 逻辑 A: 如果正在回看历史 ---
-    if (historyIndex > 0) {
-        const newIndex = historyIndex - 1;
-        const targetPath = historyPaths[newIndex];
-        set({ historyIndex: newIndex, currentPath: targetPath });
-        return; 
-    }
-
-    // --- 逻辑 B: 正常产生新片 (Index === 0) ---
     const registry = useVideoFileRegistryStore.getState();
     let queue: string[] = [];
     switch (mode) {

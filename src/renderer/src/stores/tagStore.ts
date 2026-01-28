@@ -47,6 +47,8 @@ interface TagState {
   getTagById: (id: number) => Tag | undefined;
   getAllGroups: () => string[];
   isKeywordUnique: (keyword: string) => boolean;
+
+  updateTag: (tagId: number, updates: { keywords?: string; group?: string; description?: string }) => Promise<boolean>;
 }
 
 export const useTagStore = create<TagState>((set, get) => ({
@@ -199,6 +201,21 @@ export const useTagStore = create<TagState>((set, get) => ({
   },
 
   getAllGroups: () => Object.keys(get().tagsData),
+
+  updateTag: async (tagId, updates) => {
+    try {
+      const res = await window.api.updateTag(tagId, updates);
+      if (res.success) {
+        // 本地状态乐观更新 (最简单的办法是直接重刷库，或者手动操作内存)
+        await get().refreshTagLibrary(); 
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  },
 
   isKeywordUnique: (keyword) => {
     const { tagsData } = get();

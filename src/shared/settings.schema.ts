@@ -23,6 +23,8 @@ export interface ViewNavActions {
   liked_page: MultiKey;
   elite_page: MultiKey;
   settings_page: MultiKey; 
+  folder_page: MultiKey;
+  tag_manage_page: MultiKey;
 }
 
 

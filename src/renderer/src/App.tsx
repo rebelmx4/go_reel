@@ -17,7 +17,9 @@ import {
   HistoryPage,
   NewestPage,
   ElitePage,
-  SettingsPage
+  SettingsPage,
+  FolderPage,
+  TagManagePage
 } from './pages';
 
 // 4. Utils
@@ -53,6 +55,8 @@ function App() {
       elite_page: () => setView('elite_page'),
       player_page: () => setView('player_page'),
       settings_page: () => setView('settings_page'),
+      folder_page: () => setView('folder_page'),
+      tag_manage_page: () => setView('tag_manage_page'),
       open_video_dir: () => {
         window.api.openVideoSourceDir().then(res => {
           if (!res.success) console.error('无法打开目录:', res.error);
@@ -75,6 +79,9 @@ function App() {
     { id: 'elite_page', component: <ElitePage /> },
     { id: 'tag_search_page', component: <TagSearchPage /> },
     { id: 'settings_page', component: <SettingsPage /> },
+    { id: 'folder_page', component: <FolderPage /> },
+    { id: 'tag_manage_page', component: <TagManagePage /> },
+
   ], []);
 
   return (

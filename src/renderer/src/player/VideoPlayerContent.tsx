@@ -110,8 +110,8 @@ export const VideoPlayerContent = () => {
         loadVideoData();
     }, [currentPath, duration, initializeClips, clearClips]);
 
-    // --- 6. 渲染层 ---
 
+    // --- 6. 渲染层 ---
     if (!currentPath) {
         return (
             <Center h="100%" bg="black">
