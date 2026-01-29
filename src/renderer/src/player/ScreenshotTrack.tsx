@@ -1,7 +1,9 @@
+// src/renderer/src/components/Screenshot/ScreenshotTrack.tsx
+
 import { Box, Group, ActionIcon, Tooltip, Loader, Center, Collapse, UnstyledButton } from '@mantine/core';
-import { IconLayoutGrid, IconLayoutNavbar, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
-import { usePlayerStore, useScreenshotStore, useToastStore, usePlaylistStore, useVideoFileRegistryStore } from '../stores';
-import { useMemo, useState, useEffect } from 'react';
+import { IconLayoutGrid, IconLayoutNavbar, IconChevronUp, IconChevronDown, IconGripHorizontal } from '@tabler/icons-react';
+import { usePlayerStore, useScreenshotStore, usePlaylistStore, useVideoFileRegistryStore } from '../stores';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { ScreenshotNavView } from './ScreenshotNavView';
 import { ScreenshotGalleryView } from './ScreenshotGalleryView';
 import { useClipStore } from '../stores/clipStore';
@@ -10,53 +12,116 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
     const [viewMode, setViewMode] = useState<'nav' | 'preview'>('nav');
     const [opened, setOpened] = useState(true);
 
+    // --- 新增：高度管理 ---
+    const [trackHeight, setTrackHeight] = useState(130);
+    const isResizing = useRef(false);
+
     const { screenshots, isLoading, loadScreenshots, deleteScreenshot, setAsCover } = useScreenshotStore();
     const currentVideoPath = usePlaylistStore(state => state.currentPath);
-    const currentTime = usePlayerStore(state => state.currentTime);
     const rotation = usePlayerStore(state => state.rotation);
-    const showToast = useToastStore(state => state.showToast);
     const clips = useClipStore(state => state.clips);
+
+    // 切换模式时自动调整默认高度
+    useEffect(() => {
+        setTrackHeight(viewMode === 'nav' ? 130 : 400);
+    }, [viewMode]);
+
+    // --- 新增：拖拽调整高度逻辑 ---
+    const startResizing = useCallback((e: React.MouseEvent) => {
+        isResizing.current = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', stopResizing);
+        document.body.style.cursor = 'ns-resize'; // 改变全局指针样式
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        isResizing.current = false;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', stopResizing);
+        document.body.style.cursor = 'default';
+    }, []);
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isResizing.current) return;
+        // 计算新高度：因为轨道在底部，向上拖拽（clientY 变小）高度应该增加
+        // 我们通过当前容器的底部位置减去鼠标位置来计算
+        const newHeight = window.innerHeight - e.clientY;
+        // 限制最小和最大高度
+        if (newHeight > 100 && newHeight < window.innerHeight * 0.8) {
+            setTrackHeight(newHeight);
+        }
+    }, []);
 
     useEffect(() => {
         if (currentVideoPath) loadScreenshots(currentVideoPath);
     }, [currentVideoPath, loadScreenshots]);
 
-
     const screenshotsWithState = useMemo(() => {
         return screenshots.map(s => {
             const timestampSec = s.timestamp / 1000;
             const parentClip = clips.find(c => timestampSec >= c.startTime && timestampSec < c.endTime);
-            return {
-                ...s,
-                isRemoved: parentClip?.state === 'remove'
-            };
+            return { ...s, isRemoved: parentClip?.state === 'remove' };
         });
     }, [screenshots, clips]);
 
     const activeScreenshot = useMemo(() => {
         if (screenshots.length === 0) return null;
-        const currentMs = currentTime * 1000;
+        const currentMs = usePlayerStore.getState().currentTime * 1000;
         return screenshots.reduce((closest, s) => {
             const currentDiff = Math.abs(s.timestamp - currentMs);
             const closestDiff = Math.abs(closest.timestamp - currentMs);
             return currentDiff < closestDiff ? s : closest;
         });
-    }, [currentTime, screenshots]);
+    }, [screenshots]);
 
     return (
-        <Box style={{ position: 'relative', width: '100%', marginTop: opened ? 30 : 0 }}>
-            {/* 动态控制条 */}
+        <Box style={{ position: 'relative', width: '100%', marginTop: opened ? 0 : 0 }}>
+
+            {/* 1. 拖拽调整条 (Resize Bar) */}
+            {opened && (
+                <Box
+                    onMouseDown={startResizing}
+                    style={{
+                        position: 'absolute',
+                        top: -4, // 稍微偏移以便更容易抓取
+                        left: 0,
+                        right: 0,
+                        height: 8,
+                        cursor: 'ns-resize',
+                        zIndex: 20,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        // 鼠标悬停时显示提示色
+                        transition: 'background-color 0.2s',
+                    }}
+                    className="resize-handle"
+                >
+                    <Box style={{
+                        width: 40,
+                        height: 4,
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <IconGripHorizontal size={14} color="rgba(255,255,255,0.5)" />
+                    </Box>
+                </Box>
+            )}
+
+            {/* 2. 控制按钮组 */}
             <Group
                 gap={0}
                 style={{
                     position: 'absolute',
-                    top: opened ? -30 : -20, // 隐藏时贴近底部
-                    right: 0,
-                    zIndex: 10,
+                    top: opened ? -30 : -20,
+                    right: 16,
+                    zIndex: 21,
                     transition: 'all 0.2s ease'
                 }}
             >
-                {/* 只有展开时才显示模式切换 */}
                 {opened && (
                     <Box style={{
                         display: 'flex',
@@ -66,7 +131,7 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                         borderRadius: '4px 0 0 0',
                         padding: '2px 6px'
                     }}>
-                        <Tooltip label={viewMode === 'nav' ? "预览模式 (大图)" : "导航模式 (小图)"}>
+                        <Tooltip label={viewMode === 'nav' ? "切换画廊模式" : "切换导航模式"}>
                             <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => setViewMode(viewMode === 'nav' ? 'preview' : 'nav')}>
                                 {viewMode === 'nav' ? <IconLayoutGrid size={16} /> : <IconLayoutNavbar size={16} />}
                             </ActionIcon>
@@ -74,7 +139,6 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                     </Box>
                 )}
 
-                {/* 收起/展开按钮：永远存在但位置自适应 */}
                 <UnstyledButton
                     onClick={() => setOpened(!opened)}
                     style={{
@@ -94,17 +158,19 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                 </UnstyledButton>
             </Group>
 
-            {/* 轨道主体 */}
+            {/* 3. 内容主体 */}
             <Collapse in={opened}>
                 <Box style={{
                     borderTop: '1px solid #333',
-                    backgroundColor: '#000', // 预览模式用纯黑背景更专业
+                    backgroundColor: '#000',
                     overflow: 'hidden',
-                    height: opened ? (viewMode === 'nav' ? 124 : 320) : 0, // 明确高度防止抖动
-                    transition: 'height 0.2s ease'
+                    // 使用动态高度
+                    height: trackHeight,
+                    transition: isResizing.current ? 'none' : 'height 0.2s ease',
+                    position: 'relative'
                 }}>
                     {isLoading && screenshots.length === 0 ? (
-                        <Center h={viewMode === 'nav' ? 120 : 320}><Loader size="sm" /></Center>
+                        <Center h="100%"><Loader size="sm" /></Center>
                     ) : (
                         viewMode === 'nav' ? (
                             <ScreenshotNavView
@@ -115,11 +181,7 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                                 onSetCover={async (s) => {
                                     const screenshotRawPath = s.path.replace('file://', '');
                                     const success = await setAsCover(currentVideoPath!, screenshotRawPath);
-
-                                    if (success) {
-                                        // 核心：只更新内存中的状态，不涉及 Annotation 数据库
-                                        useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
-                                    }
+                                    if (success) useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
                                 }}
                                 onDelete={s => deleteScreenshot(currentVideoPath!, s.filename)}
                             />
@@ -128,15 +190,13 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                                 screenshots={screenshotsWithState as any}
                                 activeFilename={activeScreenshot?.filename}
                                 rotation={rotation}
+                                // 将动态高度传给 Gallery 内部
+                                containerHeight={trackHeight}
                                 onScreenshotClick={onScreenshotClick}
                                 onSetCover={async (s) => {
                                     const screenshotRawPath = s.path.replace('file://', '');
                                     const success = await setAsCover(currentVideoPath!, screenshotRawPath);
-
-                                    if (success) {
-                                        // 核心：只更新内存中的状态，不涉及 Annotation 数据库
-                                        useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
-                                    }
+                                    if (success) useVideoFileRegistryStore.getState().refreshCover(currentVideoPath!);
                                 }}
                                 onDelete={s => deleteScreenshot(currentVideoPath!, s.filename)}
                             />

@@ -1,3 +1,5 @@
+// src/renderer/src/components/Screenshot/ScreenshotNavView.tsx
+
 import { Box, ActionIcon } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useRef, useEffect } from 'react';
@@ -17,9 +19,14 @@ interface NavViewProps {
     onDelete: (s: Screenshot) => void;
 }
 
-
-
-export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScreenshotClick, onSetCover, onDelete }: NavViewProps) {
+export function ScreenshotNavView({
+    screenshots,
+    activeFilename,
+    rotation,
+    onScreenshotClick,
+    onSetCover,
+    onDelete
+}: NavViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // 核心：居中滚动逻辑
@@ -27,19 +34,17 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
         if (!activeFilename || !scrollRef.current) return;
 
         const container = scrollRef.current;
-        // 注意：处理文件名中的点，防止 querySelector 报错
         const safeId = activeFilename.replace(/\./g, '\\.');
         const activeElement = container.querySelector(`#screenshot-${safeId}`) as HTMLElement;
 
         if (activeElement) {
-            // 计算公式：卡片左偏移 - 容器一半宽度 + 卡片一半宽度 = 居中
             const scrollLeft = activeElement.offsetLeft - container.offsetWidth / 2 + activeElement.offsetWidth / 2;
             container.scrollTo({
                 left: scrollLeft,
                 behavior: 'smooth'
             });
         }
-    }, [activeFilename]); // 当激活的截图变化时触发
+    }, [activeFilename, screenshots.length]);
 
     const handlePage = (direction: 'prev' | 'next') => {
         if (!scrollRef.current) return;
@@ -49,22 +54,39 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
     };
 
     return (
-        <Box style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', height: 130 }}>
-            <ActionIcon variant="subtle" color="gray" onClick={() => handlePage('prev')} disabled={screenshots.length === 0}>
+        <Box style={{
+            display: 'flex',
+            alignItems: 'center', // 关键：当轨道被拉高时，让内容垂直居中
+            gap: 4,
+            width: '100%',
+            height: '100%', // 关键：填充父容器动态高度
+            backgroundColor: '#000',
+            padding: '0 8px'
+        }}>
+            {/* 左翻页按钮 */}
+            <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="xl"
+                onClick={() => handlePage('prev')}
+                disabled={screenshots.length === 0}
+            >
                 <IconChevronLeft size={30} />
             </ActionIcon>
 
+            {/* 截图滚动区域 */}
             <Box
                 ref={scrollRef}
                 style={{
                     flex: 1,
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'center', // 确保图片在这一排里也是居中的
                     gap: 12,
                     overflowX: 'hidden',
-                    padding: '5px 0',
+                    padding: '10px 0',
                     scrollBehavior: 'smooth',
-                    position: 'relative'
+                    position: 'relative',
+                    height: '100%'
                 }}
             >
                 {screenshots.map(s => (
@@ -83,7 +105,14 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
                 ))}
             </Box>
 
-            <ActionIcon variant="subtle" color="gray" onClick={() => handlePage('next')} disabled={screenshots.length === 0}>
+            {/* 右翻页按钮 */}
+            <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="xl"
+                onClick={() => handlePage('next')}
+                disabled={screenshots.length === 0}
+            >
                 <IconChevronRight size={30} />
             </ActionIcon>
         </Box>

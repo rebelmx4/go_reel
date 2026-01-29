@@ -13,6 +13,7 @@ interface GalleryViewProps {
     screenshots: AugmentedScreenshot[];
     activeFilename?: string;
     rotation: number;
+    containerHeight: number;
     onScreenshotClick: (ts: number) => void;
     onSetCover: (s: Screenshot) => void;
     onDelete: (s: Screenshot) => void;
@@ -22,6 +23,7 @@ export function ScreenshotGalleryView({
     screenshots,
     activeFilename,
     rotation,
+    containerHeight,
     onScreenshotClick,
     onSetCover,
     onDelete
@@ -76,24 +78,16 @@ export function ScreenshotGalleryView({
         <Box
             ref={containerRef}
             style={{
-                // 作为一个局部板块，设定合适的最大高度并允许内部滚动
-                maxHeight: 'calc(100vh - 600px)',
-                minHeight: 300,
+                // 关键改动：使用父组件传来的 trackHeight
+                height: containerHeight,
                 overflowY: 'auto',
                 overflowX: 'hidden',
-
-                // 参考 VideoGrid 的布局参数
                 display: 'grid',
                 gridTemplateColumns: `repeat(auto-fill, minmax(${gridMinWidth}px, 1fr))`,
                 gap: 16,
-                padding: 20,
-
-                backgroundColor: '#101113', // 深色背景衬托截图
+                padding: '20px', // 增加 Padding 更有呼吸感
+                backgroundColor: '#101113',
                 scrollBehavior: 'smooth',
-
-                // 优化滚动条样式 (Mantine 风格)
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#444 transparent',
             }}
         >
             {screenshots.map(s => (
