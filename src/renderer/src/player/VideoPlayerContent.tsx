@@ -29,7 +29,7 @@ export const VideoPlayerContent = () => {
     const playNext = usePlaylistStore(state => state.next);
     const {
         isPlaying, volume, rotation, showSidebar, sidebarTab,
-        setPlaying, setCurrentTime, reset, handleSidebarTabClick, modals,
+        setPlaying, setCurrentTime, handleSidebarTabClick, modals,
         closeAssignTagModal,
         closeCreateTagModal,
         setTagCoverImage
@@ -78,9 +78,8 @@ export const VideoPlayerContent = () => {
             clear();
             return;
         }
-        reset();
         loadScreenshots(currentPath);
-    }, [currentPath, loadScreenshots, clear, reset]);
+    }, [currentPath, loadScreenshots, clear]);
 
     // 自动播放下一个
     useEffect(() => {
@@ -145,6 +144,7 @@ export const VideoPlayerContent = () => {
                         onRotate={actions.rotateVideo}
                         onDelete={actions.softDelete}
                         onToggleFavorite={actions.toggleFavorite}
+                        onHandleTranscode={actions.handleTranscode}
                     />
                 </Box>
             </Box>

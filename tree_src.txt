@@ -1,4 +1,4 @@
-Volume serial number is 0000E2DC C282:B5EC
+Volume serial number is 000048B5 C282:B5EC
 E:\100_MYPROJECTS\GO_REEL\SRC
 +---main
 |   |   index.ts
@@ -79,7 +79,6 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   |   
 |       |   +---Dialog
 |       |   |       AssignTagDialog.tsx
-|       |   |       BatchAssignTagDialog.tsx
 |       |   |       CreateTagDialog.tsx
 |       |   |       ExportScreenshotDialog.tsx
 |       |   |       RefreshProgressDialog.tsx
@@ -108,7 +107,6 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |       
 |       +---pages
 |       |       ElitePage.tsx
-|       |       FolderPage.tsx
 |       |       HistoryPage.tsx
 |       |       index.ts
 |       |       LikedPage.tsx

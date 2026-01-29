@@ -100,7 +100,9 @@ const api = {
   
   // Video Export
   exportVideo: (videoPath: string, clips: any[]) =>
-    ipcRenderer.invoke('export-video', videoPath, clips)
+    ipcRenderer.invoke('export-video', videoPath, clips),
+
+   transcodeVideo: (filePath: string) => ipcRenderer.invoke('video:transcode', filePath),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

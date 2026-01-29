@@ -94,7 +94,6 @@ declare global {
       loadVideoTags: (filePath: string) => Promise<number[]>
        updateTag: (tagId: number, updates: { keywords?: string; group?: string; description?: string }) => Promise<{ success: boolean; error?: string }>
       
-      
       // Refresh
       refreshFiles: () => Promise<any>
       
@@ -106,6 +105,8 @@ declare global {
       getHistory: () => Promise<string[]>
       clearHistory: () => Promise<void>
       removeFromHistory: (filePath: string) => Promise<void>
+
+       transcodeVideo: (filePath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
     }
   }
 }

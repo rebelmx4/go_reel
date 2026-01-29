@@ -37,7 +37,7 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
                 backgroundColor: 'black'
             }}
             onDoubleClick={() => setPlaying(!isPlaying)}
-            onWheel={handleWheel}
+            onWheel={handleWheel} // 绑定滚轮事件
         >
             <video
                 ref={videoRef}

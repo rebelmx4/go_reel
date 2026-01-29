@@ -58,7 +58,7 @@ interface PlayerState {
 
   // 快捷操作
   togglePlay: () => void;
-  reset: () => void; // 切换视频时重置状态
+  reset: (initialRotation) => void; // 切换视频时重置状态
 
   // 专门控制弹窗的方法
   openAssignTagModal: () => void;
@@ -148,11 +148,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   
-  reset: () => set({
+  reset: (initialRotation = 0) => set({
     currentTime: 0,
     duration: 0,
     isPlaying: false,
-    rotation: 0 // 切换时先归零，后续由组件根据 Annotation 补齐
+    rotation: initialRotation// 切换时先归零，后续由组件根据 Annotation 补齐
   }),
 
    openAssignTagModal: () => set((state) => ({ 

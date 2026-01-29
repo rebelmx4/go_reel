@@ -16,6 +16,8 @@ export function useVideoData() {
   const currentPath = usePlaylistStore((state) => state.currentPath);
   const setFramerate = usePlayerStore((state) => state.setFramerate);
   const setRotation = usePlayerStore((state) => state.setRotation);
+  const reset = usePlayerStore((state) => state.reset);
+  
 
   // 获取当前视频在注册表中的档案
   const videoFile = useVideoFileRegistryStore((s) => 
@@ -27,7 +29,7 @@ export function useVideoData() {
 
     // --- 1. 同步旋转角度 ---
     const savedRotation = videoFile?.annotation?.rotation ?? 0;
-    setRotation(savedRotation);
+    reset(savedRotation);
 
     // --- 2. 获取物理帧率 ---
     // 帧率通常需要 ffmpeg 实时读取，如果 Registry 里没存，则在这里获取一次

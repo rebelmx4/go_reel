@@ -2,7 +2,7 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack,
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack, IconTransform
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -38,9 +38,10 @@ interface PlayerControlsProps {
     onRotate: () => void;
     onDelete: () => void;
     onToggleFavorite: () => void;
+    onHandleTranscode: () => void;
 }
 
-export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onToggleFavorite }: PlayerControlsProps) {
+export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onToggleFavorite, onHandleTranscode }: PlayerControlsProps) {
     const { videoRef } = useVideoContext();
 
     // --- 1. Store 数据订阅 ---
@@ -244,6 +245,17 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                             onClick={() => setHoverSeekMode(!isHoverSeekMode)}
                         >
                             <IconMagnet size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    {/* [新增] 转码按钮 */}
+                    <Tooltip label="兼容性转码 (修复无法播放或卡顿)">
+                        <ActionIcon
+                            variant="subtle"
+                            color="orange" // 使用橙色表示这是“修复/转换”类操作
+                            onClick={onHandleTranscode}
+                            disabled={!currentPath}
+                        >
+                            <IconTransform size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>

@@ -2,29 +2,8 @@ import path from 'path';
 import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 import fs from 'fs';
 import { spawn } from 'child_process';
+import { ffprobeFullPath } from './ffmpegConfig';
 
-/**
- * 配置 fluent-ffmpeg 使用工程根目录 bin 文件夹下的二进制文件
- */
-
-const projectRoot = process.cwd();
-const binPath = path.join(projectRoot, 'bin');
-
-const isWindows = process.platform === 'win32';
-const ffmpegName = isWindows ? 'ffmpeg.exe' : 'ffmpeg';
-const ffprobeName = isWindows ? 'ffprobe.exe' : 'ffprobe';
-
-const ffmpegFullPath = path.join(binPath, ffmpegName);
-const ffprobeFullPath = path.join(binPath, ffprobeName);
-
-if (!fs.existsSync(ffmpegFullPath) || !fs.existsSync(ffprobeFullPath)) {
-console.error('CRITICAL: FFmpeg binaries not found at:', binPath);
-}
-
-export function setupFfmpeg() {
-  ffmpeg.setFfmpegPath(ffmpegFullPath);
-  ffmpeg.setFfprobePath(ffprobeFullPath);
-}
 
 /**
  * 视频处理工具类

@@ -3,7 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers } from './services';
+import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers, registerVideoTranscodeHandlers } from './services';
 import {
   registerWindowHandlers,
   registerMetadataHandler,
@@ -13,6 +13,7 @@ import {
   registerAnnotationHandlers,
   registerTagHandlers,
   registerHistoryHandlers
+  
 } from './ipc';
 
 import { setupFfmpeg } from './utils';
@@ -89,7 +90,8 @@ function setupIpcHandlers() {
   registerHistoryHandlers();
   registerFileSytemHandlers();
   registerStartupServiceHandlers();
-  registerVideoExportHandlers()
+  registerVideoExportHandlers();
+  registerVideoTranscodeHandlers();
   
 
   ipcMain.handle('select-directory', async () => {

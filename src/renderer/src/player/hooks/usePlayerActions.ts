@@ -111,6 +111,28 @@ export function usePlayerActions( ) {
     }, [currentTime, mergeClip]);
 
 
+     const handleTranscode = useCallback(async () => {
+        if (!currentPath) return;
+
+        showToast({ message: '转码已开始，请稍候...', type: 'info' });
+
+        try {
+            const result = await window.api.transcodeVideo(currentPath);
+            if (result.success) {
+                // 按照你的设计：转码成功后仅提示，用户重新点击该视频即可播放正确的
+                showToast({ 
+                    message: '转码成功！重新点击播放或切换视频即可生效', 
+                    type: 'success',
+                    // duration: 5000 // 可以适当延长提示时间
+                });
+            } else {
+                showToast({ message: `转码失败: ${result.error}`, type: 'error' });
+            }
+        } catch (error: any) {
+            showToast({ message: `请求转码失败: ${error.message}`, type: 'error' });
+        }
+    }, [currentPath, showToast]);
+
     return {
         playNext,      
         stepFrame,    
@@ -125,5 +147,6 @@ export function usePlayerActions( ) {
         cutSegment,
         mergeSegment,
         toggleClipTrack,    
+        handleTranscode    
     };
 }
