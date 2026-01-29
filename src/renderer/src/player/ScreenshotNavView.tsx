@@ -56,7 +56,7 @@ export function ScreenshotNavView({
     return (
         <Box style={{
             display: 'flex',
-            alignItems: 'center', // 关键：当轨道被拉高时，让内容垂直居中
+            alignItems: 'stretch', // 关键：当轨道被拉高时，让内容垂直居中
             gap: 4,
             width: '100%',
             height: '100%', // 关键：填充父容器动态高度
@@ -90,7 +90,10 @@ export function ScreenshotNavView({
                 }}
             >
                 {screenshots.map(s => (
-                    <Box key={s.filename} onClick={() => onScreenshotClick(s.timestamp)}>
+                    <Box key={s.filename}
+                        onClick={() => onScreenshotClick(s.timestamp)}
+                        style={{ height: '100%', flexShrink: 0 }} // 确保外层包裹 Box 也是 100% 高度
+                    >
                         <ScreenshotCard
                             screenshot={s}
                             mode="nav"

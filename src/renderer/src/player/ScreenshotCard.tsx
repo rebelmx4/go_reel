@@ -54,8 +54,7 @@ export function ScreenshotCard({
     return (
         <Box
             id={`screenshot-${screenshot.filename.replace(/\./g, '\\.')}`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            // ... 鼠标事件 ...
             style={{
                 position: 'relative',
                 borderRadius: 8,
@@ -63,21 +62,18 @@ export function ScreenshotCard({
                 cursor: 'pointer',
                 backgroundColor: '#000',
 
-                // 响应式比例与尺寸
-                aspectRatio: mode === 'preview' ? aspectRatio : 'auto',
-                height: mode === 'nav' ? `${navHeight}px` : '100%',
-                width: mode === 'nav' ? 'auto' : '100%',
-                minWidth: mode === 'nav' ? (isRotatedVertical ? 68 : 178) : 'none',
+                // --- 核心修改：高度跟随父容器，宽度根据比例自动计算 ---
+                height: '100%',
+                aspectRatio: aspectRatio,
+                width: 'auto',
+                // ------------------------------------------------
 
-                // 参考 VideoCard 的边框与选中效果
                 border: isActive
                     ? '2px solid var(--mantine-color-blue-6)'
                     : '2px solid #2C2E33',
                 boxShadow: isActive ? '0 0 10px rgba(34, 139, 230, 0.5)' : 'none',
-
-                // 删除状态的视觉处理
                 filter: isRemoved ? 'grayscale(100%) opacity(0.5)' : 'none',
-                transition: 'all 0.2s ease'
+                transition: 'border 0.2s, box-shadow 0.2s, filter 0.3s' // 移除 height 动画防止拉伸时卡顿
             }}
         >
             {/* 选中时的蓝色微光遮罩 (复刻 VideoCard) */}
