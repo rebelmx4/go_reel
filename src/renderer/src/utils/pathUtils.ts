@@ -165,16 +165,24 @@ export function toFileUrl(filePath: string): string {
  * @param rootPath 视频源根目录 (如 C:/Videos)
  */
 export function buildFolderTree(videoPaths: string[], rootPath: string): FolderTreeNode[] {
+  // 1. 如果 rootPath 没准备好，不进行构建，防止生成错误的 "/D:" 路径
+  if (!rootPath) return [];
+
+  // 2. 标准化根路径：统一正斜杠，移除末尾斜杠
   const normalizedRoot = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
+  
   const treeMap: Record<string, FolderTreeNode> = {};
   const roots: FolderTreeNode[] = [];
 
   videoPaths.forEach((fullPath) => {
+    // 标准化当前处理的文件路径
     const normalizedPath = fullPath.replace(/\\/g, '/');
+    
+    // 仅处理属于 rootPath 范围内的路径
     if (!normalizedPath.startsWith(normalizedRoot)) return;
 
     // 获取相对于根目录的路径部分
-    // 例如: root="C:/V", full="C:/V/Action/test.mp4" -> relativeDir="Action"
+    // 例如: root="D:/V", full="D:/V/Action/test.mp4" -> relativePath="Action/test.mp4"
     const relativePath = normalizedPath.substring(normalizedRoot.length).replace(/^\//, '');
     const segments = relativePath.split('/');
     segments.pop(); // 移除文件名，只保留目录部分
@@ -183,7 +191,12 @@ export function buildFolderTree(videoPaths: string[], rootPath: string): FolderT
 
     segments.forEach((segment) => {
       const parentPath = currentPath;
-      currentPath = `${parentPath}/${segment}`;
+      
+      // 拼接当前层级的完整路径作为唯一的 value (ID)
+      // 注意：处理盘符后的斜杠拼接，防止出现 D://m
+      currentPath = parentPath.endsWith('/') 
+        ? `${parentPath}${segment}` 
+        : `${parentPath}/${segment}`;
 
       if (!treeMap[currentPath]) {
         const newNode: FolderTreeNode = {
@@ -193,9 +206,11 @@ export function buildFolderTree(videoPaths: string[], rootPath: string): FolderT
         };
         treeMap[currentPath] = newNode;
 
+        // 如果该节点是根路径的直接子目录，则放入 roots
         if (parentPath === normalizedRoot) {
           roots.push(newNode);
         } else {
+          // 否则放入其父节点的 children 中
           const parentNode = treeMap[parentPath];
           if (parentNode) {
             parentNode.children = parentNode.children || [];
@@ -206,11 +221,13 @@ export function buildFolderTree(videoPaths: string[], rootPath: string): FolderT
     });
   });
 
-  // 对每一层级进行字母排序
+  // 3. 对每一层级按字母顺序排序
   const sortNodes = (nodes: FolderTreeNode[]) => {
-    nodes.sort((a, b) => a.label.localeCompare(b.label));
+    nodes.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }));
     nodes.forEach((node) => {
-      if (node.children) sortNodes(node.children);
+      if (node.children && node.children.length > 0) {
+        sortNodes(node.children);
+      }
     });
   };
 

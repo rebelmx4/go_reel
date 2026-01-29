@@ -1,7 +1,7 @@
 // src/renderer/src/pages/FolderPage.tsx
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Box, Text, ScrollArea, Group, Button, Stack, Tree, useTree, Divider } from '@mantine/core';
+import { Box, Text, ScrollArea, Group, Button, Stack, Tree, useTree, Divider, LoadingOverlay } from '@mantine/core';
 import { IconFolder, IconTag, IconCheck, IconX } from '@tabler/icons-react';
 import {
     useVideoFileRegistryStore,
@@ -37,12 +37,14 @@ export function FolderPage() {
     }, [videoPaths]);
 
     // --- 4. 树逻辑 (Mantine Tree) ---
-    const treeData = useMemo(() =>
-        buildFolderTree(videoPaths, videoSource),
-        [videoPaths, videoSource]
-    );
+    const treeData = useMemo(() => {
+        if (!videoSource) return []; // 根路径没准备好，不构建
+        return buildFolderTree(videoPaths, videoSource);
+    }, [videoPaths, videoSource]);
 
     const tree = useTree();
+
+    console.log(JSON.stringify(treeData));
 
     // --- 5. 视频过滤 logic ---
     const currentVideos = useMemo(() => {
@@ -104,6 +106,8 @@ export function FolderPage() {
         [selectedPaths, videos]
     );
 
+    if (!videoSource) return <LoadingOverlay visible />;
+
     return (
         <Box style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
             {/* 左侧：文件夹树 */}
@@ -124,28 +128,41 @@ export function FolderPage() {
                         data={treeData}
                         tree={tree}
                         levelOffset={20}
-                        // 1. 移除这里的 onNodeClick
                         renderNode={({ node, expanded, hasChildren, elementProps }) => (
                             <Group
                                 gap={5}
                                 {...elementProps}
-                                // 2. 将点击逻辑移到这里
-                                onClick={() => {
+                                // 覆盖默认 onClick，自行组合逻辑
+                                onClick={(event) => {
+                                    event.stopPropagation();
+
+                                    // 1. 选中文件夹（更新右侧列表）
                                     setActiveFolder(node.value);
                                     handleClearSelection();
+
+                                    // 2. 切换展开/收起
+                                    if (hasChildren) {
+                                        tree.toggleExpanded(node.value);
+                                    }
                                 }}
                                 style={{
                                     ...elementProps.style,
                                     padding: '4px 8px',
                                     borderRadius: 4,
                                     cursor: 'pointer',
+                                    // 保持高亮逻辑
                                     backgroundColor: activeFolder === node.value ? 'rgba(34, 139, 230, 0.15)' : 'transparent',
                                     color: activeFolder === node.value ? '#339af0' : '#eee'
                                 }}
                             >
                                 <IconFolder
                                     size={16}
-                                    style={{ opacity: hasChildren ? 1 : 0.5 }}
+                                    style={{
+                                        opacity: hasChildren ? 1 : 0.5,
+                                        // 可选：如果是展开状态，换一个图标或者旋转一下
+                                        transform: expanded ? 'rotate(10deg)' : 'none',
+                                        transition: 'transform 0.2s'
+                                    }}
                                     fill={activeFolder === node.value ? 'currentColor' : 'none'}
                                 />
                                 <Text size="sm" truncate>{node.label}</Text>
