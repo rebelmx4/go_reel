@@ -1,7 +1,9 @@
-import { Box, ActionIcon } from '@mantine/core';
-import { IconPhoto, IconTrash, IconCheck } from '@tabler/icons-react';
+// src/renderer/src/components/Screenshot/ScreenshotCard.tsx
+
+import { Box, ActionIcon, Tooltip } from '@mantine/core';
+import { IconPhoto, IconTrash, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { Screenshot } from '../stores/screenshotStore';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatDuration } from '../utils/format';
 
 interface ScreenshotCardProps {
@@ -25,13 +27,11 @@ export function ScreenshotCard({
     onSetCover,
     onDelete,
 }: ScreenshotCardProps) {
-
     const [isHovered, setIsHovered] = useState(false);
-    const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
-
     const [visualRotation, setVisualRotation] = useState(rotation);
     const prevRotationRef = useRef(rotation);
 
+    // 平滑旋转处理逻辑
     useEffect(() => {
         const prev = prevRotationRef.current;
         let delta = rotation - prev;
@@ -43,82 +43,138 @@ export function ScreenshotCard({
 
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
-    // 1. 确定容器高度 (预览模式固定 320，导航模式根据旋转 100/120)
-    const containerHeight = mode === 'preview' ? 320 : (isRotatedVertical ? 120 : 100);
-
-    // 2. 动态计算逻辑宽度 (用于旋转后的尺寸补偿)
-    const logicalWidth = useMemo(() => {
-        const currentRatio = isRotatedVertical ? (1 / aspectRatio) : aspectRatio;
-        return containerHeight * currentRatio;
-    }, [containerHeight, aspectRatio, isRotatedVertical]);
+    /**
+     * 核心布局策略：
+     * 1. 纵向图就是纵向 (9/16)，横向就是横向 (16/9)
+     * 2. 导航模式固定高度，预览模式随 Grid 自适应
+     */
+    const aspectRatio = isRotatedVertical ? '9 / 16' : '16 / 9';
+    const navHeight = isRotatedVertical ? 120 : 100;
 
     return (
         <Box
-            id={`screenshot-${screenshot.filename}`}
-            className="screenshot-card-container"
+            id={`screenshot-${screenshot.filename.replace(/\./g, '\\.')}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             style={{
                 position: 'relative',
-                flexShrink: 0,
-                height: `${containerHeight}px`,
-                // 预览模式填满 Grid，导航模式固定计算出的宽度
-                width: mode === 'preview' ? '100%' : `${logicalWidth}px`,
-                backgroundColor: '#000',
-                borderRadius: mode === 'nav' ? 4 : 8,
+                borderRadius: 8,
                 overflow: 'hidden',
                 cursor: 'pointer',
-                border: `2px solid ${isActive ? '#228be6' : 'transparent'}`,
-                filter: isRemoved ? 'grayscale(100%) opacity(0.4)' : 'none',
-                transition: 'filter 0.3s ease'
+                backgroundColor: '#000',
+
+                // 响应式比例与尺寸
+                aspectRatio: mode === 'preview' ? aspectRatio : 'auto',
+                height: mode === 'nav' ? `${navHeight}px` : '100%',
+                width: mode === 'nav' ? 'auto' : '100%',
+                minWidth: mode === 'nav' ? (isRotatedVertical ? 68 : 178) : 'none',
+
+                // 参考 VideoCard 的边框与选中效果
+                border: isActive
+                    ? '2px solid var(--mantine-color-blue-6)'
+                    : '2px solid #2C2E33',
+                boxShadow: isActive ? '0 0 10px rgba(34, 139, 230, 0.5)' : 'none',
+
+                // 删除状态的视觉处理
+                filter: isRemoved ? 'grayscale(100%) opacity(0.5)' : 'none',
+                transition: 'all 0.2s ease'
             }}
         >
-            {/* 如果是被删除的，可以加个小图标提示 */}
-            {isRemoved && (
-                <Box style={{ position: 'absolute', top: 5, right: 5, zIndex: 10 }}>
-                    <IconTrash size={14} color="red" />
-                </Box>
+            {/* 选中时的蓝色微光遮罩 (复刻 VideoCard) */}
+            {isActive && (
+                <Box style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'rgba(34, 139, 230, 0.1)',
+                    pointerEvents: 'none',
+                    zIndex: 2
+                }} />
             )}
+
+            {/* 图片主体 */}
             <img
                 src={screenshot.path}
                 alt="Screenshot"
-                onLoad={(e) => {
-                    const img = e.currentTarget;
-                    if (img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight);
-                }}
                 style={{
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    objectFit: 'cover',
+                    // 关键改动：使用 fill 确保不截断，允许变形
+                    objectFit: 'fill',
+                    // 当旋转 90/270度时，图片的宽高需要互换物理尺寸以填满容器
+                    width: isRotatedVertical ? 'calc(100% / (9/16))' : '100%',
+                    height: isRotatedVertical ? 'calc(100% * (9/16))' : '100%',
                     transform: `translate(-50%, -50%) rotate(${visualRotation}deg)`,
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s',
                     filter: isHovered ? 'brightness(0.7)' : 'none',
-                    // --- 修复重复键错误，将逻辑合并 ---
-                    // 当旋转 90/270 度时，img 标签的 CSS 宽度需要等于容器的高度，CSS 高度等于容器的宽度
-                    width: isRotatedVertical ? `${containerHeight}px` : '100%',
-                    height: isRotatedVertical ? `${logicalWidth}px` : '100%',
                 }}
             />
 
+            {/* 已删除标记 */}
+            {isRemoved && (
+                <Box style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    zIndex: 10,
+                    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                    borderRadius: '50%',
+                    padding: 4,
+                    display: 'flex'
+                }}>
+                    <IconTrash size={12} color="white" />
+                </Box>
+            )}
+
+            {/* 底部信息与操作栏 (复刻 VideoCard 交互风格) */}
             <Box style={{
-                position: 'absolute', bottom: 0, left: 0, width: '100%',
-                background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                color: 'white', padding: '4px 8px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                zIndex: 2, pointerEvents: 'none',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                color: 'white',
+                padding: '8px 8px 4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                zIndex: 5,
                 opacity: (mode === 'preview' || isHovered) ? 1 : 0,
+                transition: 'opacity 0.2s ease',
+                pointerEvents: 'none'
             }}>
-                <span style={{ fontSize: mode === 'nav' ? '10px' : '12px', fontWeight: 600 }}>
+                {/* 时间戳标签 */}
+                <span style={{
+                    fontSize: mode === 'nav' ? '10px' : '12px',
+                    fontWeight: 600,
+                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                }}>
                     {formatDuration(screenshot.timestamp, 'ms')}
                 </span>
+
+                {/* 操作按钮组 */}
                 <Box style={{ display: 'flex', gap: '4px', pointerEvents: 'auto' }}>
-                    <ActionIcon variant="filled" size="xs" color={isCover ? "green" : "blue"} onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}>
-                        {isCover ? <IconCheck size={12} /> : <IconPhoto size={12} />}
-                    </ActionIcon>
-                    <ActionIcon variant="filled" size="xs" color="red" onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}>
-                        <IconTrash size={12} />
-                    </ActionIcon>
+                    <Tooltip label={isCover ? "当前封面" : "设为封面"} position="top" withinPortal>
+                        <ActionIcon
+                            variant={isCover ? "filled" : "subtle"}
+                            size="sm"
+                            color={isCover ? "green" : "blue"}
+                            onClick={(e) => { e.stopPropagation(); onSetCover(screenshot); }}
+                        >
+                            {isCover ? <IconCheck size={14} /> : <IconPhoto size={14} />}
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="删除截图" position="top" withinPortal>
+                        <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            color="red"
+                            onClick={(e) => { e.stopPropagation(); onDelete(screenshot); }}
+                        >
+                            <IconTrash size={14} />
+                        </ActionIcon>
+                    </Tooltip>
                 </Box>
             </Box>
         </Box>

@@ -1,4 +1,6 @@
-import { Box } from '@mantine/core';
+// src/renderer/src/components/Screenshot/ScreenshotGalleryView.tsx
+
+import { Box, Text } from '@mantine/core';
 import { useEffect, useRef, useMemo } from 'react';
 import { ScreenshotCard } from './ScreenshotCard';
 import { Screenshot } from '../stores/screenshotStore';
@@ -27,51 +29,71 @@ export function ScreenshotGalleryView({
     const containerRef = useRef<HTMLDivElement>(null);
     const lastCount = useRef(screenshots.length);
 
-    // 1. 根据旋转角度判断是否为纵向布局
+    // 1. 判断当前是否为旋转后的纵向状态
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
     /**
-     * 2. 动态计算 Grid 列宽 (核心布局逻辑)
-     * - 预览模式高度固定为 320px
-     * - 横向视频 (0/180°): 假设 16:9, 宽度约为 568px. minmax 设置为 400px 确保在大屏下能填满，小屏下自动折行
-     * - 纵向视频 (90/270°): 假设 9:16, 宽度约为 180px. minmax 设置为 150px 显著增加排列密度
+     * 2. 动态计算 Grid 列宽 (核心参考 VideoGrid)
+     * - 横向模式: 最小宽度 250px (对齐 VideoGrid)，单行显示较少但画面大
+     * - 纵向模式: 最小宽度 140px，利用纵向优势，在相同宽度下展示更多内容
      */
     const gridMinWidth = useMemo(() => {
-        return isRotatedVertical ? 160 : 400;
+        return isRotatedVertical ? 140 : 250;
     }, [isRotatedVertical]);
 
     // 3. 自动滚动到底部 (追踪新截图)
     useEffect(() => {
         if (screenshots.length > lastCount.current) {
-            containerRef.current?.scrollTo({
-                top: containerRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
+            // 给微弱延迟确保 DOM 已渲染
+            setTimeout(() => {
+                containerRef.current?.scrollTo({
+                    top: containerRef.current.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 50);
         }
         lastCount.current = screenshots.length;
     }, [screenshots.length]);
+
+    if (screenshots.length === 0) {
+        return (
+            <Box style={{
+                height: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#1A1B1E',
+                borderRadius: 8,
+                margin: 20,
+                border: '1px dashed #373A40'
+            }}>
+                <Text c="dimmed">暂无截图，点击下方“截图”按钮开始记录</Text>
+            </Box>
+        );
+    }
 
     return (
         <Box
             ref={containerRef}
             style={{
-                height: 320,
+                // 作为一个局部板块，设定合适的最大高度并允许内部滚动
+                maxHeight: 'calc(100vh - 600px)',
+                minHeight: 300,
                 overflowY: 'auto',
                 overflowX: 'hidden',
-                display: 'grid',
-                // 使用 auto-fill 和 1fr 实现无留白填充
-                gridTemplateColumns: `repeat(auto-fill, minmax(${gridMinWidth}px, 1fr))`,
-                // 紧凑间距
-                gap: '8px',
-                padding: '8px',
-                backgroundColor: '#000',
 
-                // 滚动捕捉逻辑
-                scrollSnapType: 'y mandatory',
+                // 参考 VideoGrid 的布局参数
+                display: 'grid',
+                gridTemplateColumns: `repeat(auto-fill, minmax(${gridMinWidth}px, 1fr))`,
+                gap: 16,
+                padding: 20,
+
+                backgroundColor: '#101113', // 深色背景衬托截图
                 scrollBehavior: 'smooth',
-                // 隐藏滚动条但保持功能 (可选，根据审美决定)
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
+
+                // 优化滚动条样式 (Mantine 风格)
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#444 transparent',
             }}
         >
             {screenshots.map(s => (
@@ -79,10 +101,6 @@ export function ScreenshotGalleryView({
                     key={s.filename}
                     onClick={() => onScreenshotClick(s.timestamp)}
                     style={{
-                        // 每一行起始位置捕捉
-                        scrollSnapAlign: 'start',
-                        scrollSnapStop: 'always',
-                        height: 320,
                         width: '100%',
                         position: 'relative'
                     }}
@@ -92,7 +110,7 @@ export function ScreenshotGalleryView({
                         mode="preview"
                         isRemoved={s.isRemoved}
                         isActive={activeFilename === s.filename}
-                        isCover={false} // 后续由 Store 逻辑判断
+                        isCover={false}
                         rotation={rotation}
                         onSetCover={onSetCover}
                         onDelete={onDelete}
