@@ -124,6 +124,12 @@ export function usePlayerActions( ) {
     
 }, [currentPath, playNext, showToast]);
 
+
+const { skipFrameMode, setSkipFrameMode } = usePlayerStore();
+const toggleSkipFrameMode = () => {
+        setSkipFrameMode(!skipFrameMode);
+    };
+
     return {
         playNext,      
         stepFrame,    
@@ -138,6 +144,7 @@ export function usePlayerActions( ) {
         cutSegment,
         mergeSegment,
         toggleClipTrack,    
-        handleTranscode    
+        handleTranscode,
+        toggleSkipFrameMode, 
     };
 }

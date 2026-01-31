@@ -38,6 +38,7 @@ export interface PlayControlActions {
   rotate_video: MultiKey;
   play_next: MultiKey;
   toggle_sidebar: MultiKey;
+  toggle_skip_frame_mode: MultiKey; 
 }
 
 export interface CaptureActions {

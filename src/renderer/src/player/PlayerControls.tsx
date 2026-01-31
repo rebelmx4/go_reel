@@ -116,6 +116,9 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
         return key ? `${baseLabel} (${key})` : baseLabel;
     };
 
+    const duration = usePlayerStore(state => state.duration);
+    const isSkipDisabled = duration < 60;
+
     return (
         <Box
             style={{
@@ -151,14 +154,17 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                         </ActionIcon>
                     </Tooltip>
 
+
                     {/* 跳帧/步进 */}
-                    <Tooltip label={getTooltipLabel(skipFrameMode ? "退出跳帧模式" : "进入跳帧模式", 'toggle_skip_frame_mode')}>
+                    <Tooltip label={isSkipDisabled ? "视频太短，无法跳帧" : (skipFrameMode ? "退出跳帧模式" : "进入跳帧模式")}>
                         <ActionIcon
-                            variant={skipFrameMode ? "filled" : "subtle"}
-                            color={skipFrameMode ? "blue" : "gray"}
+                            variant={skipFrameMode && !isSkipDisabled ? "filled" : "subtle"}
+                            color={skipFrameMode && !isSkipDisabled ? "blue" : "gray"}
                             onClick={() => setSkipFrameMode(!skipFrameMode)}
+                            disabled={isSkipDisabled} // [新增]
                         >
-                            {skipFrameMode ? <IconColumns3 size={20} /> : <IconArrowRight size={20} />}
+                            {/* 如果禁用或关闭，显示右箭头；如果开启，显示切片图标 */}
+                            {skipFrameMode && !isSkipDisabled ? <IconColumns3 size={20} /> : <IconArrowRight size={20} />}
                         </ActionIcon>
                     </Tooltip>
 

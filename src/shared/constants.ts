@@ -62,6 +62,8 @@ export const DEFAULT_SETTINGS: PreferenceSettings = {
         elite_page: ['6'],
         settings_page: ['8'],
         player_page: ['Esc'],
+        folder_page: [],
+      tag_manage_page: [],
       },
       play_control: {
         toggle_play: ['Space'], 
@@ -71,7 +73,8 @@ export const DEFAULT_SETTINGS: PreferenceSettings = {
         volume_down: ['S', 'ArrowDown'],
         rotate_video: ['R'],
         play_next: ["PageDown"],
-        toggle_sidebar: ["PageUp"]
+        toggle_sidebar: ["PageUp"],
+        toggle_skip_frame_mode: ['V'],
       },
       capture: {
         screenshot: ['E'],

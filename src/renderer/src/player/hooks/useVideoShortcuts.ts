@@ -18,6 +18,7 @@ interface ShortcutHandlers {
      toggleClipTrack: () => void;
     cutSegment: () => void;
     mergeSegment: () => void;
+    toggleSkipFrameMode: () => void;
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
@@ -55,6 +56,7 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
             toggle_track: () => handlersRef.current.toggleClipTrack(),
             cut_segment: () => handlersRef.current.cutSegment(),
             merge_segments: () => handlersRef.current.mergeSegment(),
+            toggle_skip_frame_mode: () => handlersRef.current.toggleSkipFrameMode(),
         };
 
         const actionKeys = Object.keys(actionMap);
