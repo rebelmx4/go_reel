@@ -2,7 +2,7 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack, IconTransform
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack, IconTransform, IconTag
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -76,6 +76,9 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
     ));
 
     const canPrev = historyIndex < historyPaths.length - 1;
+
+    const showViewportTags = usePlayerStore(state => state.showViewportTags);
+    const toggleViewportTags = usePlayerStore(state => state.toggleViewportTags);
 
     // --- 2. 状态派生 (不再需要 useState) ---
     const isFavorite = videoFile?.annotation?.is_favorite || false;
@@ -256,6 +259,15 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                             disabled={!currentPath}
                         >
                             <IconTransform size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={showViewportTags ? "隐藏视口标签" : "显示视口标签"}>
+                        <ActionIcon
+                            variant={showViewportTags ? "filled" : "subtle"}
+                            color={showViewportTags ? "blue" : "gray"}
+                            onClick={toggleViewportTags}
+                        >
+                            <IconTag size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>

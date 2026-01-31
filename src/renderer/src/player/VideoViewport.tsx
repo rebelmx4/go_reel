@@ -2,6 +2,7 @@ import { Box } from '@mantine/core';
 import { usePlayerStore } from '../stores';
 import { useVideoVisuals } from './hooks';
 import { useVideoContext } from './contexts';
+import { ViewportTagOverlay } from './ViewportTagOverlay';
 
 interface VideoViewportProps {
     videoSrc: string;
@@ -52,6 +53,8 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
                     setPlaying(true);
                 }}
             />
+
+            <ViewportTagOverlay />
         </Box>
     );
 }

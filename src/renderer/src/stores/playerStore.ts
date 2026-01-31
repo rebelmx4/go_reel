@@ -67,6 +67,9 @@ interface PlayerState {
   openCreateTagModal: (coverImage: string) => void;
   closeCreateTagModal: () => void;
   setTagCoverImage: (cover: string) => void; 
+
+  showViewportTags: boolean;
+  toggleViewportTags: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -176,4 +179,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
    setTagCoverImage: (cover) => set((state) => ({
     modals: { ...state.modals, tagCoverImage: cover }
   })),
+
+  showViewportTags: true, // 默认关闭，或者根据喜好设为 true
+  toggleViewportTags: () => set((state) => ({ showViewportTags: !state.showViewportTags })),
 }));
