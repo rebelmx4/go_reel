@@ -19,6 +19,8 @@ import { NewestSidebar } from './sidebars/NewestSidebar';
 import { useVideoShortcuts, usePlayerActions, useVideoData } from './hooks';
 import { useScreenshotExport } from '../hooks';
 import { HistorySidebar } from './sidebars/HistorySidebar';
+import { AssignTagSidebar } from './sidebars/AssignTagSidebar';
+import { IconTags } from '@tabler/icons-react'; // 引入标签图标
 
 
 export const VideoPlayerContent = () => {
@@ -155,6 +157,7 @@ export const VideoPlayerContent = () => {
                     {sidebarTab === 'newest' && <NewestSidebar />}
                     {sidebarTab === 'elite' && <EliteSidebar />}
                     {sidebarTab === 'history' && <HistorySidebar />}
+                    {sidebarTab === 'assign_tag' && <AssignTagSidebar />}
                 </Box>
             )}
 
@@ -205,6 +208,17 @@ export const VideoPlayerContent = () => {
                             color={showSidebar && sidebarTab === 'history' ? 'blue' : 'gray'}
                         >
                             <IconHistory style={{ width: rem(20), height: rem(20) }} />
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="分配标签" position="left" withArrow>
+                        <ActionIcon
+                            variant={showSidebar && sidebarTab === 'assign_tag' ? 'filled' : 'light'}
+                            size="lg"
+                            onClick={() => handleSidebarTabClick('assign_tag')}
+                            color={showSidebar && sidebarTab === 'assign_tag' ? 'blue' : 'gray'}
+                        >
+                            <IconTags style={{ width: rem(20), height: rem(20) }} />
                         </ActionIcon>
                     </Tooltip>
                 </Stack>
