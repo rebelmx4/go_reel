@@ -12,7 +12,7 @@ export class VideoTranscodeService {
    * 执行视频转码并替换原文件
    * @param sourcePath 视频绝对路径
    */
-  public async transcodeAndReplace(sourcePath: string): Promise<{ success: boolean; error?: string }> {
+  public async transcodeAndReplace(sourcePath: string,  onProgress?: (p: number) => void ): Promise<{ success: boolean; error?: string }> {
     if (!await fs.pathExists(sourcePath)) {
       throw new Error(`文件不存在: ${sourcePath}`);
     }
@@ -37,7 +37,7 @@ export class VideoTranscodeService {
       // 4. 执行转码 (VideoTranscodeUtils 内部会处理 H264 转码)
       log.info(`[TranscodeService] 开始转码: ${sourcePath}`);
       await VideoTranscodeUtils.transcodeToH264(sourcePath, tempOutputPath, (progress) => {
-        // 这里的进度可以保留，供以后扩展
+          if (onProgress) onProgress(progress); // 透传给 QueueManager
         log.debug(`[TranscodeService] 进度: ${progress}% - ${fileName}`);
       });
 

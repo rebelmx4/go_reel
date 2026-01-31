@@ -3,7 +3,10 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
-import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers, registerVideoTranscodeHandlers } from './services';
+import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers, registerVideoTranscodeHandlers,
+  registerTranscodeHandlers 
+
+ } from './services';
 import {
   registerWindowHandlers,
   registerMetadataHandler,
@@ -12,7 +15,7 @@ import {
   registerSettingsHandlers,
   registerAnnotationHandlers,
   registerTagHandlers,
-  registerHistoryHandlers
+  registerHistoryHandlers,
   
 } from './ipc';
 
@@ -92,6 +95,7 @@ function setupIpcHandlers() {
   registerStartupServiceHandlers();
   registerVideoExportHandlers();
   registerVideoTranscodeHandlers();
+  registerTranscodeHandlers();
   
 
   ipcMain.handle('select-directory', async () => {

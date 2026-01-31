@@ -107,6 +107,10 @@ declare global {
       removeFromHistory: (filePath: string) => Promise<void>
 
        transcodeVideo: (filePath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+       addTranscodeTask: (filePath: string) => void;
+        clearTranscodeQueue: () => void;
+        onTranscodeUpdate: (callback: (tasks: any[]) => void) => () => void;
+        getTranscodeQueue: () => Promise<any[]>;
     }
   }
 }

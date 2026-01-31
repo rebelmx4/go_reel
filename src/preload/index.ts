@@ -103,6 +103,15 @@ const api = {
     ipcRenderer.invoke('export-video', videoPath, clips),
 
    transcodeVideo: (filePath: string) => ipcRenderer.invoke('video:transcode', filePath),
+
+  addTranscodeTask: (filePath: string) => ipcRenderer.send('transcode:add', filePath),
+  clearTranscodeQueue: () => ipcRenderer.send('transcode:clear'),
+  onTranscodeUpdate: (callback) => {
+  const listener = (_event, tasks) => callback(tasks);
+  ipcRenderer.on('transcode:state-update', listener);
+  return () => ipcRenderer.off('transcode:state-update', listener);
+  },
+  getTranscodeQueue: () => ipcRenderer.invoke('transcode:get-queue'),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

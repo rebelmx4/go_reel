@@ -5,6 +5,8 @@ export type { RefreshResult, RefreshProgress } from './RefreshService';
 export { videoExportService, registerVideoExportHandlers } from './VideoExportService';
 export { registerFileSytemHandlers } from './FileSystemService';
 export { registerVideoTranscodeHandlers } from './VideoTranscodeService';
+export {   registerTranscodeHandlers  } from './TranscodeQueueManager';
+
 
 
 

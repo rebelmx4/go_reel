@@ -110,28 +110,19 @@ export function usePlayerActions( ) {
         mergeClip(currentTime);
     }, [currentTime, mergeClip]);
 
+   const handleTranscode = useCallback(() => {
+    if (!currentPath) return;
 
-     const handleTranscode = useCallback(async () => {
-        if (!currentPath) return;
+    // 1. 通知后端添加任务（后端会自己去排队，这里不需要 await）
+    window.api.addTranscodeTask(currentPath);
 
-        showToast({ message: '转码已开始，请稍候...', type: 'info' });
+    // 2. UI 反馈
+    showToast({ message: '已加入转码队列，正在自动切换下一片...', type: 'info' });
 
-        try {
-            const result = await window.api.transcodeVideo(currentPath);
-            if (result.success) {
-                // 按照你的设计：转码成功后仅提示，用户重新点击该视频即可播放正确的
-                showToast({ 
-                    message: '转码成功！重新点击播放或切换视频即可生效', 
-                    type: 'success',
-                    // duration: 5000 // 可以适当延长提示时间
-                });
-            } else {
-                showToast({ message: `转码失败: ${result.error}`, type: 'error' });
-            }
-        } catch (error: any) {
-            showToast({ message: `请求转码失败: ${error.message}`, type: 'error' });
-        }
-    }, [currentPath, showToast]);
+    // 3. 立即切片（核心需求）
+    playNext();
+    
+}, [currentPath, playNext, showToast]);
 
     return {
         playNext,      

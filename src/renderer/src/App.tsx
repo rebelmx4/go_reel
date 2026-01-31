@@ -3,7 +3,7 @@ import { MantineProvider, Box } from '@mantine/core';
 import '@mantine/core/styles.css';
 
 // 1. Stores
-import { useNavigationStore } from './stores';
+import { useNavigationStore, useTranscodeStore } from './stores';
 
 // 2. Components & Layout
 import { MainLayout, ToastContainer } from './components';
@@ -19,12 +19,15 @@ import {
   ElitePage,
   SettingsPage,
   FolderPage,
-  TagManagePage
+  TagManagePage,
+
 } from './pages';
 
 // 4. Utils
 import { keyBindingManager } from './utils/KeyBindingManager';
 import { AppAction } from '../../shared/settings.schema';
+
+
 
 function App() {
   // --- Navigation & View State ---
@@ -43,6 +46,13 @@ function App() {
       return next;
     });
   }, [currentView]);
+
+  useEffect(() => {
+    const unsub = window.api.onTranscodeUpdate((tasks) => {
+      useTranscodeStore.getState().setTasks(tasks);
+    });
+    return unsub;
+  }, []);
 
   // --- 全局事件监听 ---
   useEffect(() => {
