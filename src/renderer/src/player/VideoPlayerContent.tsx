@@ -20,7 +20,8 @@ import { useVideoShortcuts, usePlayerActions, useVideoData } from './hooks';
 import { useScreenshotExport } from '../hooks';
 import { HistorySidebar } from './sidebars/HistorySidebar';
 import { AssignTagSidebar } from './sidebars/AssignTagSidebar';
-import { IconTags } from '@tabler/icons-react'; // 引入标签图标
+import { IconTags, IconFilter } from '@tabler/icons-react'; // 引入标签图标
+import { TagFilterSidebar } from './sidebars/TagFilterSidebar';
 
 
 export const VideoPlayerContent = () => {
@@ -158,6 +159,7 @@ export const VideoPlayerContent = () => {
                     {sidebarTab === 'elite' && <EliteSidebar />}
                     {sidebarTab === 'history' && <HistorySidebar />}
                     {sidebarTab === 'assign_tag' && <AssignTagSidebar />}
+                    {sidebarTab === 'tag_search' && <TagFilterSidebar />}
                 </Box>
             )}
 
@@ -219,6 +221,16 @@ export const VideoPlayerContent = () => {
                             color={showSidebar && sidebarTab === 'assign_tag' ? 'blue' : 'gray'}
                         >
                             <IconTags style={{ width: rem(20), height: rem(20) }} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="按标签过滤" position="left" withArrow>
+                        <ActionIcon
+                            variant={showSidebar && sidebarTab === 'tag_search' ? 'filled' : 'light'}
+                            size="lg"
+                            onClick={() => handleSidebarTabClick('tag_search')}
+                            color={showSidebar && sidebarTab === 'tag_search' ? 'blue' : 'gray'}
+                        >
+                            <IconFilter style={{ width: rem(20), height: rem(20) }} />
                         </ActionIcon>
                     </Tooltip>
                 </Stack>

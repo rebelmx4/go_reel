@@ -8,7 +8,7 @@ import {
   selectSearchPaths 
 } from './videoFileRegistryStore';
 
-export type PlaylistMode = 'all' | 'liked' | 'elite' | 'newest' | 'search';
+export type PlaylistMode = 'all' | 'liked' | 'elite' | 'newest' | 'search' | 'tag_filter';
 
 interface PlaylistState {
   // --- 状态 ---
@@ -17,6 +17,7 @@ interface PlaylistState {
   historyPaths: string[]; // 历史足迹存储在此
   searchQuery: string;
   historyIndex: number; 
+  filterTagId: number | null; // 新增：记录当前过滤的标签 ID
 
   // --- 基础 Actions ---
   setMode: (mode: PlaylistMode) => void;
@@ -28,7 +29,7 @@ interface PlaylistState {
    * @param path 目标路径
    * @param targetMode 切换到的模式 (例如从历史进入时传 'all')
    */
-  jumpTo: (path: string, targetMode?: PlaylistMode) => void;
+  jumpTo: (path: string, targetMode?: PlaylistMode, tagId?: number) => void;
 
   /** 直接设置当前路径（会自动触发历史记录更新） */
   setCurrentPath: (path: string | null) => void;
@@ -47,6 +48,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   historyPaths: [],
   searchQuery: '',
   historyIndex: 0,
+  filterTagId: null,
 
   // --- 基础设置 ---
   setMode: (mode) => set({ mode }),
@@ -71,19 +73,21 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
    * 响应你的需求：从历史/列表跳转
    * 自动处理：切换视频 + 切换播放模式 + 记录历史
    */
-  jumpTo: (path, targetMode) => {
+ jumpTo: (path, targetMode, tagId) => {
     set((state) => ({
       currentPath: path,
       mode: targetMode ?? state.mode,
+      filterTagId: tagId ?? null, // 记录标签 ID
       historyIndex: 0 
     }));
     get()._internalUpdateHistory(path);
   },
 
+
   // --- 导航逻辑 ---
 
   next: () => {
-    const { mode, currentPath, searchQuery} = get();
+    const { mode, currentPath, searchQuery, filterTagId} = get();
 
     const registry = useVideoFileRegistryStore.getState();
     let queue: string[] = [];
@@ -91,6 +95,13 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       case 'liked': queue = selectLikedPaths(registry); break;
       case 'elite': queue = selectElitePaths(registry); break;
       case 'search': queue = selectSearchPaths(registry, searchQuery); break;
+      case 'tag_filter': 
+        // 核心逻辑：从所有视频中筛选包含该标签的路径
+        // 因为 registry.videoPaths 已经按 mtime 排序，所以结果自然也是倒序
+        queue = registry.videoPaths.filter(p => 
+          registry.videos[p].annotation?.tags?.includes(filterTagId!)
+        );
+        break;
       default: queue = registry.videoPaths;
     }
 
