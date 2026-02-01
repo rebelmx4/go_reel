@@ -2,7 +2,8 @@ import { Group, ActionIcon, Tooltip, Box, Button, Slider, Menu } from '@mantine/
 import {
     IconPlayerSkipForward, IconCamera, IconArrowRight,
     IconColumns3, IconTrash, IconRotateClockwise,
-    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack, IconTransform, IconTag
+    IconStar, IconStarFilled, IconLayoutSidebarRightExpand, IconMagnet, IconPlayerSkipBack, IconTransform, IconTag,
+    IconThumbDown, IconThumbUp
 } from '@tabler/icons-react';
 import {
     usePlayerStore,
@@ -39,9 +40,10 @@ interface PlayerControlsProps {
     onDelete: () => void;
     onToggleFavorite: () => void;
     onHandleTranscode: () => void;
+    onToggleLike: (isCtrl: boolean) => void; // <--- 新增这一行
 }
 
-export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onToggleFavorite, onHandleTranscode }: PlayerControlsProps) {
+export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onToggleFavorite, onHandleTranscode, onToggleLike }: PlayerControlsProps) {
     const { videoRef } = useVideoContext();
 
     // --- 1. Store 数据订阅 ---
@@ -118,6 +120,16 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
 
     const duration = usePlayerStore(state => state.duration);
     const isSkipDisabled = duration < 60;
+
+
+    // 找到点赞/喜欢按钮的位置
+    const score = videoFile?.annotation?.like_count ?? 0;
+
+    // 计算 UI 状态
+    const displayScore = Math.floor(Math.abs(score)); // 取绝对值向下取整
+    const isPositive = score > 0;
+    const isNegative = score < 0;
+
 
     return (
         <Box
@@ -238,6 +250,29 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                             <IconTrash size={20} />
                         </ActionIcon>
                     </Tooltip>
+                    <Tooltip label={`点赞 (Ctrl+点击是不喜欢) | 当前分数: ${score.toFixed(1)}`}>
+                        <ActionIcon
+                            variant={score !== 0 ? "filled" : "subtle"}
+                            color={isNegative ? "blue.8" : (isPositive ? "red.6" : "gray")}
+                            onClick={(e) => onToggleLike(e.ctrlKey)}  // 传入是否按下了 Ctrl
+                            style={{ position: 'relative' }}
+                        >
+                            {isNegative ? <IconThumbDown size={20} /> : <IconThumbUp size={20} />}
+
+                            {/* 分数 Badge */}
+                            {displayScore > 0 && (
+                                <Box style={{
+                                    position: 'absolute', top: -5, right: -5,
+                                    backgroundColor: 'white', color: 'black',
+                                    borderRadius: '10px', fontSize: '9px', padding: '0 4px',
+                                    fontWeight: 'bold', border: '1px solid #ccc'
+                                }}>
+                                    {displayScore}
+                                </Box>
+                            )}
+                        </ActionIcon>
+                    </Tooltip>
+
                     <Tooltip label={getTooltipLabel(showClipTrack ? "关闭裁剪轨道" : "打开裁剪轨道", 'toggle_track')}>
                         <ActionIcon
                             variant={showClipTrack ? "filled" : "subtle"}

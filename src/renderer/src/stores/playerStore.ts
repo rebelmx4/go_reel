@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { StepValue, DEFAULT_STEP_GRADIENT } from '../../../shared/constants';
 
 
-export type SidebarTab = 'newest' | 'elite' | 'history' | 'assign_tag' | 'tag_search'  | 'transcode';
+export type SidebarTab = 'newest' | 'elite' | 'history' | 'assign_tag' | 'tag_search'  | 'transcode' | 'liked';
 
 interface PlayerState {
   modals: {
@@ -70,6 +70,9 @@ interface PlayerState {
 
   showViewportTags: boolean;
   toggleViewportTags: () => void;
+
+  isInteractedInSession: boolean;
+  setInteracted: (val: boolean) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -149,13 +152,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
+  isInteractedInSession: false,
+  setInteracted: (val) => set({ isInteractedInSession: val }),
+
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   
   reset: (initialRotation = 0) => set({
     currentTime: 0,
     duration: 0,
     isPlaying: false,
-    rotation: initialRotation// 切换时先归零，后续由组件根据 Annotation 补齐
+    rotation: initialRotation,
+    isInteractedInSession: false,
   }),
 
    openAssignTagModal: () => set((state) => ({ 

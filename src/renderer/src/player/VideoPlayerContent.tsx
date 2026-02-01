@@ -23,6 +23,8 @@ import { AssignTagSidebar } from './sidebars/AssignTagSidebar';
 import { IconTags, IconFilter, IconArrowsLeftRight } from '@tabler/icons-react'; // 引入标签图标
 import { TagFilterSidebar } from './sidebars/TagFilterSidebar';
 import { TranscodeSidebar } from './sidebars/TranscodeSidebar';
+import { IconHeart } from '@tabler/icons-react';
+import { LikedSidebar } from './sidebars/LikedSidebar';
 
 
 export const VideoPlayerContent = () => {
@@ -149,6 +151,7 @@ export const VideoPlayerContent = () => {
                         onDelete={actions.softDelete}
                         onToggleFavorite={actions.toggleFavorite}
                         onHandleTranscode={actions.handleTranscode}
+                        onToggleLike={actions.handleLikeToggle}
                     />
                 </Box>
             </Box>
@@ -162,6 +165,7 @@ export const VideoPlayerContent = () => {
                     {sidebarTab === 'assign_tag' && <AssignTagSidebar />}
                     {sidebarTab === 'tag_search' && <TagFilterSidebar />}
                     {sidebarTab === 'transcode' && <TranscodeSidebar />}
+                    {sidebarTab === 'liked' && <LikedSidebar />}
                 </Box>
             )}
 
@@ -243,6 +247,16 @@ export const VideoPlayerContent = () => {
                             color={showSidebar && sidebarTab === 'transcode' ? 'blue' : 'gray'}
                         >
                             <IconArrowsLeftRight style={{ width: rem(20), height: rem(20) }} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="点赞/热度" position="left" withArrow>
+                        <ActionIcon
+                            variant={showSidebar && sidebarTab === 'liked' ? 'filled' : 'light'}
+                            size="lg"
+                            onClick={() => handleSidebarTabClick('liked')}
+                            color={showSidebar && sidebarTab === 'liked' ? 'blue' : 'gray'}
+                        >
+                            <IconHeart style={{ width: rem(20), height: rem(20) }} />
                         </ActionIcon>
                     </Tooltip>
                 </Stack>

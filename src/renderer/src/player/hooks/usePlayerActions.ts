@@ -124,6 +124,32 @@ export function usePlayerActions( ) {
     
 }, [currentPath, playNext, showToast]);
 
+const handleLikeToggle = useCallback(async (isCtrl: boolean) => {
+    if (!currentPath || !videoFile) return;
+
+    const currentScore = videoFile.annotation?.like_count ?? 0;
+    let newScore = currentScore;
+
+    if (!isCtrl) {
+        // 点赞：直接 +1
+        newScore = currentScore + 1;
+    } else {
+        // 不喜欢：
+        // 如果在 [1, 2) 之间，直接归零
+        if (currentScore >= 1 && currentScore < 2) {
+            newScore = 0;
+        } else {
+            newScore = currentScore - 1;
+        }
+    }
+
+    // 1. 更新数据
+    await updateAnnotation(currentPath, { like_count: newScore });
+    // 2. 标记本次会话已交互，阻止衰减
+    usePlayerStore.getState().setInteracted(true);
+    
+}, [currentPath, videoFile, updateAnnotation]);
+
 
 const { skipFrameMode, setSkipFrameMode } = usePlayerStore();
 const toggleSkipFrameMode = () => {
@@ -146,5 +172,6 @@ const toggleSkipFrameMode = () => {
         toggleClipTrack,    
         handleTranscode,
         toggleSkipFrameMode, 
+        handleLikeToggle
     };
 }

@@ -8,7 +8,17 @@ import {
   selectSearchPaths 
 } from './videoFileRegistryStore';
 
+import { 
+  usePlayerStore, 
+} from './playerStore';
+
+
 export type PlaylistMode = 'all' | 'liked' | 'elite' | 'newest' | 'search' | 'tag_filter';
+
+export interface ScoreSegment {
+  min: number;
+  max: number;
+}
 
 interface PlaylistState {
   // --- 状态 ---
@@ -29,7 +39,7 @@ interface PlaylistState {
    * @param path 目标路径
    * @param targetMode 切换到的模式 (例如从历史进入时传 'all')
    */
-  jumpTo: (path: string, targetMode?: PlaylistMode, tagId?: number) => void;
+  jumpTo: (path: string, targetMode?: PlaylistMode, tagId?: number, segment?: ScoreSegment | null) => void;
 
   /** 直接设置当前路径（会自动触发历史记录更新） */
   setCurrentPath: (path: string | null) => void;
@@ -40,6 +50,8 @@ interface PlaylistState {
 
   // --- 内部辅助方法 (私有) ---
   _internalUpdateHistory: (path: string) => void;
+
+  currentSegment: ScoreSegment | null;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
@@ -49,6 +61,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   searchQuery: '',
   historyIndex: 0,
   filterTagId: null,
+  currentSegment: null,
 
   // --- 基础设置 ---
   setMode: (mode) => set({ mode }),
@@ -73,11 +86,12 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
    * 响应你的需求：从历史/列表跳转
    * 自动处理：切换视频 + 切换播放模式 + 记录历史
    */
- jumpTo: (path, targetMode, tagId) => {
+ jumpTo: (path, targetMode, tagId, segment) => {
     set((state) => ({
       currentPath: path,
       mode: targetMode ?? state.mode,
       filterTagId: tagId ?? null, // 记录标签 ID
+      currentSegment: segment ?? null, 
       historyIndex: 0 
     }));
     get()._internalUpdateHistory(path);
@@ -86,13 +100,41 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
   // --- 导航逻辑 ---
 
-  next: () => {
-    const { mode, currentPath, searchQuery, filterTagId} = get();
+  next:  async () => {
+    const { mode, currentPath, searchQuery, filterTagId, currentSegment} = get();
+     const player = usePlayerStore.getState();
+     const registry = useVideoFileRegistryStore.getState();
 
-    const registry = useVideoFileRegistryStore.getState();
+    if (currentPath) {
+        const video = registry.videos[currentPath];
+        const score = video?.annotation?.like_count ?? 0;
+        // 如果没交互过 且 分数 > 1
+        if (!player.isInteractedInSession && score > 1) {
+            // 从设置里读取衰减率，假设默认 0.2
+            const decayRate = 0.2; 
+            const newScore = Math.max(1, score - decayRate);
+            await registry.updateAnnotation(currentPath, { like_count: newScore });
+        }
+    }
+
     let queue: string[] = [];
     switch (mode) {
-      case 'liked': queue = selectLikedPaths(registry); break;
+      case 'liked':
+        // 如果有分段过滤，则只在分段内找；否则找所有有分的
+        queue = registry.videoPaths.filter(p => {
+            const s = registry.videos[p].annotation?.like_count ?? 0;
+            if (currentSegment) {
+                return s >= currentSegment.min && s <= currentSegment.max;
+            }
+            return s !== 0;
+        });
+        // 点赞模式按分数降序排，分数相同按 mtime
+        queue.sort((a, b) => {
+            const scoreA = registry.videos[a].annotation?.like_count ?? 0;
+            const scoreB = registry.videos[b].annotation?.like_count ?? 0;
+            return scoreB - scoreA || registry.videos[b].mtime - registry.videos[a].mtime;
+        });
+        break;
       case 'elite': queue = selectElitePaths(registry); break;
       case 'search': queue = selectSearchPaths(registry, searchQuery); break;
       case 'tag_filter': 
