@@ -42,6 +42,8 @@ const api = {
     ipcRenderer.invoke('delete-screenshot', filePath, filename),
   exportScreenshots: (filePath: string, rotation: number) =>
     ipcRenderer.invoke('export-screenshots', filePath, rotation),
+  getScreenshotMetadata: (filePath: string) => ipcRenderer.invoke('get-screenshot-metadata', filePath),
+  saveScreenshotMetadata: (filePath: string, metadata: any) => ipcRenderer.invoke('save-screenshot-metadata', filePath, metadata),
   
   // Cover Management
   getCover: (filePath: string) =>
@@ -112,6 +114,15 @@ const api = {
   return () => ipcRenderer.off('transcode:state-update', listener);
   },
   getTranscodeQueue: () => ipcRenderer.invoke('transcode:get-queue'),
+
+
+  generateStoryboardPreview: (filePath: string) => 
+    ipcRenderer.invoke('storyboard:preview', filePath),
+
+  saveStoryboard: (filePath: string, base64Data: string) => 
+    ipcRenderer.invoke('storyboard:save', filePath, base64Data),
+
+  getStoryboardCollage: (filePath: string) => ipcRenderer.invoke('get-storyboard-collage', filePath),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

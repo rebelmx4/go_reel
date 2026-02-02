@@ -4,8 +4,8 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import log from 'electron-log';
 import { startupService, registerFileSytemHandlers,  registerStartupServiceHandlers, registerVideoExportHandlers, registerVideoTranscodeHandlers,
-  registerTranscodeHandlers 
-
+  registerTranscodeHandlers,
+  registerStroyBoardServiceHandlers
  } from './services';
 import {
   registerWindowHandlers,
@@ -96,6 +96,7 @@ function setupIpcHandlers() {
   registerVideoExportHandlers();
   registerVideoTranscodeHandlers();
   registerTranscodeHandlers();
+  registerStroyBoardServiceHandlers();
   
 
   ipcMain.handle('select-directory', async () => {

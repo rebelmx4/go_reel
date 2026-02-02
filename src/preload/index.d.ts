@@ -45,6 +45,8 @@ declare global {
       saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>
       loadScreenshots: (fielPath: string) => Promise<Screenshot[]>
       deleteScreenshot: (fielPath: string, filename: string) => Promise<void>
+      getScreenshotMetadata: (filePath: string) => Promise<Record<string, { storyboard: boolean; navigation: boolean; export: boolean }>>;
+      saveScreenshotMetadata: (filePath: string, metadata: Record<string, any>) => Promise<void>;
       
       // Cover Management
       getCover: (fielPath: string) => Promise<string>
@@ -52,6 +54,7 @@ declare global {
       
       // Export
       exportScreenshots: (fielPath: string, rotation: number) => Promise<void>
+
       
       // Video Metadata
       getVideoMetadata: (videoPath: string) => Promise<VideoMetadata>
@@ -111,6 +114,22 @@ declare global {
         clearTranscodeQueue: () => void;
         onTranscodeUpdate: (callback: (tasks: any[]) => void) => () => void;
         getTranscodeQueue: () => Promise<any[]>;
+
+
+         /** 
+       * 生成故事板照片墙预览 
+       * @returns 返回图片的 Base64 字符串
+       */
+      generateStoryboardPreview: (filePath: string) => Promise<string>;
+
+      /** 
+       * 将预览的故事板图片保存到视频所在的截图目录
+       * @param filePath 视频路径
+       * @param base64Data 预览时生成的图片数据
+       */
+      saveStoryboard: (filePath: string, base64Data: string) => Promise<void>;
+
+      getStoryboardCollage: (filePath: string) => Promise<string | null>;
     }
   }
 }

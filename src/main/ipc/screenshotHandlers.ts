@@ -31,4 +31,18 @@ export function registerScreenshotHandlers() {
       undefined
     );
   });
+
+  ipcMain.handle('get-screenshot-metadata', async (_, filePath: string) => {
+    return await screenshotManager.getMetadata(filePath);
+  });
+
+  ipcMain.handle('save-screenshot-metadata', async (_, filePath: string, metadata: any) => {
+    return await screenshotManager.saveMetadata(filePath, metadata);
+  });
+
+
+  // 2. [新增] 获取已存在的照片墙路径 (用于开场展示)
+  ipcMain.handle('get-storyboard-collage', async (_, filePath: string) => {
+    return await screenshotManager.getStoryboardCollage(filePath);
+  });
 }

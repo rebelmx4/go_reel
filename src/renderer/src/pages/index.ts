@@ -5,5 +5,6 @@ export { SearchPage } from './SearchPage';
 export { LikedPage } from './LikedPage';
 export { ElitePage } from './ElitePage';
 export { SettingsPage } from './SettingsPage';
+export { MultiPlayerPage } from './MultiPlayerPage';
 export * from './FolderPage';
 export * from './TagManagePage';

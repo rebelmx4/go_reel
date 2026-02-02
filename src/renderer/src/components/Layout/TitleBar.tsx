@@ -15,6 +15,7 @@ import { ViewType } from '../../stores/navigationStore';
 
 const TABS: Array<{ value: ViewType; label: string; shortcut: string }> = [
     { value: 'player_page', label: '播放器', shortcut: 'Esc' },
+    { value: 'multi_player_page', label: '多视频', shortcut: '9' }, // <-- 新增这一行
     { value: 'elite_page', label: '精品', shortcut: '6' },
     { value: 'liked_page', label: '点赞', shortcut: '5' },
     { value: 'history_page', label: '历史', shortcut: '1' },

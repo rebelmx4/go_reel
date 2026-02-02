@@ -9,6 +9,7 @@ import {
     usePlayerStore,
     useVideoFileRegistryStore,
     usePlaylistStore,
+    useNavigationStore
 } from '../stores';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
@@ -19,6 +20,9 @@ import { useVideoContext } from './contexts';
 import { STEP_OPTIONS } from '../../../shared/constants';
 import { formatPlaybackStep } from '../utils/format';
 import { IconScissors } from '@tabler/icons-react';
+import { useMultiPlayerStore } from '../stores/multiPlayerStore';
+import { IconLayoutGridAdd } from '@tabler/icons-react';
+import { IconSettingsAutomation } from '@tabler/icons-react';
 
 
 /**
@@ -85,6 +89,8 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
     // --- 2. 状态派生 (不再需要 useState) ---
     const isFavorite = videoFile?.annotation?.is_favorite || false;
     const [keyMap, setKeyMap] = useState<Record<string, string>>({});
+
+    const setView = useNavigationStore(state => state.setView);
 
     // 加载快捷键配置 (逻辑不变)
     useEffect(() => {
@@ -309,6 +315,30 @@ export function PlayerControls({ onScreenshot, onNext, onRotate, onDelete, onTog
                             onClick={toggleViewportTags}
                         >
                             <IconTag size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="添加到多窗口播放">
+                        <ActionIcon
+                            variant="subtle"
+                            color="teal"
+                            onClick={() => {
+                                if (currentPath) {
+                                    useMultiPlayerStore.getState().addPath(currentPath);
+                                    // 可选：添加后自动跳转
+                                    // setView('multi_player_page'); 
+                                }
+                            }}
+                        >
+                            <IconLayoutGridAdd size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="管理本片截图">
+                        <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => setView('screenshot_manage_page')}
+                        >
+                            <IconSettingsAutomation size={20} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>

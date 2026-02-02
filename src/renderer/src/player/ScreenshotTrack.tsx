@@ -7,16 +7,18 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { ScreenshotNavView } from './ScreenshotNavView';
 import { ScreenshotGalleryView } from './ScreenshotGalleryView';
 import { useClipStore } from '../stores/clipStore';
+import { IconFilter, IconFilterOff } from '@tabler/icons-react';
 
 export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts: number) => void }) {
     const [viewMode, setViewMode] = useState<'nav' | 'preview'>('nav');
     const [opened, setOpened] = useState(true);
+    const [filterMode, setFilterMode] = useState<'all' | 'nav'>('nav');
 
     // --- 新增：高度管理 ---
     const [trackHeight, setTrackHeight] = useState(130);
     const isResizing = useRef(false);
 
-    const { screenshots, isLoading, loadScreenshots, deleteScreenshot, setAsCover } = useScreenshotStore();
+    const { screenshots, isLoading, loadScreenshotData, deleteScreenshot, setAsCover } = useScreenshotStore();
     const currentVideoPath = usePlaylistStore(state => state.currentPath);
     const rotation = usePlayerStore(state => state.rotation);
     const clips = useClipStore(state => state.clips);
@@ -53,26 +55,34 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
     }, []);
 
     useEffect(() => {
-        if (currentVideoPath) loadScreenshots(currentVideoPath);
-    }, [currentVideoPath, loadScreenshots]);
+        if (currentVideoPath) loadScreenshotData(currentVideoPath);
+    }, [currentVideoPath, loadScreenshotData]);
+
+    // [核心修改] 过滤逻辑
+    const filteredScreenshots = useMemo(() => {
+        if (filterMode === 'all') return screenshots;
+        // 只显示 navigation 属性为 true 的（包括默认没有记录的）
+        return screenshots.filter(s => s.meta?.navigation !== false);
+    }, [screenshots, filterMode]);
 
     const screenshotsWithState = useMemo(() => {
-        return screenshots.map(s => {
+        return filteredScreenshots.map(s => { // 这里改为 filteredScreenshots
             const timestampSec = s.timestamp / 1000;
             const parentClip = clips.find(c => timestampSec >= c.startTime && timestampSec < c.endTime);
             return { ...s, isRemoved: parentClip?.state === 'remove' };
         });
-    }, [screenshots, clips]);
+    }, [filteredScreenshots, clips]); // 依赖项改为 filteredScreenshots
 
+    // 3. [修正] 活动截图定位逻辑改用 filteredScreenshots
     const activeScreenshot = useMemo(() => {
-        if (screenshots.length === 0) return null;
+        if (filteredScreenshots.length === 0) return null; // 这里改为 filteredScreenshots
         const currentMs = usePlayerStore.getState().currentTime * 1000;
-        return screenshots.reduce((closest, s) => {
+        return filteredScreenshots.reduce((closest, s) => { // 这里改为 filteredScreenshots
             const currentDiff = Math.abs(s.timestamp - currentMs);
             const closestDiff = Math.abs(closest.timestamp - currentMs);
             return currentDiff < closestDiff ? s : closest;
         });
-    }, [screenshots]);
+    }, [filteredScreenshots]); // 依赖项改为 filteredScreenshots
 
     return (
         <Box style={{ position: 'relative', width: '100%', marginTop: opened ? 0 : 0 }}>
@@ -131,6 +141,16 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
                         borderRadius: '4px 0 0 0',
                         padding: '2px 6px'
                     }}>
+                        <Tooltip label={filterMode === 'all' ? "当前：显示全部" : "当前：仅显示导航项"}>
+                            <ActionIcon
+                                variant={filterMode === 'nav' ? "filled" : "subtle"}
+                                size="sm"
+                                color={filterMode === 'nav' ? "blue" : "gray"}
+                                onClick={() => setFilterMode(filterMode === 'all' ? 'nav' : 'all')}
+                            >
+                                {filterMode === 'nav' ? <IconFilter size={16} /> : <IconFilterOff size={16} />}
+                            </ActionIcon>
+                        </Tooltip>
                         <Tooltip label={viewMode === 'nav' ? "切换画廊模式" : "切换导航模式"}>
                             <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => setViewMode(viewMode === 'nav' ? 'preview' : 'nav')}>
                                 {viewMode === 'nav' ? <IconLayoutGrid size={16} /> : <IconLayoutNavbar size={16} />}

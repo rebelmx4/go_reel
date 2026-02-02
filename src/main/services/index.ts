@@ -6,6 +6,8 @@ export { videoExportService, registerVideoExportHandlers } from './VideoExportSe
 export { registerFileSytemHandlers } from './FileSystemService';
 export { registerVideoTranscodeHandlers } from './VideoTranscodeService';
 export {   registerTranscodeHandlers  } from './TranscodeQueueManager';
+export {   registerStroyBoardServiceHandlers  } from './StoryboardService';
+
 
 
 

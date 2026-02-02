@@ -3,6 +3,7 @@ import { usePlayerStore } from '../stores';
 import { useVideoVisuals } from './hooks';
 import { useVideoContext } from './contexts';
 import { ViewportTagOverlay } from './ViewportTagOverlay';
+import { StoryboardStartOverlay } from './StoryboardStartOverlay';
 
 interface VideoViewportProps {
     videoSrc: string;
@@ -40,6 +41,8 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
             onDoubleClick={() => setPlaying(!isPlaying)}
             onWheel={handleWheel} // 绑定滚轮事件
         >
+            <StoryboardStartOverlay />
+
             <video
                 ref={videoRef}
                 src={videoSrc}

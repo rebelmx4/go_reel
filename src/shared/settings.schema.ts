@@ -25,6 +25,8 @@ export interface ViewNavActions {
   settings_page: MultiKey; 
   folder_page: MultiKey;
   tag_manage_page: MultiKey;
+  multi_player_page: MultiKey;
+  screenshot_manage_page: MultiKey;
 }
 
 

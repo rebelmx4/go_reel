@@ -20,12 +20,13 @@ import {
   SettingsPage,
   FolderPage,
   TagManagePage,
-
+  MultiPlayerPage
 } from './pages';
 
 // 4. Utils
 import { keyBindingManager } from './utils/KeyBindingManager';
 import { AppAction } from '../../shared/settings.schema';
+import { ScreenshotManagePage } from './pages/ScreenshotManagePage';
 
 
 
@@ -84,6 +85,7 @@ function App() {
   // 使用 useMemo 避免每次 App 重绘都生成新的对象引用
   const viewConfigs = useMemo(() => [
     { id: 'player_page', component: <VideoPlayer /> },
+    { id: 'screenshot_manage_page', component: <ScreenshotManagePage /> },
     { id: 'history_page', component: <HistoryPage /> },
     { id: 'newest_page', component: <NewestPage /> },
     { id: 'elite_page', component: <ElitePage /> },
@@ -91,6 +93,7 @@ function App() {
     { id: 'settings_page', component: <SettingsPage /> },
     { id: 'folder_page', component: <FolderPage /> },
     { id: 'tag_manage_page', component: <TagManagePage /> },
+    { id: 'multi_player_page', component: <MultiPlayerPage /> },
 
   ], []);
 
