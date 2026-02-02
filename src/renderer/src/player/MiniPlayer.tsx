@@ -9,10 +9,10 @@ interface MiniPlayerProps {
     gridSpan?: number; // 用于处理最后一行铺满
 }
 
-export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
+export function MiniPlayer({ path, onClose }: MiniPlayerProps) { // 移除 gridSpan 道具
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(true);
-    const [isMuted, setIsMuted] = useState(true); // 默认静音以支持自动播放
+    const [isMuted, setIsMuted] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
 
@@ -32,19 +32,32 @@ export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
             backgroundColor: '#000',
             height: '100%',
             width: '100%',
-            gridColumn: `span ${gridSpan}`,
+            // gridColumn 移除，交给 Grid 自动排列
             border: '1px solid #333',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflow: 'hidden' // 确保内部内容不溢出边框
         }}>
-            {/* 视频主体 */}
-            <Box style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+            {/* 视频主体：增加 minHeight: 0 关键修复 */}
+            <Box style={{
+                flex: 1,
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: 0  // <--- 关键修复：允许 Flex 子元素收缩，不被视频固有高度撑开
+            }}>
                 <video
                     ref={videoRef}
                     src={`file://${path}`}
                     autoPlay
                     muted={isMuted}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: 'block'
+                    }}
                     onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
                     onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
                     onPlay={() => setIsPlaying(true)}
@@ -52,7 +65,6 @@ export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
                     onClick={togglePlay}
                 />
 
-                {/* 右上角关闭按钮 */}
                 <ActionIcon
                     variant="filled"
                     color="red"
@@ -64,8 +76,11 @@ export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
                 </ActionIcon>
             </Box>
 
-            {/* 底部控制条 */}
-            <Box p="xs" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+            {/* 底部控制条：固定内容，不参与 flex 缩放 */}
+            <Box p="xs" style={{
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                flexShrink: 0 // 确保控制条不会被压缩
+            }}>
                 <Stack gap={4}>
                     <Slider
                         size="xs"
@@ -76,8 +91,8 @@ export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
                         }}
                         label={null}
                     />
-                    <Group justify="space-between">
-                        <Group gap={8}>
+                    <Group justify="space-between" wrap="nowrap">
+                        <Group gap={8} wrap="nowrap">
                             <ActionIcon variant="subtle" size="sm" onClick={togglePlay}>
                                 {isPlaying ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />}
                             </ActionIcon>
@@ -85,7 +100,12 @@ export function MiniPlayer({ path, onClose, gridSpan = 1 }: MiniPlayerProps) {
                                 {isMuted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />}
                             </ActionIcon>
                         </Group>
-                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>
+                        <Text size="xs" c="dimmed" style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '120px'
+                        }}>
                             {path.split(/[\\/]/).pop()}
                         </Text>
                     </Group>
