@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { VideoClip } from '../../../shared/models';
+import { usePlaylistStore } from './playlistStore'; 
+import { useToastStore } from './toastStore';
 
 
 interface ClipState {
   clips: VideoClip[];
-   isEditing: boolean; // 新增：是否处于编辑模式（编辑模式不触发自动跳过）
-  // Actions
+  isEditing: boolean; // 是否处于编辑模式（编辑模式不触发自动跳过）
 
-  setClips: (clips: VideoClip[]) => void;
   setIsEditing: (val: boolean) => void;
   initializeClips: (duration: number, existingClips?: VideoClip[]) => void;
   splitClip: (clipId: string, splitTime: number) => void;
@@ -15,32 +15,42 @@ interface ClipState {
   mergeClip: (time: number) => void; 
   getClipAtTime: (time: number) => VideoClip | undefined;
   clearClips: () => void;
+
+  _syncToDisk: () => Promise<void>; 
 }
 
 export const useClipStore = create<ClipState>((set, get) => ({
   clips: [],
+  isEditing: false,
 
-   isEditing: false,
+  _syncToDisk: async () => {
+        const { clips } = get();
+        const currentPath = usePlaylistStore.getState().currentPath;
+        
+        if (!currentPath || clips.length === 0) return;
+
+        try {
+            const result = await window.api.updateAnnotation(currentPath, { clips });
+            if (!result.success) {
+                useToastStore.getState().showToast({ message: '同步失败', type: 'error' });
+            }
+        } catch (error) {
+            console.error('Failed to sync clips:', error);
+            useToastStore.getState().showToast({ message: '保存过程出错', type: 'error' });
+        }
+    },
 
   setIsEditing: (isEditing) => set({ isEditing }),
-  setClips: (clips) => set({ clips }),
 
-  initializeClips: (duration, existingClips) => {
+   initializeClips: (duration, existingClips) => {
     if (existingClips && existingClips.length > 0) {
       set({ clips: existingClips });
     } else {
-      set({
-        clips: [{
-          id: `clip_${Date.now()}`,
-          startTime: 0,
-          endTime: duration,
-          state: 'keep'
-        }]
-      });
+      set({ clips: [createClip(0, duration)] }); 
     }
   },
 
-  splitClip: (clipId, splitTime) => {
+  splitClip: async (clipId, splitTime) => {
     const state = get();
     const clipIndex = state.clips.findIndex(c => c.id === clipId);
     if (clipIndex === -1) return;
@@ -50,39 +60,30 @@ export const useClipStore = create<ClipState>((set, get) => ({
     // Check if split time is within clip bounds
     if (splitTime <= clip.startTime || splitTime >= clip.endTime) return;
 
-    // Create two new clips
-    const leftClip: VideoClip = {
-      id: `clip_${Date.now()}_left`,
-      startTime: clip.startTime,
-      endTime: splitTime,
-      state: clip.state
-    };
-
-    const rightClip: VideoClip = {
-      id: `clip_${Date.now()}_right`,
-      startTime: splitTime,
-      endTime: clip.endTime,
-      state: clip.state
-    };
+    const leftClip = createClip(clip.startTime, splitTime, clip.state);
+    const rightClip = createClip(splitTime, clip.endTime, clip.state);
 
     // Replace original clip with two new clips
     const newClips = [...state.clips];
     newClips.splice(clipIndex, 1, leftClip, rightClip);
     
     set({ clips: newClips });
+
+    await get()._syncToDisk(); 
+
   },
 
-  toggleClipState: (clipId) => {
-    set((state) => ({
-      clips: state.clips.map(clip =>
-        clip.id === clipId
-          ? { ...clip, state: clip.state === 'keep' ? 'remove' : 'keep' }
-          : clip
-      )
-    }));
-  },
+  toggleClipState: async (clipId) => {
+      set((state) => ({
+          clips: state.clips.map(c =>
+              c.id === clipId ? { ...c, state: c.state === 'keep' ? 'remove' : 'keep' } : c
+          )
+      }));
+      
+      await get()._syncToDisk(); 
+    },
 
-  mergeClip: (time: number) => {
+  mergeClip: async (time: number) => {
     const state = get();
     // 找到当前时间所在的片段索引
     const clipIndex = state.clips.findIndex(c => time >= c.startTime && time <= c.endTime);
@@ -110,6 +111,8 @@ export const useClipStore = create<ClipState>((set, get) => ({
         newClips.splice(1, 1);
         set({ clips: newClips });
     }
+
+    await get()._syncToDisk(); 
   },
 
     getClipAtTime: (time) => {
@@ -120,3 +123,16 @@ export const useClipStore = create<ClipState>((set, get) => ({
     set({ clips: [] });
   }
 }));
+
+
+export const createClip = (
+    startTime: number, 
+    endTime: number, 
+    state: 'keep' | 'remove' = 'keep'
+): VideoClip => ({
+    // 使用 时间戳 + 随机字符串 确保 ID 绝对唯一
+    id: `clip_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    startTime,
+    endTime,
+    state
+});

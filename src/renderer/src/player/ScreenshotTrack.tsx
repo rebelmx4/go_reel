@@ -18,6 +18,7 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
     const [trackHeight, setTrackHeight] = useState(130);
     const isResizing = useRef(false);
 
+
     const { screenshots, isLoading, loadScreenshotData, deleteScreenshot, setAsCover } = useScreenshotStore();
     const currentVideoPath = usePlaylistStore(state => state.currentPath);
     const rotation = usePlayerStore(state => state.rotation);
@@ -73,16 +74,14 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
         });
     }, [filteredScreenshots, clips]); // 依赖项改为 filteredScreenshots
 
-    // 3. [修正] 活动截图定位逻辑改用 filteredScreenshots
+    const currentTime = usePlayerStore(state => state.currentTime);
     const activeScreenshot = useMemo(() => {
-        if (filteredScreenshots.length === 0) return null; // 这里改为 filteredScreenshots
-        const currentMs = usePlayerStore.getState().currentTime * 1000;
-        return filteredScreenshots.reduce((closest, s) => { // 这里改为 filteredScreenshots
-            const currentDiff = Math.abs(s.timestamp - currentMs);
-            const closestDiff = Math.abs(closest.timestamp - currentMs);
-            return currentDiff < closestDiff ? s : closest;
-        });
-    }, [filteredScreenshots]); // 依赖项改为 filteredScreenshots
+        const currentMs = currentTime * 1000;
+        // 算法：过滤出所有小于等于当前时间的，取最后一张
+        const pastScreenshots = filteredScreenshots.filter(s => s.timestamp <= currentMs);
+        if (pastScreenshots.length === 0) return filteredScreenshots[0]; // 如果还没到第一张，高亮第一张
+        return pastScreenshots[pastScreenshots.length - 1];
+    }, [filteredScreenshots, currentTime]);
 
     return (
         <Box style={{ position: 'relative', width: '100%', marginTop: opened ? 0 : 0 }}>

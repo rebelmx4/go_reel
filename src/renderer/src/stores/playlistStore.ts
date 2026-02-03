@@ -11,6 +11,7 @@ import {
 import { 
   usePlayerStore, 
 } from './playerStore';
+import { useClipStore } from './clipStore';
 
 
 export type PlaylistMode = 'all' | 'liked' | 'elite' | 'newest' | 'search' | 'tag_filter';
@@ -87,6 +88,8 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
    * 自动处理：切换视频 + 切换播放模式 + 记录历史
    */
  jumpTo: (path, targetMode, tagId, segment) => {
+  usePlayerStore.getState().setShowClipTrack(false);
+        useClipStore.getState().clearClips();
     set((state) => ({
       currentPath: path,
       mode: targetMode ?? state.mode,
@@ -149,6 +152,10 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
     if (queue.length === 0) return;
 
+    usePlayerStore.getState().setShowClipTrack(false);
+    useClipStore.getState().clearClips();
+
+
     let nextPath: string;
     if (mode === 'all') {
       nextPath = queue[Math.floor(Math.random() * queue.length)];
@@ -158,6 +165,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       nextPath = queue[nextIndex];
     }
 
+      
     // 产生新片，更新历史并重置索引
     set({ currentPath: nextPath, historyIndex: 0 });
     get()._internalUpdateHistory(nextPath);
@@ -168,6 +176,9 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     
     // 如果后面还有历史记录
     if (historyIndex < historyPaths.length - 1) {
+        usePlayerStore.getState().setShowClipTrack(false);
+        useClipStore.getState().clearClips();
+
         const newIndex = historyIndex + 1;
         const targetPath = historyPaths[newIndex];
         

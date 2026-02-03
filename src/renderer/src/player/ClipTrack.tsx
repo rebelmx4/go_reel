@@ -1,66 +1,72 @@
-import { Box, Text, Button } from '@mantine/core';
+import { Box, Text } from '@mantine/core';
 import { IconTrash, IconAlertTriangle } from '@tabler/icons-react';
-import { useClipStore } from '../stores/clipStore';
-import { usePlayerStore, useScreenshotStore, usePlaylistStore } from '../stores';
+import { useClipStore, usePlayerStore, useScreenshotStore } from '../stores';
 import { useEffect, useRef } from 'react';
+import { useVideoContext } from './contexts';
+import { formatDuration } from '../utils/format';
+
 
 export function ClipTrack() {
     const clips = useClipStore((state) => state.clips);
     const toggleClipState = useClipStore((state) => state.toggleClipState);
+    const setIsEditing = useClipStore(state => state.setIsEditing);
 
     const duration = usePlayerStore((state) => state.duration);
-    const currentTime = usePlayerStore((state) => state.currentTime); // 引入当前时间
-    const toggleClipTrack = usePlayerStore((state) => state.toggleClipTrack);
+    const currentTime = usePlayerStore((state) => state.currentTime);
 
     const screenshots = useScreenshotStore((state) => state.screenshots);
-    const setIsEditing = useClipStore(state => state.setIsEditing);
+    const { videoRef } = useVideoContext();
+
     const containerRef = useRef<HTMLDivElement>(null);
+    const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         setIsEditing(true);
         return () => setIsEditing(false);
     }, []);
 
+    // --- 处理单击 (跳转) 与 双击 (切换状态) 的冲突 ---
     const handleClipClick = (e: React.MouseEvent, clip: any) => {
-        const videoElement = document.querySelector('video');
-        if (!videoElement || !containerRef.current) return;
+        if (!videoRef.current || !containerRef.current) return;
 
-        if (e.ctrlKey) {
-            // Ctrl + 点击：跳转到片段开头
-            videoElement.currentTime = clip.startTime;
-        } else {
-            // 普通点击：像进度条一样跳转到点击位置
-            const rect = containerRef.current.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-            videoElement.currentTime = percentage * duration;
+        // 如果已经有定时器，说明是正在判定的第二次点击，交给双击逻辑处理
+        if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+            return;
         }
-    };
 
-    const handleExecute = async () => {
-        const currentPath = usePlaylistStore.getState().currentPath;
-        if (!currentPath) return;
-        try {
-            const result = await window.api.updateAnnotation(currentPath, { clips });
-            if (result.success) {
-                toggleClipTrack();
+        // 设置延迟判定
+        const { clientX } = e;
+        const isCtrl = e.ctrlKey;
+
+        clickTimerRef.current = setTimeout(() => {
+            const video = videoRef.current!;
+            if (isCtrl) {
+                video.currentTime = clip.startTime;
+            } else {
+                const rect = containerRef.current!.getBoundingClientRect();
+                const clickX = clientX - rect.left;
+                const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+                video.currentTime = percentage * duration;
             }
-        } catch (error) {
-            console.error('Save failed', error);
-        }
+            clickTimerRef.current = null;
+        }, 250); // 250ms 是单击判定的阈值
     };
 
-    const formatTime = (time: number) => {
-        const m = Math.floor(time / 60);
-        const s = Math.floor(time % 60);
-        return `${m}:${s.toString().padStart(2, '0')}`;
+    const handleClipDoubleClick = (clipId: string) => {
+        // 双击发生时，清除单击定时器，防止进度跳转
+        if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+        }
+        toggleClipState(clipId);
     };
 
     const hasScreenshots = (clip: any) => {
         return screenshots.some(s => s.timestamp >= clip.startTime && s.timestamp <= clip.endTime);
     };
 
-    // 计算游标位置
     const playheadPosition = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     if (clips.length === 0) return null;
@@ -77,15 +83,14 @@ export function ClipTrack() {
                     borderRadius: 4,
                     overflow: 'hidden',
                     border: '1px solid #444',
-                    position: 'relative' // 必须为 relative 以便游标绝对定位
+                    position: 'relative'
                 }}
             >
-                {/* 1. 渲染片段色块 */}
                 {clips.map((clip) => (
                     <Box
                         key={clip.id}
                         onClick={(e) => handleClipClick(e, clip)}
-                        onDoubleClick={() => toggleClipState(clip.id)}
+                        onDoubleClick={() => handleClipDoubleClick(clip.id)}
                         style={{
                             width: `${((clip.endTime - clip.startTime) / duration) * 100}%`,
                             backgroundColor: clip.state === 'keep' ? '#2a4a2a' : '#4a2a2a',
@@ -95,6 +100,7 @@ export function ClipTrack() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
+                            transition: 'background-color 0.2s'
                         }}
                     >
                         {clip.state === 'remove' && (
@@ -104,12 +110,12 @@ export function ClipTrack() {
                             </Box>
                         )}
                         <Text size="8px" style={{ position: 'absolute', bottom: 1, left: 2, opacity: 0.5, pointerEvents: 'none' }}>
-                            {formatTime(clip.startTime)}
+                            {formatDuration(clip.startTime)}
                         </Text>
                     </Box>
                 ))}
 
-                {/* 2. 渲染游标 (Playhead) */}
+                {/* 游标 */}
                 <Box
                     style={{
                         position: 'absolute',
@@ -118,17 +124,12 @@ export function ClipTrack() {
                         left: `${playheadPosition}%`,
                         width: '2px',
                         backgroundColor: '#fff',
-                        boxShadow: '0 0 4px rgba(0,0,0,0.5)',
+                        boxShadow: '0 0 4px rgba(255,255,255,0.8)',
                         zIndex: 10,
-                        pointerEvents: 'none', // 穿透点击
-                        transition: 'none' // 实时更新，不需要过渡动画
+                        pointerEvents: 'none'
                     }}
                 />
             </Box>
-
-            <Button size="xs" color="green" variant="light" onClick={handleExecute} style={{ height: 36 }}>
-                保存裁剪
-            </Button>
         </Box>
     );
 }

@@ -31,6 +31,7 @@ interface PlayerState {
 
   showClipTrack: boolean;
    toggleClipTrack: () => void; 
+  setShowClipTrack: (val: boolean) => void;   
   
   // Setters
   setPlaying: (playing: boolean) => void;
@@ -97,6 +98,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   showClipTrack: false,
   toggleClipTrack: () => set((state) => ({ showClipTrack: !state.showClipTrack })),
+  setShowClipTrack: (val: boolean) => set({ showClipTrack: val }),
   
   setStepMode: (stepMode) => set({ stepMode }),
 
