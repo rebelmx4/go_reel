@@ -1,5 +1,3 @@
-// src/renderer/src/components/Screenshot/ScreenshotTrack.tsx
-
 import { Box, Group, ActionIcon, Tooltip, Loader, Center, Collapse, UnstyledButton } from '@mantine/core';
 import { IconLayoutGrid, IconLayoutNavbar, IconChevronUp, IconChevronDown, IconGripHorizontal } from '@tabler/icons-react';
 import { usePlayerStore, useScreenshotStore, usePlaylistStore, useVideoFileRegistryStore } from '../stores';
@@ -17,7 +15,6 @@ export function ScreenshotTrack({ onScreenshotClick }: { onScreenshotClick: (ts:
     // --- 新增：高度管理 ---
     const [trackHeight, setTrackHeight] = useState(130);
     const isResizing = useRef(false);
-
 
     const { screenshots, isLoading, loadScreenshotData, deleteScreenshot, setAsCover } = useScreenshotStore();
     const currentVideoPath = usePlaylistStore(state => state.currentPath);

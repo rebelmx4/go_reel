@@ -2,8 +2,10 @@
 import { Box, ActionIcon } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useRef, useEffect, useState } from 'react';
-import { ScreenshotCard } from './ScreenshotCard';
 import { Screenshot } from '../stores/screenshotStore';
+import { LazyScreenshotCard } from './LazyScreenshotCard';
+
+
 
 interface NavViewProps {
     screenshots: any[];
@@ -153,12 +155,15 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
                         onClick={() => { onScreenshotClick(s.timestamp); }}
                         style={{ height: '100%', flexShrink: 0 }}
                     >
-                        <ScreenshotCard
+                        <LazyScreenshotCard
+                            key={s.filename}
                             screenshot={s}
                             isActive={activeFilename === s.filename}
                             isCover={false}
                             isRemoved={s.isRemoved}
                             rotation={rotation}
+                            videoAspectRatio={16 / 9}
+                            onScreenshotClick={onScreenshotClick}
                             onSetCover={onSetCover}
                             onDelete={onDelete}
                         />

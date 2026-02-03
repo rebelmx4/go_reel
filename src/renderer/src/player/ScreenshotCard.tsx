@@ -3,6 +3,7 @@ import { IconPhoto, IconTrash } from '@tabler/icons-react';
 import { Screenshot } from '../stores/screenshotStore';
 import { useState, useEffect, useRef } from 'react';
 import { formatDuration } from '../utils/format';
+import { useVideoContext } from './contexts/VideoContext';
 
 interface ScreenshotCardProps {
     screenshot: Screenshot;
@@ -24,13 +25,7 @@ export function ScreenshotCard({
     onDelete,
 }: ScreenshotCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const [aspectRatio, setAspectRatio] = useState<number | string>('16/9');
-
-    // 处理图片加载获取原始比例
-    const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        const { naturalWidth, naturalHeight } = e.currentTarget;
-        setAspectRatio(naturalWidth / naturalHeight);
-    };
+    const { videoAspectRatio } = useVideoContext();
 
     const [visualRotation, setVisualRotation] = useState(rotation);
     const prevRotationRef = useRef(rotation);
@@ -46,9 +41,7 @@ export function ScreenshotCard({
 
     const isRotatedVertical = (rotation / 90) % 2 !== 0;
 
-    const finalAspectRatio = isRotatedVertical
-        ? (typeof aspectRatio === 'number' ? 1 / aspectRatio : '9/16')
-        : aspectRatio;
+    const finalAspectRatio = isRotatedVertical ? 1 / videoAspectRatio : videoAspectRatio;
 
     const safeId = screenshot.filename.replace(/[^a-zA-Z0-9]/g, '_');
 
@@ -92,7 +85,6 @@ export function ScreenshotCard({
             {/* 图片主体 */}
             <img
                 src={screenshot.path}
-                onLoad={handleImageLoad}
                 style={{
                     position: 'absolute',
                     top: '50%',
