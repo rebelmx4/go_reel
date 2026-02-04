@@ -1,4 +1,3 @@
-// src/renderer/src/components/contexts/VideoContext.tsx
 import { createContext, useContext, RefObject, useRef, useState, useEffect, ReactNode } from 'react';
 import { usePlaylistStore } from '../../stores';
 

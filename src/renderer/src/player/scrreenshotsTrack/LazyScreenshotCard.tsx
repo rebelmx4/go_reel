@@ -1,4 +1,3 @@
-// src/renderer/src/components/Screenshot/LazyScreenshotCard.tsx
 import { Box } from '@mantine/core';
 import { useIntersection } from '@mantine/hooks';
 import { useState, useEffect } from 'react';
