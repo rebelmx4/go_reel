@@ -44,11 +44,8 @@ export function ScreenshotCard({
         prevRotationRef.current = rotation;
     }, [rotation]);
 
-    const safeId = screenshot.filename.replace(/[^a-zA-Z0-9]/g, '_');
-
     return (
         <Box
-            id={`screenshot-${safeId}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             style={{

@@ -77,7 +77,7 @@ const bootstrap = async () => {
   }
 };
 
-bootstrap();
+await bootstrap();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

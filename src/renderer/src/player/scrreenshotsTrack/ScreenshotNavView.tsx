@@ -13,6 +13,10 @@ interface NavViewProps {
     onDelete: (s: Screenshot) => void;
 }
 
+const getScreenshotSafeId = (filename: string) => {
+    return `ss-${filename.replace(/[^a-zA-Z0-9]/g, '_')}`;
+};
+
 export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScreenshotClick, onSetCover, onDelete }: NavViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
@@ -38,8 +42,8 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
         if (!activeFilename || !scrollRef.current || !autoScrollEnabled) return;
 
         const container = scrollRef.current;
-        const safeId = activeFilename.replace(/[^a-zA-Z0-9]/g, '_');
-        const activeElement = container.querySelector(`#screenshot-${safeId}`) as HTMLElement;
+        const elementId = getScreenshotSafeId(activeFilename);
+        const activeElement = container.querySelector(`#${elementId}`) as HTMLElement;
 
         if (activeElement) {
             const scrollLeft = activeElement.offsetLeft - container.offsetWidth / 2 + activeElement.offsetWidth / 2;
@@ -146,23 +150,26 @@ export function ScreenshotNavView({ screenshots, activeFilename, rotation, onScr
                     msOverflowStyle: 'none',
                 }}
             >
-                {screenshots.map(s => (
-                    <Box key={s.filename}
-                        onClick={() => { onScreenshotClick(s.timestamp); }}
-                        style={{ height: '100%', flexShrink: 0 }}
-                    >
-                        <LazyScreenshotCard
+                {screenshots.map(s => {
+                    return (
+                        <Box
                             key={s.filename}
-                            screenshot={s}
-                            isActive={activeFilename === s.filename}
-                            isCover={false}
-                            isRemoved={s.isRemoved}
-                            rotation={rotation}
-                            onSetCover={onSetCover}
-                            onDelete={onDelete}
-                        />
-                    </Box>
-                ))}
+                            id={getScreenshotSafeId(s.filename)}
+                            onClick={() => { onScreenshotClick(s.timestamp); }}
+                            style={{ height: '100%', flexShrink: 0 }}
+                        >
+                            <LazyScreenshotCard
+                                screenshot={s}
+                                isActive={activeFilename === s.filename}
+                                isCover={false}
+                                isRemoved={s.isRemoved}
+                                rotation={rotation}
+                                onSetCover={onSetCover}
+                                onDelete={onDelete}
+                            />
+                        </Box>
+                    );
+                })}
             </Box>
 
             {/* 右翻页：贯穿式按钮 */}
