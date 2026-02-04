@@ -5,6 +5,7 @@ import { useVideoContext } from './contexts';
 import { ViewportTagOverlay } from './ViewportTagOverlay';
 import { StoryboardStartOverlay } from './StoryboardStartOverlay';
 
+
 interface VideoViewportProps {
     videoSrc: string;
     onTimeUpdate: (time: number) => void;
@@ -46,7 +47,7 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
             <video
                 ref={videoRef}
                 src={videoSrc}
-                style={videoStyle} // 应用生成的复合样式
+                style={videoStyle}
                 onPlay={handleVideoPlay}
                 onPause={handleVideoPause}
                 onTimeUpdate={() => onTimeUpdate(videoRef.current?.currentTime || 0)}

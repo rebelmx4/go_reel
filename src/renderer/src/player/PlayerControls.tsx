@@ -13,7 +13,7 @@ import {
 } from '../stores';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { ProgressBarWithThumbnail } from './ProgressBarWithThumbnail';
-import { ScreenshotTrack } from './ScreenshotTrack';
+import { ScreenshotTrack } from './scrreenshotsTrack/ScreenshotTrack';
 import { keyBindingManager } from '../utils/KeyBindingManager';
 import { PlaybackTimeLabel } from './PlaybackTimeLabel';
 import { useVideoContext } from './contexts';

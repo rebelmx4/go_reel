@@ -1,1 +1,1 @@
-export { VideoContext, useVideoContext } from './VideoContext';
+export { VideoContext, useVideoContext, VideoProvider  } from './VideoContext';
