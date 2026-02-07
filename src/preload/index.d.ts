@@ -40,6 +40,9 @@ declare global {
       moveToTranscoded: (filePath: string) => Promise<string>;
       showInExplorer: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       openVideoSourceDir: () => Promise<{ success: boolean; error?: string }>;
+      clearDirectory: (dirPath: string) => Promise<{ success: boolean; error?: string }>;
+      copyDirectoryToClipboard: (dirPath: string) => Promise<{ success: boolean; error?: string }>;
+      openPathInExplorer : (path: string) => Promise<{ success: boolean; error?: string }>;
 
       // Screenshot Management
       saveManualScreenshot: (fielPath: string, timestamp: number) => Promise<boolean>

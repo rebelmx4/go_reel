@@ -8,7 +8,7 @@ import fs from 'fs-extra';
 
 export class TagManager extends BaseJsonManager<TagLibrary> {
   constructor() {
-    super('tags.json', { tagsData: {}, pinnedTags: [] });
+    super('tags.json', { tagsData: {}, pinnedTags: [], groupConfigs: [] });
   }
 
   // 获取物理存储根目录

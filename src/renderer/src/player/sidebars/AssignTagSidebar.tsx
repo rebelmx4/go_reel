@@ -1,18 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Box, Text, ScrollArea, UnstyledButton, Stack, Divider } from '@mantine/core';
 import { useTagStore, useVideoFileRegistryStore, usePlaylistStore } from '../../stores';
 import { TagCard } from '../../components/Tag/TagCard';
 
 export function AssignTagSidebar() {
     // 1. 从 Store 获取数据
-    const { tagsData } = useTagStore();
+    const { tagsData, groupConfigs, getGroupColor } = useTagStore();
     const currentPath = usePlaylistStore((state) => state.currentPath);
     const videoFiles = useVideoFileRegistryStore((state) => state.videos);
     const updateAnnotation = useVideoFileRegistryStore((state) => state.updateAnnotation);
 
     // 2. 本地状态：当前选中的分组名
     const groups = useMemo(() => Object.keys(tagsData), [tagsData]);
-    const [activeGroup, setActiveGroup] = useState<string | null>(groups[0] || null);
 
     // 3. 处理标签点击（即时生效）
     const handleTagClick = async (tagId: number) => {
@@ -34,6 +33,36 @@ export function AssignTagSidebar() {
         await updateAnnotation(currentPath, { tags: nextIds });
     };
 
+    const orderedGroups = useMemo(() => {
+        const result: string[] = [];
+        // 先按配置中的 category 和 groups 顺序排列
+        groupConfigs.forEach(cat => {
+            cat.groups.forEach(g => {
+                if (tagsData[g]) result.push(g);
+            });
+        });
+        // 补漏：如果在 JSON 里有但没写在配置里的组，排在后面
+        Object.keys(tagsData).forEach(g => {
+            if (!result.includes(g)) result.push(g);
+        });
+        return result;
+    }, [tagsData, groupConfigs]);
+
+    // 3. 修改初始状态：默认选中有序列表的第一个
+    const [activeGroup, setActiveGroup] = useState<string | null>(orderedGroups[0] || null);
+
+    // 自动纠正 activeGroup
+    useEffect(() => {
+        if (orderedGroups.length > 0 && (!activeGroup || !orderedGroups.includes(activeGroup))) {
+            setActiveGroup(orderedGroups[0]);
+        }
+    }, [orderedGroups]);
+
+    // 获取当前视频已分配的标签 ID（用于在 Card 上显示选中状态）
+    const currentAssignedIds = useMemo(() => {
+        return videoFiles[currentPath || '']?.annotation?.tags || [];
+    }, [videoFiles, currentPath]);
+
     return (
         <Box
             style={{
@@ -48,7 +77,7 @@ export function AssignTagSidebar() {
             {/* 左侧：分组导航栏 (Group Rail) */}
             <Box
                 style={{
-                    width: 90,
+                    width: 80, // 稍微缩窄一点
                     height: '100%',
                     borderRight: '1px solid var(--mantine-color-dark-4)',
                     backgroundColor: 'var(--mantine-color-dark-8)'
@@ -56,57 +85,71 @@ export function AssignTagSidebar() {
             >
                 <ScrollArea h="100%" scrollbarSize={2}>
                     <Stack gap={0}>
-                        {groups.map((group) => (
-                            <UnstyledButton
-                                key={group}
-                                onClick={() => setActiveGroup(group)}
-                                style={{
-                                    padding: '12px 8px',
-                                    backgroundColor: activeGroup === group ? 'var(--mantine-color-dark-5)' : 'transparent',
-                                    borderLeft: activeGroup === group ? '2px solid var(--mantine-color-blue-filled)' : '2px solid transparent',
-                                    transition: 'background-color 0.2s'
-                                }}
-                            >
-                                <Text
-                                    size="xs"
-                                    fw={activeGroup === group ? 700 : 400}
-                                    c={activeGroup === group ? 'white' : 'dimmed'}
-                                    ta="center"
+                        {/* 使用 orderedGroups 渲染 */}
+                        {orderedGroups.map((group) => {
+                            const groupColor = getGroupColor(group); // 获取大类颜色
+                            const isActive = activeGroup === group;
+
+                            return (
+                                <UnstyledButton
+                                    key={group}
+                                    onClick={() => setActiveGroup(group)}
                                     style={{
-                                        wordBreak: 'break-all',
-                                        lineHeight: 1.2
+                                        padding: '8px 4px', // 变矮
+                                        backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
+                                        // 核心：颜色条常驻，4px 宽度
+                                        borderLeft: `4px solid ${groupColor}`,
+                                        transition: 'all 0.1s'
                                     }}
                                 >
-                                    {group}
-                                </Text>
-                            </UnstyledButton>
-                        ))}
+                                    <Text
+                                        size="16px"
+                                        fw={isActive ? 800 : 500}
+                                        style={{
+                                            color: groupColor, // 文字常驻颜色
+                                            opacity: isActive ? 1 : 0.6, // 未选中半透明
+                                            textAlign: 'center',
+                                            wordBreak: 'break-all',
+                                            lineHeight: 1.1
+                                        }}
+                                    >
+                                        {group}
+                                    </Text>
+                                </UnstyledButton>
+                            );
+                        })}
                     </Stack>
                 </ScrollArea>
             </Box>
 
             {/* 右侧：标签列表 (Tag List) */}
             <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Box p="sm">
-                    <Text fw={700} size="sm" truncate>
-                        {activeGroup || '选择分组'}
+                <Box p="xs" style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}>
+                    <Text fw={700} size="xs" truncate ta="center">
+                        {activeGroup || 'SELECT'}
                     </Text>
                 </Box>
-                <Divider color="dark.4" />
                 <Box style={{ flex: 1, minHeight: 0 }}>
-                    <ScrollArea h="100%" p="sm" scrollbarSize={6}>
-                        <Stack align="center" gap="md">
+                    <ScrollArea h="100%" p="xs" scrollbarSize={6}>
+                        {/* 改为双列网格布局 */}
+                        <Box style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '8px'
+                        }}>
                             {activeGroup && tagsData[activeGroup]?.map((tag) => (
                                 <TagCard
                                     key={tag.id}
                                     tag={tag}
+                                    // 可以在这里给 tagcard 传参，让已选中的标签变亮或加边框
+                                    dimmed={currentAssignedIds.includes(tag.id)}
                                     onClick={() => handleTagClick(tag.id)}
                                 />
                             ))}
-                            {(!activeGroup || !tagsData[activeGroup]?.length) && (
-                                <Text size="xs" c="dimmed" mt="xl">该分组暂无标签</Text>
-                            )}
-                        </Stack>
+                        </Box>
+                        {(!activeGroup || !tagsData[activeGroup]?.length) && (
+                            <Text size="xs" c="dimmed" mt="xl" ta="center">空</Text>
+                        )}
                     </ScrollArea>
                 </Box>
             </Box>

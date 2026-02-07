@@ -2,8 +2,8 @@ import * as path from 'path';
 import * as fs  from 'fs-extra';
 import { storageManager } from '../data/json';
 import log from 'electron-log';
-import { shell } from 'electron';
-import { ipcMain } from 'electron';
+import { shell, clipboard, ipcMain } from 'electron';
+import { exec } from 'child_process'; 
 
 export class FileSystemService {
   /** 内部工具：确保目录存在 */
@@ -114,7 +114,94 @@ export class FileSystemService {
     log.info(`[FileSystemService] Opened video source: ${videoPath}`);
   }
 
+  
+  /**
+   * [新增] 清空目录：删除内容但保留目录
+   */
+  public async emptyDirectory(dirPath: string): Promise<void> {
+    if (!dirPath) throw new Error('Path is empty');
+    
+    // 安全校验：防止误删根目录或关键路径
+    const resolvedPath = path.resolve(dirPath);
+    if (resolvedPath === path.resolve('/') || resolvedPath.endsWith(':\\')) {
+      throw new Error('Cannot empty root directory');
+    }
+
+    if (await fs.pathExists(resolvedPath)) {
+      await fs.emptyDir(resolvedPath);
+      log.info(`[FileSystemService] Emptied directory: ${resolvedPath}`);
+    }
+  }
+
+  /**
+   * [新增] 拷贝目录到剪贴板：支持系统级粘贴操作
+   */
+    public copyDirectoryToClipboard(dirPath: string): void {
+    if (!dirPath) throw new Error('Path is empty');
+    
+    const resolvedPath = path.resolve(dirPath);
+
+    // 1. 先用 Electron 原生 API 写入文本，保证记事本等应用能立即粘贴路径（响应速度快）
+    clipboard.writeText(resolvedPath);
+
+    // 2. 调用 PowerShell 设置“文件路径”对象，使资源管理器支持 Ctrl+V 粘贴文件夹
+    // 使用 LiteralPath 避免路径中存在 [ ] 等特殊字符时出错
+    const psCommand = `powershell.exe -NoProfile -Command "Set-Clipboard -LiteralPath '${resolvedPath}'"`;
+
+    exec(psCommand, (error) => {
+      if (error) {
+        log.error(`[FileSystemService] PowerShell Set-Clipboard failed:`, error);
+      } else {
+        log.info(`[FileSystemService] Copied directory to clipboard via PowerShell: ${resolvedPath}`);
+      }
+    });
+  }
+
+ /**
+   * 拷贝目录到剪贴板（模拟剪切效果）
+   * 采用 Base64 编码和 -Sta 模式，确保 100% 兼容
+   */
+  public cutDirectoryToClipboard(dirPath: string): void {
+    if (!dirPath) throw new Error('Path is empty');
+    
+    const resolvedPath = path.resolve(dirPath);
+
+    // 1. 写入文本
+    clipboard.writeText(resolvedPath);
+
+    // 2. 构建 PowerShell 脚本
+    const psScript = `
+      Add-Type -AssemblyName System.Windows.Forms;
+      $files = New-Object System.Collections.Specialized.StringCollection;
+      $files.Add("${resolvedPath}");
+      $data = New-Object System.Windows.Forms.DataObject;
+      $data.SetFileDropList($files);
+      $dropEffect = New-Object System.IO.MemoryStream;
+      $dropEffect.Write([byte[]](2,0,0,0), 0, 4);
+      $data.SetData("Preferred DropEffect", $dropEffect);
+      [System.Windows.Forms.Clipboard]::SetDataObject($data, $true);
+    `;
+
+    // --- 关键：将脚本转换为 UTF-16LE 编码的 Base64 ---
+    // PowerShell 的 -EncodedCommand 要求必须是 UTF-16LE (Unicode)
+    const buffer = Buffer.from(psScript, 'utf16le');
+    const base64Script = buffer.toString('base64');
+
+    // -Sta: 开启单线程单元（剪贴板必须）
+    // -EncodedCommand: 接收 base64 脚本，避开所有转义问题
+    const psCommand = `powershell.exe -NoProfile -Sta -EncodedCommand ${base64Script}`;
+
+    exec(psCommand, (error) => {
+      if (error) {
+        log.error(`[FileSystemService] PowerShell Cut failed:`, error);
+      } else {
+        log.info(`[FileSystemService] Cut directory success: ${resolvedPath}`);
+      }
+    });
+  }
 }
+
+
 
 export const fileSystemService = new FileSystemService();
 
@@ -148,6 +235,38 @@ export function registerFileSytemHandlers() {
       return { success: true };
     } catch (err: any) {
       log.error('[IPC] open-video-source-dir failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+   // [新增] 清空目录 IPC
+  ipcMain.handle('clear-directory', async (_, dirPath: string) => {
+    try {
+      await fileSystemService.emptyDirectory(dirPath);
+      return { success: true };
+    } catch (err: any) {
+      log.error('[IPC] clear-directory failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // [新增] 拷贝目录 IPC
+  ipcMain.handle('copy-directory-to-clipboard', async (_, dirPath: string) => {
+    try {
+      fileSystemService.cutDirectoryToClipboard(dirPath);
+      return { success: true };
+    } catch (err: any) {
+      log.error('[IPC] copy-directory-to-clipboard failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('open-path-in-explorer', async (_, dirPath: string) => {
+    try {
+      await fileSystemService.openDirectory(dirPath);
+      return { success: true };
+    } catch (err: any) {
+      log.error('[IPC] open-path-in-explorer failed:', err);
       return { success: false, error: err.message };
     }
   });

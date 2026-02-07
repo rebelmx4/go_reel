@@ -13,7 +13,6 @@ interface TagCardProps {
     shortcutKey?: string;
 }
 
-
 export function TagCard({
     tag,
     onClick,
@@ -28,7 +27,6 @@ export function TagCard({
     const handleDragStart = (e: React.DragEvent) => {
         if (!draggable) return;
         e.dataTransfer.effectAllowed = 'move';
-        // 传递 JSON 字符串
         e.dataTransfer.setData('application/json', JSON.stringify(tag));
         onDragStart?.(tag);
     };
@@ -50,7 +48,7 @@ export function TagCard({
                 onDragStart={handleDragStart}
                 onClick={() => onClick?.(tag)}
                 style={{
-                    position: 'relative',
+                    position: 'relative', // 基准定位
                     cursor: onClick || draggable ? 'pointer' : 'default',
                     borderRadius: 6,
                     overflow: 'hidden',
@@ -58,8 +56,8 @@ export function TagCard({
                     transition: 'all 0.15s ease',
                     opacity: dimmed ? 0.4 : 1,
                     backgroundColor: '#1a1a1a',
-                    // 防止文字被选中干扰拖拽
                     userSelect: 'none',
+                    height: 90, // 固定高度，让文字能浮在底部
                 }}
                 onMouseEnter={(e) => {
                     if (onClick || draggable) {
@@ -72,7 +70,7 @@ export function TagCard({
                     e.currentTarget.style.boxShadow = 'none';
                 }}
             >
-                {/* 快捷键标识 (0-9, Q, W, E...) */}
+                {/* 快捷键标识 */}
                 {shortcutKey && (
                     <Box
                         style={{
@@ -85,7 +83,7 @@ export function TagCard({
                             borderRadius: 3,
                             fontSize: 10,
                             fontWeight: 800,
-                            zIndex: 10,
+                            zIndex: 12,
                             boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
                         }}
                     >
@@ -93,23 +91,23 @@ export function TagCard({
                     </Box>
                 )}
 
-                {/* 描述信息指示器 (右上角小蓝点或图标) */}
+                {/* 描述信息指示器 */}
                 {tag.description && (
                     <Box
                         style={{
                             position: 'absolute',
-                            top: 4,
-                            right: 4,
+                            top: 6,
+                            right: showRemove ? 24 : 6, // 如果有删除按钮，向左移一点
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
                             backgroundColor: '#339af0',
-                            zIndex: 10,
+                            zIndex: 12,
                         }}
                     />
                 )}
 
-                {/* 删除按钮 (ⓧ) */}
+                {/* 删除按钮 */}
                 {showRemove && (
                     <Box
                         onClick={handleRemoveClick}
@@ -128,7 +126,7 @@ export function TagCard({
                             fontSize: 14,
                             fontWeight: 'bold',
                             cursor: 'pointer',
-                            zIndex: 11,
+                            zIndex: 13,
                             transition: 'background-color 0.2s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.9)'}
@@ -138,22 +136,38 @@ export function TagCard({
                     </Box>
                 )}
 
-                {/* 封面图片 */}
+                {/* 封面图片 - 铺满整个容器 */}
                 <Image
                     src={toFileUrl(tag.imagePath)}
                     alt={tag.keywords}
-                    fit="contain"
-                    height={90} // 16:9 比例下的合理高度
+                    fit="cover" // 改为 cover 使其填满背景
+                    height="100%"
+                    width="100%"
                     fallbackSrc="https://placehold.co/160x90/1a1a1a/666?text=No+Image"
                 />
 
-                {/* 关键词文本区 */}
-                <Box style={{ padding: '4px 6px', backgroundColor: '#25262b' }}>
+                {/* 关键词文本区 - 绝对定位浮层 */}
+                <Box
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: '2px 6px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)', // 黑色半透明底
+                        backdropFilter: 'blur(2px)', // 模糊效果（可选，增加质感）
+                        zIndex: 11
+                    }}
+                >
                     <Text
                         size="xs"
-                        fw={500}
+                        fw={600}
                         truncate
-                        style={{ color: '#eee', textAlign: 'center' }}
+                        style={{
+                            color: '#fff', // 白色文字在深色背景上更清晰
+                            textAlign: 'center',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.8)' // 添加文字阴影防止在亮色图片下看不清
+                        }}
                     >
                         {tag.keywords}
                     </Text>

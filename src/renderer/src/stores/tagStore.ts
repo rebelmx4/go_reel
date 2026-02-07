@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 // 导入共享模型以保持一致性
-import { Tag, PinnedTag, TagLibrary } from '../../../shared/models';
+import { Tag, PinnedTag, TagLibrary, CategoryConfig } from '../../../shared/models';
 
 /**
  * 对应后端 Record<string, Tag[]> 的结构
@@ -12,6 +12,7 @@ export interface TagsData {
 interface TagState {
   tagsData: TagsData;
   pinnedTags: PinnedTag[];
+  groupConfigs:  CategoryConfig[];
   selectedTags: Tag[];
   isLoading: boolean;
 
@@ -26,6 +27,7 @@ interface TagState {
     description?: string; 
     imageBase64: string 
   }) => Promise<Tag | null>;
+  getGroupColor: (groupName: string) => string;
 
   // 替换封面 (对应 api.replaceTagCover)
   replaceTagCover: (tagId: number, imageBase64: string) => Promise<boolean>;
@@ -54,6 +56,7 @@ interface TagState {
 export const useTagStore = create<TagState>((set, get) => ({
   tagsData: {},
   pinnedTags: [],
+  groupConfigs: [],
   selectedTags: [],
   isLoading: false,
 
@@ -61,6 +64,7 @@ export const useTagStore = create<TagState>((set, get) => ({
     set({ 
       tagsData: library.tagsData || {}, 
       pinnedTags: library.pinnedTags || [],
+      groupConfigs: library.groupConfigs || [], 
       isLoading: false 
     });
   },
@@ -74,6 +78,7 @@ export const useTagStore = create<TagState>((set, get) => ({
       set({ 
         tagsData: library.tagsData || {}, 
         pinnedTags: library.pinnedTags || [],
+        groupConfigs: library.groupConfigs || [], 
         isLoading: false 
       });
     } catch (error) {
@@ -103,6 +108,12 @@ export const useTagStore = create<TagState>((set, get) => ({
       console.error('Failed to add tag:', error);
       return null;
     }
+  },
+
+  getGroupColor: (groupName: string) => {
+    const configs = get().groupConfigs;
+    const category = configs.find(c => c.groups.includes(groupName));
+    return category?.color || '#4dabf7'; // 默认蓝
   },
 
   // 3. 替换封面

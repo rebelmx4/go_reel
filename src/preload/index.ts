@@ -30,6 +30,9 @@ const api = {
     ipcRenderer.invoke('show-in-explorer', filePath),
   openVideoSourceDir: () => 
     ipcRenderer.invoke('open-video-source-dir'), 
+  clearDirectory: (dirPath: string) => ipcRenderer.invoke('clear-directory', dirPath),
+  copyDirectoryToClipboard: (dirPath: string) => ipcRenderer.invoke('copy-directory-to-clipboard', dirPath),
+  openPathInExplorer : (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
   
   // Screenshot Management
   saveManualScreenshot: (filePath: string, timestamp: number) =>

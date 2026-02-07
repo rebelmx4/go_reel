@@ -13,9 +13,9 @@ import {
     Tooltip,
     useMantineTheme,
 } from '@mantine/core';
-// 【修复】确保你已经运行了: npm install @mantine/notifications
+import { IconDeviceFloppy, IconFolder, IconAlertCircle, IconCheck, IconTrash, IconCopy } from '@tabler/icons-react';
+import { modals } from '@mantine/modals'; // 用于二次确认弹窗
 import { notifications } from '@mantine/notifications';
-import { IconDeviceFloppy, IconFolder, IconAlertCircle, IconCheck } from '@tabler/icons-react';
 // 【修复】从 keyBindingManager 导入 '源头' 类型定义，确保类型一致性
 import { keyBindingManager, KeyBindings } from '../utils/keyBindingManager';
 
@@ -46,6 +46,60 @@ export function SettingsPage() {
     // 快捷键相关的交互状态
     const [recordingKey, setRecordingKey] = useState<string | null>(null); // 格式: "context.group.func"
     const [conflicts, setConflicts] = useState<Conflicts>({});
+
+    // 拷贝目录到剪贴板
+    const handleCopyPath = async (path: string) => {
+        try {
+            const result = await window.api.copyDirectoryToClipboard(path);
+            if (result.success) {
+                notifications.show({
+                    title: '已复制',
+                    message: '文件夹已放入剪贴板，可在资源管理器中直接粘贴。',
+                    color: 'teal',
+                });
+            }
+        } catch (error) {
+            console.error('Copy directory failed:', error);
+        }
+    };
+
+    // 清空目录逻辑（带二次确认）
+    const handleClearDirectory = (path: string) => {
+        modals.openConfirmModal({
+            title: '确认清空目录',
+            centered: true,
+            children: (
+                <Text size="sm">
+                    确定要清空截图导出目录吗？此操作将<b>永久删除</b>该目录下所有文件且无法恢复。
+                </Text>
+            ),
+            labels: { confirm: '确定删除', cancel: '取消' },
+            confirmProps: { color: 'red' },
+            onConfirm: async () => {
+                try {
+                    const result = await window.api.clearDirectory(path);
+                    if (result.success) {
+                        notifications.show({
+                            title: '清空成功',
+                            message: '截图导出目录已清空。',
+                            color: 'teal',
+                        });
+                        // 关键：清空后刷新资产统计数据（磁盘占用）
+                        const stats = await window.api.getAssetStatistics();
+                        setAssetStats(stats);
+                    } else {
+                        notifications.show({
+                            title: '操作失败',
+                            message: result.error || '无法清空目录',
+                            color: 'red',
+                        });
+                    }
+                } catch (error) {
+                    console.error('Clear directory error:', error);
+                }
+            },
+        });
+    };
 
     // 数据加载
     useEffect(() => {
@@ -209,14 +263,49 @@ export function SettingsPage() {
             <Paper shadow="xs" p="md" mb="xl">
                 <Title order={4} mb="md">路径概览 (只读)</Title>
                 {pathOverview && Object.entries(pathOverview).map(([key, value]) => (
-                    <Group key={key} justify="space-between" mb="xs">
-                        <Text size="sm"><b>{key}:</b> {value}</Text>
-                        <Tooltip label="在文件浏览器中打开">
-                            <ActionIcon variant="subtle" onClick={() => openFolder(value)}>
-                                <IconFolder size={18} />
-                            </ActionIcon>
-                        </Tooltip>
-                    </Group>
+                    <Box key={key}>
+                        {/* 原有的路径条目 */}
+                        <Group justify="space-between" mb="xs" wrap="nowrap">
+                            <Text size="sm" style={{ flex: 1 }}><b>{key}:</b> {value}</Text>
+
+                            <Group gap="xs">
+                                {key === 'screenshot_export_path' && (
+                                    <>
+                                        <Tooltip label="拷贝文件夹 (Ctrl+C 效果)">
+                                            <ActionIcon variant="light" color="blue" onClick={() => handleCopyPath(value)}>
+                                                <IconCopy size={18} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                        <Tooltip label="清空此目录">
+                                            <ActionIcon variant="light" color="red" onClick={() => handleClearDirectory(value)}>
+                                                <IconTrash size={18} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                    </>
+                                )}
+
+                                <Tooltip label="在文件浏览器中打开">
+                                    <ActionIcon variant="subtle" color="gray" onClick={() => openFolder(value)}>
+                                        <IconFolder size={18} />
+                                    </ActionIcon>
+                                </Tooltip>
+                            </Group>
+                        </Group>
+
+                        {/* [新增逻辑] 如果当前是 screenshot_export_path，在它下面插入固定的 E:\ 路径 */}
+                        {key === 'screenshot_export_path' && (
+                            <Group justify="space-between" mb="xs" wrap="nowrap">
+                                <Text size="sm" style={{ flex: 1 }}><b>固定测试路径:</b> E:\</Text>
+                                <Group gap="xs">
+                                    <Tooltip label="在文件浏览器中打开">
+                                        <ActionIcon variant="subtle" color="gray" onClick={() => openFolder("E:\\")}>
+                                            <IconFolder size={18} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                            </Group>
+                        )}
+                    </Box>
                 ))}
             </Paper>
 

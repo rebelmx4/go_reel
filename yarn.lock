@@ -921,18 +921,23 @@
   resolved "https://registry.npmmirror.com/@mantine/hooks/-/hooks-8.3.9.tgz"
   integrity sha512-Dfz7W0+K1cq4Gb1WFQCZn8tsMXkLH6MV409wZR/ToqsxdNDUMJ/xxbfnwEXWEZjXNJd1wDETHgc+cZG2lTe3Xw==
 
-"@mantine/notifications@^8.3.10":
-  version "8.3.10"
-  resolved "https://registry.npmmirror.com/@mantine/notifications/-/notifications-8.3.10.tgz#a2aeb401d90cca499ee10198d607fbfb3373cefd"
-  integrity sha512-0aVpRCyn9u0wuryBnFu1jOwBYw6xGeaNNtTcTUnSvkL6NAypfPon6JG7Wsekf3IuWSTLBjhYaFEIEd4nh7VDpg==
+"@mantine/modals@^8.3.14":
+  version "8.3.14"
+  resolved "https://registry.npmmirror.com/@mantine/modals/-/modals-8.3.14.tgz#7f481b84c06ee722f1af856884aef5696b539803"
+  integrity sha512-BBM53MBq0vKZ7MKmTbqdt6i5eZEoAbfllCHVlQ7J4Xlr1LehoxO3q0MuwPr5kkjSWAPw5okiviKoMYXIKBn53w==
+
+"@mantine/notifications@^8.3.14":
+  version "8.3.14"
+  resolved "https://registry.npmmirror.com/@mantine/notifications/-/notifications-8.3.14.tgz#75f7511e6dbc505ea91561a5856bfc01e5a70f96"
+  integrity sha512-+ia97wrcU9Zfv+jXYvgr2GdISqKTHbQE9nnEIZvGUBPAqKr9b2JAsaXQS/RsAdoXUI+kKDEtH2fyVYS7zrSi/Q==
   dependencies:
-    "@mantine/store" "8.3.10"
+    "@mantine/store" "8.3.14"
     react-transition-group "4.4.5"
 
-"@mantine/store@8.3.10":
-  version "8.3.10"
-  resolved "https://registry.npmmirror.com/@mantine/store/-/store-8.3.10.tgz#86d5cc35c2f16c3855840ff153a24a2787706f45"
-  integrity sha512-38t1UivcucZo9hQq27F/eqR5GvovNs4NHEz6DchOuZzV5IJWqO8+T07ivb8wct47ovYe42rPfLcaOdnIEvMsJA==
+"@mantine/store@8.3.14":
+  version "8.3.14"
+  resolved "https://registry.npmmirror.com/@mantine/store/-/store-8.3.14.tgz#819528797053b2e4756ac33dccfc3ab529617877"
+  integrity sha512-bgW+fYHDOp7Pk4+lcEm3ZF7dD/sIMKHyR985cOqSHAYJPRcVFb+zcEK/SWoFZqlyA4qh08CNrASOaod8N0XKfA==
 
 "@npmcli/fs@^2.1.0":
   version "2.1.2"

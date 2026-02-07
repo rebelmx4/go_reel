@@ -164,39 +164,38 @@ export function toFileUrl(filePath: string): string {
  * @param videoPaths 所有的视频完整路径
  * @param rootPath 视频源根目录 (如 C:/Videos)
  */
+// src/utils/pathUtils.ts
+
 export function buildFolderTree(videoPaths: string[], rootPath: string): FolderTreeNode[] {
-  // 1. 如果 rootPath 没准备好，不进行构建，防止生成错误的 "/D:" 路径
   if (!rootPath) return [];
 
-  // 2. 标准化根路径：统一正斜杠，移除末尾斜杠
   const normalizedRoot = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
-  
-  const treeMap: Record<string, FolderTreeNode> = {};
-  const roots: FolderTreeNode[] = [];
+  const rootLabel = normalizedRoot.split('/').pop() || normalizedRoot;
+
+  // 创建根节点
+  const rootNode: FolderTreeNode = {
+    label: rootLabel,
+    value: normalizedRoot,
+    children: []
+  };
+
+  const treeMap: Record<string, FolderTreeNode> = {
+    [normalizedRoot]: rootNode
+  };
 
   videoPaths.forEach((fullPath) => {
-    // 标准化当前处理的文件路径
     const normalizedPath = fullPath.replace(/\\/g, '/');
-    
-    // 仅处理属于 rootPath 范围内的路径
     if (!normalizedPath.startsWith(normalizedRoot)) return;
 
-    // 获取相对于根目录的路径部分
-    // 例如: root="D:/V", full="D:/V/Action/test.mp4" -> relativePath="Action/test.mp4"
     const relativePath = normalizedPath.substring(normalizedRoot.length).replace(/^\//, '');
     const segments = relativePath.split('/');
-    segments.pop(); // 移除文件名，只保留目录部分
+    segments.pop(); // 移除文件名
 
     let currentPath = normalizedRoot;
 
     segments.forEach((segment) => {
       const parentPath = currentPath;
-      
-      // 拼接当前层级的完整路径作为唯一的 value (ID)
-      // 注意：处理盘符后的斜杠拼接，防止出现 D://m
-      currentPath = parentPath.endsWith('/') 
-        ? `${parentPath}${segment}` 
-        : `${parentPath}/${segment}`;
+      currentPath = parentPath.endsWith('/') ? `${parentPath}${segment}` : `${parentPath}/${segment}`;
 
       if (!treeMap[currentPath]) {
         const newNode: FolderTreeNode = {
@@ -206,35 +205,27 @@ export function buildFolderTree(videoPaths: string[], rootPath: string): FolderT
         };
         treeMap[currentPath] = newNode;
 
-        // 如果该节点是根路径的直接子目录，则放入 roots
-        if (parentPath === normalizedRoot) {
-          roots.push(newNode);
-        } else {
-          // 否则放入其父节点的 children 中
-          const parentNode = treeMap[parentPath];
-          if (parentNode) {
-            parentNode.children = parentNode.children || [];
-            parentNode.children.push(newNode);
-          }
+        const parentNode = treeMap[parentPath];
+        if (parentNode) {
+          parentNode.children = parentNode.children || [];
+          parentNode.children.push(newNode);
         }
       }
     });
   });
 
-  // 3. 对每一层级按字母顺序排序
   const sortNodes = (nodes: FolderTreeNode[]) => {
-    nodes.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }));
+    nodes.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
     nodes.forEach((node) => {
-      if (node.children && node.children.length > 0) {
-        sortNodes(node.children);
-      }
+      if (node.children) sortNodes(node.children);
     });
   };
 
-  sortNodes(roots);
-  return roots;
+  if (rootNode.children) sortNodes(rootNode.children);
+  
+  // 返回包含根节点的数组
+  return [rootNode];
 }
-
 /**
  * 获取包含视频的最浅层文件夹路径
  * 用于页面初始化时定位到第一个有内容的目录

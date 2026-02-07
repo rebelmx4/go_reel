@@ -4,11 +4,10 @@ import { IconChevronLeft, IconFilter } from '@tabler/icons-react';
 import { useTagStore, useVideoFileRegistryStore, usePlaylistStore } from '../../stores';
 import { TagCard } from '../../components/Tag/TagCard';
 import { SidebarVideoList } from './SidebarVideoList';
-import { Tag } from '../../../../shared/models';
 
 export function TagFilterSidebar() {
     // --- 1. Store 数据 ---
-    const { tagsData, getTagById } = useTagStore();
+    const { tagsData, groupConfigs, getGroupColor, getTagById } = useTagStore();
     const { videos, videoPaths } = useVideoFileRegistryStore();
     const jumpTo = usePlaylistStore(state => state.jumpTo);
 
@@ -29,6 +28,21 @@ export function TagFilterSidebar() {
             .map(path => videos[path])
             .filter(v => v.annotation?.tags?.includes(selectedTagId));
     }, [selectedTagId, videos, videoPaths]);
+
+    const orderedGroups = useMemo(() => {
+        const result: string[] = [];
+        // 1. 先按配置顺序添加
+        groupConfigs.forEach(cat => {
+            cat.groups.forEach(g => {
+                if (tagsData[g]) result.push(g);
+            });
+        });
+        // 2. 补漏：如果 JSON 里有但配置里没写的组
+        Object.keys(tagsData).forEach(g => {
+            if (!result.includes(g)) result.push(g);
+        });
+        return result;
+    }, [tagsData, groupConfigs]);
 
     // --- 渲染逻辑 A：视频列表视图 (全宽 300px) ---
     if (selectedTag) {
@@ -60,44 +74,55 @@ export function TagFilterSidebar() {
     // --- 渲染逻辑 B：标签导航视图 (100px + 200px) ---
     return (
         <Box style={{ width: 300, height: '100%', display: 'flex', backgroundColor: 'var(--mantine-color-dark-7)' }}>
-            {/* 左侧：分组 */}
-            <Box style={{ width: 100, borderRight: '1px solid var(--mantine-color-dark-4)', backgroundColor: 'var(--mantine-color-dark-8)' }}>
+            {/* 左侧：分组导航 */}
+            <Box style={{ width: 80, borderRight: '1px solid var(--mantine-color-dark-4)', backgroundColor: 'var(--mantine-color-dark-8)' }}>
                 <ScrollArea h="100%" scrollbarSize={2}>
                     <Stack gap={0}>
-                        {groups.map(group => (
-                            <UnstyledButton
-                                key={group}
-                                onClick={() => setActiveGroup(group)}
-                                style={{
-                                    padding: '16px 8px',
-                                    backgroundColor: activeGroup === group ? 'var(--mantine-color-dark-5)' : 'transparent',
-                                    borderLeft: activeGroup === group ? '3px solid var(--mantine-color-blue-filled)' : '3px solid transparent'
-                                }}
-                            >
-                                <Text size="xs" fw={activeGroup === group ? 700 : 400} c={activeGroup === group ? 'white' : 'dimmed'} ta="center">
-                                    {group}
-                                </Text>
-                            </UnstyledButton>
-                        ))}
+                        {orderedGroups.map(group => {
+                            const groupColor = getGroupColor(group); // 获取大类颜色
+                            const isActive = activeGroup === group;
+                            return (
+                                <UnstyledButton
+                                    key={group}
+                                    onClick={() => setActiveGroup(group)}
+                                    style={{
+                                        padding: '8px 4px',
+                                        backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
+                                        borderLeft: `4px solid ${groupColor}`,
+                                        transition: 'all 0.1s'
+                                    }}
+                                >
+                                    <Text
+                                        size="16px"
+                                        fw={isActive ? 800 : 500}
+                                        style={{
+                                            color: groupColor,
+                                            opacity: isActive ? 1 : 0.6,
+                                            textAlign: 'center',
+                                            lineHeight: 1.1
+                                        }}
+                                    >
+                                        {group}
+                                    </Text>
+                                </UnstyledButton>
+                            );
+                        })}
                     </Stack>
                 </ScrollArea>
             </Box>
 
-            {/* 右侧：当前分组下的标签 */}
+            {/* 右侧：双列标签布局 (保持 Grid 布局逻辑) */}
             <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Box p="sm"><Text fw={700} size="xs" c="dimmed" ta="center">SELECT TAG</Text></Box>
-                <Divider color="dark.4" />
+                <Box p="xs" style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}>
+                    <Text fw={700} size="xs" c="dimmed" ta="center">SELECT TAG</Text>
+                </Box>
                 <Box style={{ flex: 1, minHeight: 0 }}>
-                    <ScrollArea h="100%" p="md">
-                        <Stack align="center" gap="lg">
+                    <ScrollArea h="100%" p="xs">
+                        <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                             {activeGroup && tagsData[activeGroup]?.map(tag => (
-                                <TagCard
-                                    key={tag.id}
-                                    tag={tag}
-                                    onClick={() => setSelectedTagId(tag.id)}
-                                />
+                                <TagCard key={tag.id} tag={tag} onClick={() => setSelectedTagId(tag.id)} />
                             ))}
-                        </Stack>
+                        </Box>
                     </ScrollArea>
                 </Box>
             </Box>

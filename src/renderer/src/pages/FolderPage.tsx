@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text, ScrollArea, Group, Button, Stack, Tree, useTree, Divider, LoadingOverlay } from '@mantine/core';
-import { IconFolder, IconTag, IconCheck, IconX } from '@tabler/icons-react';
+import { IconFolder, IconTag, IconChevronRight, IconFolderFilled } from '@tabler/icons-react';
 import {
     useVideoFileRegistryStore,
     useNavigationStore,
@@ -127,45 +127,55 @@ export function FolderPage() {
                     <Tree
                         data={treeData}
                         tree={tree}
-                        levelOffset={20}
+                        levelOffset={28} // 28-32 左右缩进比较明显
                         renderNode={({ node, expanded, hasChildren, elementProps }) => (
                             <Group
                                 gap={5}
                                 {...elementProps}
-                                // 覆盖默认 onClick，自行组合逻辑
                                 onClick={(event) => {
                                     event.stopPropagation();
-
-                                    // 1. 选中文件夹（更新右侧列表）
                                     setActiveFolder(node.value);
-                                    handleClearSelection();
-
-                                    // 2. 切换展开/收起
-                                    if (hasChildren) {
-                                        tree.toggleExpanded(node.value);
-                                    }
+                                    if (hasChildren) tree.toggleExpanded(node.value);
                                 }}
                                 style={{
-                                    ...elementProps.style,
-                                    padding: '4px 8px',
+                                    ...elementProps.style, // 这里包含了关键的 paddingLeft
+                                    // 不要直接写 padding: '4px 8px', 否则会覆盖缩进
+                                    paddingTop: 4,
+                                    paddingBottom: 4,
+                                    paddingRight: 8,
+
                                     borderRadius: 4,
                                     cursor: 'pointer',
-                                    // 保持高亮逻辑
-                                    backgroundColor: activeFolder === node.value ? 'rgba(34, 139, 230, 0.15)' : 'transparent',
-                                    color: activeFolder === node.value ? '#339af0' : '#eee'
+                                    backgroundColor: activeFolder === node.value ? 'rgba(34, 139, 230, 0.2)' : 'transparent',
+                                    color: activeFolder === node.value ? '#339af0' : '#eee',
+                                    whiteSpace: 'nowrap',
                                 }}
                             >
-                                <IconFolder
-                                    size={16}
-                                    style={{
-                                        opacity: hasChildren ? 1 : 0.5,
-                                        // 可选：如果是展开状态，换一个图标或者旋转一下
-                                        transform: expanded ? 'rotate(10deg)' : 'none',
-                                        transition: 'transform 0.2s'
-                                    }}
-                                    fill={activeFolder === node.value ? 'currentColor' : 'none'}
-                                />
-                                <Text size="sm" truncate>{node.label}</Text>
+                                {/* 这里的 Box 或 div 是为了让没有箭头的节点也能占位，保持图标对齐（可选） */}
+                                <Box style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {hasChildren && (
+                                        <IconChevronRight
+                                            size={14}
+                                            style={{
+                                                transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 200ms ease',
+                                            }}
+                                        />
+                                    )}
+                                </Box>
+
+                                {activeFolder === node.value ? (
+                                    <IconFolderFilled size={18} color="#339af0" />
+                                ) : (
+                                    <IconFolder
+                                        size={18}
+                                        style={{ opacity: hasChildren ? 1 : 0.6 }}
+                                    />
+                                )}
+
+                                <Text size="sm" style={{ fontWeight: activeFolder === node.value ? 600 : 400 }}>
+                                    {node.label}
+                                </Text>
                             </Group>
                         )}
                     />

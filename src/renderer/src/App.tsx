@@ -9,6 +9,10 @@ import { useNavigationStore, useTranscodeStore } from './stores';
 import { MainLayout, ToastContainer } from './components';
 import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
 import { RecordingIndicator } from './player/RecordingIndicator';
+import { ModalsProvider } from '@mantine/modals';
+import { Notifications } from '@mantine/notifications';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css'; // 确保通知样式也引入了
 
 // 3. Pages & Player
 import { VideoPlayer } from './player/VideoPlayer';
@@ -27,7 +31,6 @@ import {
 import { keyBindingManager } from './utils/KeyBindingManager';
 import { AppAction } from '../../shared/settings.schema';
 import { ScreenshotManagePage } from './pages/ScreenshotManagePage';
-
 
 
 function App() {
@@ -99,34 +102,34 @@ function App() {
 
   return (
     <MantineProvider defaultColorScheme="dark">
-      <MainLayout>
-        {/* 
-            核心渲染逻辑：
-            遍历配置表，如果页面被访问过，则保留在 DOM 树中。
-            通过 display 属性控制显示隐藏，从而保留组件状态（如视频进度、滚动位置）。
-        */}
-        {viewConfigs.map((view) => {
-          const isVisited = visitedViews.has(view.id);
-          const isActive = currentView === view.id;
+      {/* 2. 放置 Notifications 容器 */}
+      <Notifications />
 
-          // 如果该视图从未被访问过，则完全不渲染，节省内存和初始化性能
-          if (!isVisited) return null;
+      {/* 3. 包裹 ModalsProvider */}
+      <ModalsProvider>
+        <MainLayout>
+          {viewConfigs.map((view) => {
+            const isVisited = visitedViews.has(view.id);
+            const isActive = currentView === view.id;
 
-          return (
-            <Box
-              key={view.id}
-              style={{
-                display: isActive ? 'block' : 'none',
-                height: '100%',
-                width: '100%',
-                overflow: 'hidden' // 确保各页面独立滚动
-              }}
-            >
-              {view.component}
-            </Box>
-          );
-        })}
-      </MainLayout>
+            if (!isVisited) return null;
+
+            return (
+              <Box
+                key={view.id}
+                style={{
+                  display: isActive ? 'block' : 'none',
+                  height: '100%',
+                  width: '100%',
+                  overflow: 'hidden'
+                }}
+              >
+                {view.component}
+              </Box>
+            );
+          })}
+        </MainLayout>
+      </ModalsProvider>
 
       {/* 全局 UI 组件 */}
       <ToastContainer />

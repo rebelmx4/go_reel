@@ -31,9 +31,17 @@ export interface PinnedTag {
   position: number;
 }
 
+export interface CategoryConfig {
+  categoryName: string;
+  color: string;
+  groups: string[]; 
+}
+
+
 export interface TagLibrary {
   tagsData: Record<string, Tag[]>;
   pinnedTags: PinnedTag[];
+  groupConfigs?: CategoryConfig[]; 
 }
 
 export type HistoryStore = string[];
