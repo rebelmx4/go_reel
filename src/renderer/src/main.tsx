@@ -58,16 +58,12 @@ const bootstrap = async () => {
     // 规则：如果有扫描到视频，默认设置第一个为当前待播
     const allPaths = useVideoFileRegistryStore.getState().videoPaths;
     if (allPaths.length > 0) {
-      playlist.setCurrentPath(allPaths[0]);
+      await playlist.next();
     }
 
     if (tagLibrary) {
       tagStore.setInitialData(tagLibrary);
     }
-
-    // 7. 初始化 UI 状态
-    playlist.setMode('all');            // 默认播放模式
-    navigation.setView('player_page');  // 默认显示播放器页面
 
     console.log(`Bootstrap complete. Loaded ${videoList.length} files.`);
 
