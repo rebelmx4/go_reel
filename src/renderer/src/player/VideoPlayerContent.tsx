@@ -58,17 +58,6 @@ export const VideoPlayerContent = () => {
 
     useVideoAutoSkip();
 
-    // 物理播放控制 (确保 Store 状态与 HTMLVideoElement 同步)
-    useEffect(() => {
-        const v = videoRef.current;
-        if (!v) return;
-        if (isPlaying && v.paused) {
-            v.play().catch(() => setPlaying(false));
-        } else if (!isPlaying && !v.paused) {
-            v.pause();
-        }
-    }, [isPlaying, setPlaying]);
-
     // 音量物理控制
     useEffect(() => {
         if (videoRef.current) videoRef.current.volume = volume / 100;

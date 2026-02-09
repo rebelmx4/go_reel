@@ -150,6 +150,20 @@ const handleLikeToggle = useCallback(async (isCtrl: boolean) => {
     
 }, [currentPath, videoFile, updateAnnotation]);
 
+const togglePlayPause = useCallback(() => {
+        const v = videoRef.current;
+        if (!v) return;
+
+        if (v.paused) {
+            // 指令：让视频播放。
+            // 注意：我们不在这里 setPlaying(true)，因为 onPlay 事件会自动帮我们做
+            v.play().catch(err => console.error("播放失败:", err));
+        } else {
+            // 指令：让视频暂停
+            v.pause();
+        }
+    }, [videoRef]);
+
 
 const { skipFrameMode, setSkipFrameMode } = usePlayerStore();
 const toggleSkipFrameMode = () => {
@@ -164,7 +178,7 @@ const toggleSkipFrameMode = () => {
         softDelete,
         toggleFavorite,
         takeScreenshot,
-        togglePlayPause: () => setPlaying(!isPlaying),
+        togglePlayPause,
         openAssignTag,   
         openCreateTag,
         cutSegment,

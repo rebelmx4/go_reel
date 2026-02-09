@@ -1,6 +1,6 @@
 import { Box } from '@mantine/core';
 import { usePlayerStore } from '../stores';
-import { useVideoVisuals } from './hooks';
+import { useVideoVisuals, usePlayerActions } from './hooks';
 import { useVideoContext } from './contexts';
 import { ViewportTagOverlay } from './ViewportTagOverlay';
 import { StoryboardStartOverlay } from './StoryboardStartOverlay';
@@ -13,18 +13,13 @@ interface VideoViewportProps {
 
 export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
     const { videoRef, containerRef } = useVideoContext();
-    const { rotation, isPlaying, setPlaying, setDuration } = usePlayerStore();
+    const { rotation, setPlaying, setDuration } = usePlayerStore();
+    const { togglePlayPause } = usePlayerActions();
 
-    // 引入 handleWheel
     const { videoStyle, handleWheel, onVisualLoadedMetadata } = useVideoVisuals({ rotation });
 
-    const handleVideoPlay = () => { if (!usePlayerStore.getState().isPlaying) setPlaying(true); };
-    const handleVideoPause = () => {
-        const v = videoRef.current;
-        if (v && v.readyState > 0 && usePlayerStore.getState().isPlaying) {
-            setPlaying(false);
-        }
-    };
+    const handleVideoPlay = () => setPlaying(true);
+    const handleVideoPause = () => setPlaying(false);
 
     return (
         <Box
@@ -39,7 +34,7 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
                 cursor: 'default',
                 backgroundColor: 'black'
             }}
-            onDoubleClick={() => setPlaying(!isPlaying)}
+            onDoubleClick={togglePlayPause}
             onWheel={handleWheel} // 绑定滚轮事件
         >
             <StoryboardStartOverlay />
@@ -53,8 +48,12 @@ export function VideoViewport({ videoSrc, onTimeUpdate }: VideoViewportProps) {
                 onTimeUpdate={() => onTimeUpdate(videoRef.current?.currentTime || 0)}
                 onLoadedMetadata={() => {
                     setDuration(videoRef.current?.duration || 0);
-                    onVisualLoadedMetadata(); // 这里会触发 opacity: 1
+                    onVisualLoadedMetadata();
                     setPlaying(true);
+                    videoRef.current?.play().catch(err => {
+                        console.warn("自动播放被浏览器拦截或失败:", err);
+                        setPlaying(false);
+                    });
                 }}
             />
 
