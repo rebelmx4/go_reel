@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Box, Text, ScrollArea, UnstyledButton, Stack, Divider, ActionIcon, Group } from '@mantine/core';
 import { IconChevronLeft, IconFilter } from '@tabler/icons-react';
 import { useTagStore, useVideoFileRegistryStore, usePlaylistStore } from '../../stores';
@@ -7,14 +7,31 @@ import { SidebarVideoList } from './SidebarVideoList';
 
 export function TagFilterSidebar() {
     // --- 1. Store 数据 ---
-    const { tagsData, groupConfigs, getGroupColor, getTagById } = useTagStore();
+    const {
+        tagsData,
+        groupConfigs,
+        getGroupColor,
+        getTagById,
+        getGroupNameByTagId,
+        sidebarFilterTagId: selectedTagId,
+        setSidebarFilterTagId: setSelectedTagId
+    } = useTagStore();
+
     const { videos, videoPaths } = useVideoFileRegistryStore();
     const jumpTo = usePlaylistStore(state => state.jumpTo);
 
     // --- 2. 本地状态：处理视图切换 ---
-    const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
     const groups = useMemo(() => Object.keys(tagsData), [tagsData]);
     const [activeGroup, setActiveGroup] = useState<string | null>(groups[0] || null);
+
+    useEffect(() => {
+        if (selectedTagId) {
+            const groupName = getGroupNameByTagId(selectedTagId);
+            if (groupName) {
+                setActiveGroup(groupName);
+            }
+        }
+    }, [selectedTagId, getGroupNameByTagId]);
 
     // --- 3. 计算结果集 ---
     const selectedTag = useMemo(() =>
@@ -77,34 +94,45 @@ export function TagFilterSidebar() {
             {/* 左侧：分组导航 */}
             <Box style={{ width: 80, borderRight: '1px solid var(--mantine-color-dark-4)', backgroundColor: 'var(--mantine-color-dark-8)' }}>
                 <ScrollArea h="100%" scrollbarSize={2}>
+                    {/* 在 Stack 内部修改 map 逻辑 */}
                     <Stack gap={0}>
-                        {orderedGroups.map(group => {
-                            const groupColor = getGroupColor(group); // 获取大类颜色
+                        {orderedGroups.map((group, index) => {
+                            const groupColor = getGroupColor(group);
                             const isActive = activeGroup === group;
+
+                            // --- 新增逻辑：判断颜色是否变化 ---
+                            const prevGroup = orderedGroups[index - 1];
+                            const isColorChanged = index > 0 && getGroupColor(prevGroup) !== groupColor;
+
                             return (
-                                <UnstyledButton
-                                    key={group}
-                                    onClick={() => setActiveGroup(group)}
-                                    style={{
-                                        padding: '8px 4px',
-                                        backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
-                                        borderLeft: `4px solid ${groupColor}`,
-                                        transition: 'all 0.1s'
-                                    }}
-                                >
-                                    <Text
-                                        size="16px"
-                                        fw={isActive ? 800 : 500}
+                                <Box key={group}>
+                                    {/* 如果颜色发生变化，插入一条分割线 */}
+                                    {isColorChanged && <Divider my={4} color="var(--mantine-color-dark-4)" style={{ opacity: 0.5 }} />}
+
+                                    <UnstyledButton
+                                        onClick={() => setActiveGroup(group)}
                                         style={{
-                                            color: groupColor,
-                                            opacity: isActive ? 1 : 0.6,
-                                            textAlign: 'center',
-                                            lineHeight: 1.1
+                                            padding: '8px 4px',
+                                            backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
+                                            borderLeft: `4px solid ${groupColor}`,
+                                            transition: 'all 0.1s'
                                         }}
                                     >
-                                        {group}
-                                    </Text>
-                                </UnstyledButton>
+                                        <Text
+                                            size="16px"
+                                            fw={isActive ? 800 : 500}
+                                            style={{
+                                                color: groupColor,
+                                                opacity: isActive ? 1 : 0.6,
+                                                textAlign: 'center',
+                                                wordBreak: 'break-all',
+                                                lineHeight: 1.1
+                                            }}
+                                        >
+                                            {group}
+                                        </Text>
+                                    </UnstyledButton>
+                                </Box>
                             );
                         })}
                     </Stack>

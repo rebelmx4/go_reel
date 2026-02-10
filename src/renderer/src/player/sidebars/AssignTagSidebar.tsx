@@ -84,38 +84,44 @@ export function AssignTagSidebar() {
                 }}
             >
                 <ScrollArea h="100%" scrollbarSize={2}>
+                    {/* 在 Stack 内部修改 map 逻辑 */}
                     <Stack gap={0}>
-                        {/* 使用 orderedGroups 渲染 */}
-                        {orderedGroups.map((group) => {
-                            const groupColor = getGroupColor(group); // 获取大类颜色
+                        {orderedGroups.map((group, index) => {
+                            const groupColor = getGroupColor(group);
                             const isActive = activeGroup === group;
 
+                            // --- 新增逻辑：判断颜色是否变化 ---
+                            const prevGroup = orderedGroups[index - 1];
+                            const isColorChanged = index > 0 && getGroupColor(prevGroup) !== groupColor;
+
                             return (
-                                <UnstyledButton
-                                    key={group}
-                                    onClick={() => setActiveGroup(group)}
-                                    style={{
-                                        padding: '8px 4px', // 变矮
-                                        backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
-                                        // 核心：颜色条常驻，4px 宽度
-                                        borderLeft: `4px solid ${groupColor}`,
-                                        transition: 'all 0.1s'
-                                    }}
-                                >
-                                    <Text
-                                        size="16px"
-                                        fw={isActive ? 800 : 500}
+                                <Box key={group}>
+                                    {/* 如果颜色发生变化，插入一条分割线 */}
+                                    {isColorChanged && <Divider my={4} color="var(--mantine-color-dark-4)" style={{ opacity: 0.5 }} />}
+
+                                    <UnstyledButton
+                                        onClick={() => setActiveGroup(group)}
                                         style={{
-                                            color: groupColor, // 文字常驻颜色
-                                            opacity: isActive ? 1 : 0.6, // 未选中半透明
-                                            textAlign: 'center',
-                                            wordBreak: 'break-all',
-                                            lineHeight: 1.1
+                                            padding: '8px 4px',
+                                            backgroundColor: isActive ? 'var(--mantine-color-dark-5)' : 'transparent',
+                                            borderLeft: `4px solid ${groupColor}`,
+                                            transition: 'all 0.1s'
                                         }}
                                     >
-                                        {group}
-                                    </Text>
-                                </UnstyledButton>
+                                        <Text
+                                            size="16px"
+                                            fw={isActive ? 800 : 500}
+                                            style={{
+                                                color: groupColor,
+                                                opacity: isActive ? 1 : 0.6,
+                                                textAlign: 'center',
+                                                lineHeight: 1.1
+                                            }}
+                                        >
+                                            {group}
+                                        </Text>
+                                    </UnstyledButton>
+                                </Box>
                             );
                         })}
                     </Stack>

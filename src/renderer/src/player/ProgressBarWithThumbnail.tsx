@@ -1,6 +1,10 @@
+// --- START OF FILE ProgressBarWithThumbnail.tsx ---
+
 import { useRef, useState, useEffect } from 'react';
 import { Box } from '@mantine/core';
 import { usePlayerStore, useClipStore } from '../stores';
+import { useVideoContext } from './contexts'; // 引入 Context 获取 videoRef
+import { usePlayerActions } from './hooks/usePlayerActions'; // 引入 Actions
 
 interface ProgressBarWithThumbnailProps {
     videoPath: string | null;
@@ -13,21 +17,24 @@ export function ProgressBarWithThumbnail({
 }: ProgressBarWithThumbnailProps) {
     const progressRef = useRef<HTMLDivElement>(null);
     const thumbnailVideoRef = useRef<HTMLVideoElement>(null);
-    const fillingBarRef = useRef<HTMLDivElement>(null); // 直接操作进度条填充 DOM
+    const fillingBarRef = useRef<HTMLDivElement>(null);
 
-    // --- Store 数据订阅 ---
+    // --- Store 数据 ---
     const clips = useClipStore(state => state.clips);
-    const isPlaying = usePlayerStore(state => state.isPlaying);
-    const setPlaying = usePlayerStore(state => state.setPlaying);
+    // 注意：不再需要 setPlaying，只需要读取状态用于渲染进度条
     const isHoverSeekMode = usePlayerStore(state => state.isHoverSeekMode);
+    const setIsScrubbing = usePlayerStore(state => state.setIsScrubbing);
     const currentTime = usePlayerStore(state => state.currentTime);
     const duration = usePlayerStore(state => state.duration);
 
-    // --- 内部持久化引用 ---
-    const wasPlayingRef = useRef(false);
-    const playDelayRef = useRef<number | null>(null);
+    // --- Context & Actions ---
+    const { videoRef } = useVideoContext(); // 直接获取主视频 Ref 用于读取状态
+    const { playVideo, pauseVideo } = usePlayerActions(); // 使用统一的控制函数
 
-    // 预览框 UI 状态 (仅控制缩略图位置，主进度条使用 Ref 操作)
+    // --- 内部状态 ---
+    const wasPlayingRef = useRef(false);
+
+    // 预览框 UI 状态
     const [showThumbnail, setShowThumbnail] = useState(false);
     const [thumbnailPosition, setThumbnailPosition] = useState(0);
     const [thumbnailTime, setThumbnailTime] = useState(0);
@@ -43,13 +50,38 @@ export function ProgressBarWithThumbnail({
     }, [videoPath]);
 
     // 2. 正常播放时，同步 fillingBar 的宽度
-    // 当不在磁吸模式或者鼠标没进入时，由 currentTime 驱动
     useEffect(() => {
+        // 只有当不显示缩略图（意味着不在交互中）或者 不在磁吸模式下时，才由 Store 驱动
+        // 简单的逻辑：只要没在手动 Seek，就跟着 currentTime 走
         if (!showThumbnail && fillingBarRef.current && duration > 0) {
             const pct = (currentTime / duration) * 100;
             fillingBarRef.current.style.width = `${pct}%`;
         }
     }, [currentTime, duration, showThumbnail]);
+
+    // --- 核心交互逻辑 ---
+
+    const handleMouseEnter = () => {
+        if (!videoRef.current) return;
+
+        if (isHoverSeekMode) {
+            // === 体验 B：磁吸模式 ===
+            // 1. 记录进入前的真实物理状态 (而不是 Store 里的状态，那样可能有延迟)
+            wasPlayingRef.current = !videoRef.current.paused;
+
+            setIsScrubbing(true);
+
+            const v = videoRef.current;
+            if (v) v.pause(); // 这里直接操作 DOM 绕过 actions 的拦截
+
+            // 3. 磁吸模式下不显示缩略图
+            setShowThumbnail(false);
+        } else {
+            // === 体验 A：预览模式 ===
+            // 只显示缩略图，不影响主视频播放
+            setShowThumbnail(true);
+        }
+    };
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const progress = progressRef.current;
@@ -63,58 +95,41 @@ export function ProgressBarWithThumbnail({
         const percentage = x / rect.width;
         const time = percentage * duration;
 
-        // --- 高性能操作：不经过 React State ---
-
-        // 1. 更新缩略图位置和时间文字 (这些更新较轻量，保留 State)
-        setThumbnailPosition(x);
-        setThumbnailTime(time);
-
-        // 2. 同步缩略图视频进度
-        if (thumbVideo && thumbVideo.readyState >= 1) {
-            thumbVideo.currentTime = time;
-        }
-
-        // 3. 磁吸模式下的实时交互
         if (isHoverSeekMode) {
-            // 直接操作主视频 DOM (onSeek 内部通常是 video.currentTime = time)
+            // === 体验 B：磁吸模式 ===
+            // 1. 直接修改主视频时间 (scrubbing)
             onSeek(time);
 
-            // 直接操作进度条填充宽度，实现 0 延迟反馈
+            // 2. 实时更新进度条 UI (0延迟)
             if (fillingBar) {
                 fillingBar.style.width = `${percentage * 100}%`;
             }
+            // 不需要更新缩略图
+        } else {
+            // === 体验 A：预览模式 ===
+            // 1. 更新缩略图位置和时间
+            setThumbnailPosition(x);
+            setThumbnailTime(time);
 
-            // 停止移动检测：自动恢复播放逻辑
-            if (playDelayRef.current) window.clearTimeout(playDelayRef.current);
-            playDelayRef.current = window.setTimeout(() => {
-                // 如果鼠标还在轨道内，且进入前是在播放的，则恢复
-                if (showThumbnail && wasPlayingRef.current) {
-                    setPlaying(true);
-                }
-            }, 200) as unknown as number; // 200ms 停顿即视为“想看这里”
-        }
-    };
-
-    const handleMouseEnter = () => {
-        setShowThumbnail(true);
-        if (isHoverSeekMode) {
-            // 记录进入瞬间的播放状态
-            wasPlayingRef.current = usePlayerStore.getState().isPlaying;
-            // 如果正在播放，立即暂停以进入“搓碟”模式
-            if (wasPlayingRef.current) {
-                setPlaying(false);
+            // 2. 同步缩略图视频进度
+            if (thumbVideo && thumbVideo.readyState >= 1) {
+                thumbVideo.currentTime = time;
             }
+            // 不影响主视频
         }
     };
 
     const handleMouseLeave = () => {
-        setShowThumbnail(false);
         if (isHoverSeekMode) {
-            if (playDelayRef.current) window.clearTimeout(playDelayRef.current);
-            // 离开时，如果之前在播放，恢复播放
+            setIsScrubbing(false);
+
+            // 根据进入前的状态决定是否恢复
             if (wasPlayingRef.current) {
-                setPlaying(true);
+                const v = videoRef.current;
+                if (v) v.play(); // 直接操作 DOM 恢复
             }
+        } else {
+            setShowThumbnail(false);
         }
     };
 
@@ -123,11 +138,16 @@ export function ProgressBarWithThumbnail({
         if (rect && duration) {
             const x = e.clientX - rect.left;
             const time = (x / rect.width) * duration;
+
             onSeek(time);
+
             if (isHoverSeekMode) {
-                // 点击后更新状态：假设用户想从这里开始持续播放
+                // 点击意味着用户确认了“就从这里看”
+                // 通常交互是：点击后，更新“之前的状态”为播放，并立即播放
                 wasPlayingRef.current = true;
+                playVideo();
             }
+            // 体验 A 模式下，onSeek 已经处理了跳转，主视频状态保持不变（若在播放则继续从新位置播，若暂停则在显示新位置）
         }
     };
 
@@ -139,7 +159,7 @@ export function ProgressBarWithThumbnail({
 
     return (
         <Box style={{ position: 'relative', width: '100%' }}>
-            {/* 缩略图预览框 */}
+            {/* 缩略图预览框：只在非磁吸模式下，且 showThumbnail 为 true 时显示 */}
             <Box
                 style={{
                     position: 'absolute',
@@ -154,8 +174,8 @@ export function ProgressBarWithThumbnail({
                     zIndex: 100,
                     pointerEvents: 'none',
                     boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
-                    opacity: showThumbnail ? 1 : 0,
-                    visibility: showThumbnail ? 'visible' : 'hidden',
+                    opacity: (!isHoverSeekMode && showThumbnail) ? 1 : 0,
+                    visibility: (!isHoverSeekMode && showThumbnail) ? 'visible' : 'hidden',
                     transition: 'opacity 0.1s ease-in-out'
                 }}
             >
@@ -200,7 +220,7 @@ export function ProgressBarWithThumbnail({
                     marginTop: '20px',
                 }}
             >
-                {/* 进度指示指示器 (使用 Ref 绑定) */}
+                {/* 进度指示器 */}
                 <Box
                     ref={fillingBarRef}
                     style={{
@@ -214,12 +234,11 @@ export function ProgressBarWithThumbnail({
                         borderRadius: 6,
                         pointerEvents: 'none',
                         zIndex: 1,
-                        // 强制关闭 transition 以实现磁吸模式下的极致响应
-                        transition: 'none'
+                        transition: isHoverSeekMode ? 'none' : 'width 0.1s linear'
                     }}
                 />
 
-                {/* 渲染裁剪删除区 (保持不变) */}
+                {/* 剪辑片段显示 (保持不变) */}
                 {clips.filter(c => c.state === 'remove').map(clip => (
                     <Box
                         key={clip.id}

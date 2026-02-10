@@ -16,6 +16,9 @@ interface TagState {
   selectedTags: Tag[];
   isLoading: boolean;
 
+  sidebarFilterTagId: number | null;
+  setSidebarFilterTagId: (id: number | null) => void;
+
   // 核心动作
   setInitialData: (library: TagLibrary) => void;
   refreshTagLibrary: () => Promise<void>;
@@ -47,6 +50,8 @@ interface TagState {
 
   // 工具方法
   getTagById: (id: number) => Tag | undefined;
+  getGroupNameByTagId: (id: number) => string | undefined;
+
   getAllGroups: () => string[];
   isKeywordUnique: (keyword: string) => boolean;
 
@@ -59,6 +64,9 @@ export const useTagStore = create<TagState>((set, get) => ({
   groupConfigs: [],
   selectedTags: [],
   isLoading: false,
+
+  sidebarFilterTagId: null,
+  setSidebarFilterTagId: (id) => set({ sidebarFilterTagId: id }),
 
   setInitialData: (library: TagLibrary) => {
     set({ 
@@ -212,6 +220,13 @@ export const useTagStore = create<TagState>((set, get) => ({
   },
 
   getAllGroups: () => Object.keys(get().tagsData),
+  getGroupNameByTagId: (id) => {
+    const { tagsData } = get();
+    for (const group in tagsData) {
+      if (tagsData[group].some(t => t.id === id)) return group;
+    }
+    return undefined;
+  },
 
   updateTag: async (tagId, updates) => {
     try {

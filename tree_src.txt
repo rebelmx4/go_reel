@@ -1,4 +1,4 @@
-Volume serial number is 000048B5 C282:B5EC
+Volume serial number is 00007FA4 C282:B5EC
 E:\100_MYPROJECTS\GO_REEL\SRC
 +---main
 |   |   index.ts
@@ -42,9 +42,13 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |   |       index.ts
 |   |       RefreshService.ts
 |   |       StartupService.ts
+|   |       StoryboardService.ts
+|   |       TranscodeQueueManager.ts
 |   |       VideoExportService.ts
+|   |       VideoTranscodeService.ts
 |   |       
 |   \---utils
+|           ffmpegConfig.ts
 |           ffmpegUtils.ts
 |           fileScanner.ts
 |           handlerHelper.ts
@@ -52,6 +56,7 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |           index.ts
 |           migrateScreenshots.ts
 |           ScreenshotGenerator.ts
+|           VideoTranscodeUtils.ts
 |           videoUtils.ts
 |           
 +---preload
@@ -79,6 +84,7 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   |   
 |       |   +---Dialog
 |       |   |       AssignTagDialog.tsx
+|       |   |       BatchAssignTagDialog.tsx
 |       |   |       CreateTagDialog.tsx
 |       |   |       ExportScreenshotDialog.tsx
 |       |   |       RefreshProgressDialog.tsx
@@ -86,6 +92,9 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   +---Layout
 |       |   |       MainLayout.tsx
 |       |   |       TitleBar.tsx
+|       |   |       
+|       |   +---Storyboard
+|       |   |       StoryboardPreviewModal.tsx
 |       |   |       
 |       |   +---Tag
 |       |   |       TagCard.tsx
@@ -104,31 +113,35 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |       index.ts
 |       |       useFileActions.ts
 |       |       useScreenshotExport.ts
+|       |       useStoryboard.ts
 |       |       
 |       +---pages
 |       |       ElitePage.tsx
+|       |       FolderPage.tsx
 |       |       HistoryPage.tsx
 |       |       index.ts
 |       |       LikedPage.tsx
+|       |       MultiPlayerPage.tsx
 |       |       NewestPage.tsx
+|       |       ScreenshotManagePage.tsx
 |       |       SearchPage.tsx
 |       |       SettingsPage.tsx
+|       |       TagManagePage.tsx
 |       |       TagSearchPage.tsx
 |       |       
 |       +---player
 |       |   |   ClipTrack.tsx
+|       |   |   MiniPlayer.tsx
 |       |   |   PlaybackTimeLabel.tsx
 |       |   |   PlayerControls.tsx
 |       |   |   PlayerModals.tsx
 |       |   |   ProgressBarWithThumbnail.tsx
 |       |   |   RecordingIndicator.tsx
-|       |   |   ScreenshotCard.tsx
-|       |   |   ScreenshotGalleryView.tsx
-|       |   |   ScreenshotNavView.tsx
-|       |   |   ScreenshotTrack.tsx
+|       |   |   StoryboardStartOverlay.tsx
 |       |   |   VideoPlayer.tsx
 |       |   |   VideoPlayerContent.tsx
 |       |   |   VideoViewport.tsx
+|       |   |   ViewportTagOverlay.tsx
 |       |   |   
 |       |   +---contexts
 |       |   |       index.ts
@@ -143,15 +156,27 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |   |       useVideoShortcuts.ts
 |       |   |       useVideoVisuals.ts
 |       |   |       
+|       |   +---scrreenshotsTrack
+|       |   |       LazyScreenshotCard.tsx
+|       |   |       ScreenshotCard.tsx
+|       |   |       ScreenshotGalleryView.tsx
+|       |   |       ScreenshotNavView.tsx
+|       |   |       ScreenshotTrack.tsx
+|       |   |       
 |       |   \---sidebars
+|       |           AssignTagSidebar.tsx
 |       |           EliteSidebar.tsx
 |       |           HistorySidebar.tsx
+|       |           LikedSidebar.tsx
 |       |           NewestSidebar.tsx
 |       |           SidebarVideoList.tsx
+|       |           TagFilterSidebar.tsx
+|       |           TranscodeSidebar.tsx
 |       |           
 |       +---stores
 |       |       clipStore.ts
 |       |       index.ts
+|       |       multiPlayerStore.ts
 |       |       navigationStore.ts
 |       |       playerStore.ts
 |       |       playlistStore.ts
@@ -161,6 +186,7 @@ E:\100_MYPROJECTS\GO_REEL\SRC
 |       |       settingsStore.ts
 |       |       tagStore.ts
 |       |       toastStore.ts
+|       |       useTranscodeStore.ts
 |       |       videoFileRegistryStore.ts
 |       |       
 |       \---utils

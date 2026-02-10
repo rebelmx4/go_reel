@@ -18,7 +18,7 @@ export function usePlayerActions( ) {
 
     
 
-    const { rotation, setRotation, setPlaying, toggleSidebar, isPlaying, stepMode, framerate, 
+    const { rotation, setRotation, toggleSidebar, stepMode, framerate, 
         openAssignTagModal, openCreateTagModal} = usePlayerStore();
 
     const { captureManual } = useScreenshotStore();
@@ -150,25 +150,54 @@ const handleLikeToggle = useCallback(async (isCtrl: boolean) => {
     
 }, [currentPath, videoFile, updateAnnotation]);
 
-const togglePlayPause = useCallback(() => {
+  const { isScrubbing } = usePlayerStore();
+
+ const playVideo = useCallback(async () => {
+       if (isScrubbing) return; 
         const v = videoRef.current;
         if (!v) return;
-
-        if (v.paused) {
-            // 指令：让视频播放。
-            // 注意：我们不在这里 setPlaying(true)，因为 onPlay 事件会自动帮我们做
-            v.play().catch(err => console.error("播放失败:", err));
-        } else {
-            // 指令：让视频暂停
-            v.pause();
+        try {
+            await v.play();
+        } catch (err) {
+            console.error("播放失败:", err);
         }
-    }, [videoRef]);
+    }, [videoRef, isScrubbing]);
+
+    const pauseVideo = useCallback(() => {
+        if (isScrubbing) return; 
+
+        const v = videoRef.current;
+        if (!v) return;
+        v.pause();
+    }, [videoRef, isScrubbing]);
+
+    const togglePlayPause = useCallback(() => {
+        if (isScrubbing) return; 
+
+        const v = videoRef.current;
+        if (!v) return;
+        if (v.paused) {
+            playVideo();
+        } else {
+            pauseVideo();
+        }
+    }, [videoRef, playVideo, pauseVideo, isScrubbing]); // 复用上面的函数
 
 
 const { skipFrameMode, setSkipFrameMode } = usePlayerStore();
 const toggleSkipFrameMode = () => {
         setSkipFrameMode(!skipFrameMode);
     };
+
+ const { isHoverSeekMode, setHoverSeekMode } = usePlayerStore(); 
+  const toggleHoverSeekMode = useCallback(() => {
+        const newState = !isHoverSeekMode;
+        setHoverSeekMode(newState);
+        showToast({ 
+            message: newState ? '已开启磁吸预览 (搓碟模式)' : '已关闭磁吸预览', 
+            type: 'info' 
+        });
+    }, [isHoverSeekMode, setHoverSeekMode, showToast]);
 
     return {
         playNext,      
@@ -186,6 +215,9 @@ const toggleSkipFrameMode = () => {
         toggleClipTrack,    
         handleTranscode,
         toggleSkipFrameMode, 
-        handleLikeToggle
+        handleLikeToggle,
+        playVideo,  
+        pauseVideo,
+         toggleHoverSeekMode   
     };
 }

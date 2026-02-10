@@ -41,6 +41,7 @@ export interface PlayControlActions {
   play_next: MultiKey;
   toggle_sidebar: MultiKey;
   toggle_skip_frame_mode: MultiKey; 
+  toggle_hover_seek_mode: MultiKey;
 }
 
 export interface CaptureActions {

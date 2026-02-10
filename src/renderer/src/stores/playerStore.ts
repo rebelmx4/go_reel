@@ -51,6 +51,9 @@ interface PlayerState {
   isHoverSeekMode: boolean; 
   setHoverSeekMode: (enabled: boolean) => void;
 
+  isScrubbing: boolean; 
+  setIsScrubbing: (val: boolean) => void;
+
   // 侧边栏控制逻辑
   setShowSidebar: (show: boolean) => void;
   setSidebarTab: (tab: SidebarTab) => void;
@@ -97,6 +100,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   stepMode: 'frame',
 
   showClipTrack: false,
+  isScrubbing: false, // 初始为 false
+  setIsScrubbing: (isScrubbing) => set({ isScrubbing }),
+
   toggleClipTrack: () => set((state) => ({ showClipTrack: !state.showClipTrack })),
   setShowClipTrack: (val: boolean) => set({ showClipTrack: val }),
   
@@ -165,6 +171,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     isPlaying: false,
     rotation: initialRotation,
     isInteractedInSession: false,
+    isHoverSeekMode: false, 
+    isScrubbing: false,    
   }),
 
    openAssignTagModal: () => set((state) => ({ 

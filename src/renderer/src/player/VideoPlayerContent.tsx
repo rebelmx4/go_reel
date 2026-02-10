@@ -34,8 +34,8 @@ export const VideoPlayerContent = () => {
     const currentPath = usePlaylistStore(state => state.currentPath);
     const playNext = usePlaylistStore(state => state.next);
     const {
-        isPlaying, volume, rotation, showSidebar, sidebarTab,
-        setPlaying, setCurrentTime, handleSidebarTabClick, modals,
+        volume, rotation, showSidebar, sidebarTab,
+        setCurrentTime, handleSidebarTabClick, modals,
         closeAssignTagModal,
         closeCreateTagModal,
         setTagCoverImage

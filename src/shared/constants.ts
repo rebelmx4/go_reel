@@ -63,7 +63,9 @@ export const DEFAULT_SETTINGS: PreferenceSettings = {
         settings_page: ['8'],
         player_page: ['Esc'],
         folder_page: [],
-      tag_manage_page: [],
+        tag_manage_page: [],
+        multi_player_page:  [],
+        screenshot_manage_page:  [],
       },
       play_control: {
         toggle_play: ['Space'], 
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: PreferenceSettings = {
         play_next: ["PageDown"],
         toggle_sidebar: ["PageUp"],
         toggle_skip_frame_mode: ['V'],
+        toggle_hover_seek_mode: ['H'],
       },
       capture: {
         screenshot: ['E'],
