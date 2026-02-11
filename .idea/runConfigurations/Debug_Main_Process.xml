@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug Main Process" type="NodeJSConfigurationType" application-parameters="--sourcemap" path-to-js-file="node_modules/electron-vite/bin/electron-vite.js" working-dir="$PROJECT_DIR$">
+    <envs>
+      <env name="REMOTE_DEBUGGING_PORT" value="9222" />
+    </envs>
+    <EXTENSION ID="com.intellij.javascript.debugger.execution.StartBrowserRunConfigurationExtension">
+      <browser name="98ca6316-2f89-46d9-a9e5-fa9e2b0625b3" with-js-debugger="true" />
+    </EXTENSION>
+    <method v="2" />
+  </configuration>
+</component>
