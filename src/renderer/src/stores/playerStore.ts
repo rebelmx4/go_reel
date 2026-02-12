@@ -1,86 +1,92 @@
-import { create } from 'zustand';
-import { StepValue, DEFAULT_STEP_GRADIENT } from '../../../shared/constants';
+import { create } from 'zustand'
+import { StepValue, DEFAULT_STEP_GRADIENT } from '../../../shared'
 
-
-export type SidebarTab = 'newest' | 'elite' | 'history' | 'assign_tag' | 'tag_search'  | 'transcode' | 'liked';
+export type SidebarTab =
+  | 'newest'
+  | 'elite'
+  | 'history'
+  | 'assign_tag'
+  | 'tag_search'
+  | 'transcode'
+  | 'liked'
 
 interface PlayerState {
   modals: {
-    isAssignTagOpen: boolean;
-    isCreateTagOpen: boolean;
-    tagCoverImage: string; // 只有创建标签时需要暂存这个截图
-  };
+    isAssignTagOpen: boolean
+    isCreateTagOpen: boolean
+    tagCoverImage: string // 只有创建标签时需要暂存这个截图
+  }
 
   // 基础状态
-  isPlaying: boolean;
-  volume: number;
-  currentTime: number;
-  duration: number;
-  playbackRate: number; // 新增：倍速播放
-  
+  isPlaying: boolean
+  volume: number
+  currentTime: number
+  duration: number
+  playbackRate: number // 新增：倍速播放
+
   // 视觉状态
-  rotation: number; 
+  rotation: number
 
   // --- 侧边栏状态优化 ---
-  showSidebar: boolean;
-  sidebarTab: SidebarTab; // 记录当前/上次选中的标签
-  
+  showSidebar: boolean
+  sidebarTab: SidebarTab // 记录当前/上次选中的标签
+
   // 帧控制技术参数
-  skipFrameMode: boolean; 
-  framerate: number;
+  skipFrameMode: boolean
+  framerate: number
 
-  showClipTrack: boolean;
-   toggleClipTrack: () => void; 
-  setShowClipTrack: (val: boolean) => void;   
-  
+  showClipTrack: boolean
+  toggleClipTrack: () => void
+  setShowClipTrack: (val: boolean) => void
+
   // Setters
-  setPlaying: (playing: boolean) => void;
-  setVolume: (v: number) => void;
-  setCurrentTime: (t: number) => void;
-  volumeUp: () => void;
-  volumeDown: () => void;
-  setDuration: (d: number) => void;
-  setRotation: (r: number) => void;
-  setSkipFrameMode: (enabled: boolean) => void;   
-  setFramerate: (fps: number) => void;
-  setPlaybackRate: (rate: number) => void;
+  setPlaying: (playing: boolean) => void
+  setVolume: (v: number) => void
+  setCurrentTime: (t: number) => void
+  volumeUp: () => void
+  volumeDown: () => void
+  setDuration: (d: number) => void
+  setRotation: (r: number) => void
+  setSkipFrameMode: (enabled: boolean) => void
+  setFramerate: (fps: number) => void
+  setPlaybackRate: (rate: number) => void
 
-  stepMode: StepValue; 
-  setStepMode: (mode: StepValue) => void;
+  stepMode: StepValue
+  setStepMode: (mode: StepValue) => void
 
-  isHoverSeekMode: boolean; 
-  setHoverSeekMode: (enabled: boolean) => void;
+  isHoverSeekMode: boolean
+  setHoverSeekMode: (enabled: boolean) => void
 
-  isScrubbing: boolean; 
-  setIsScrubbing: (val: boolean) => void;
+  isScrubbing: boolean
+  setIsScrubbing: (val: boolean) => void
 
   // 侧边栏控制逻辑
-  setShowSidebar: (show: boolean) => void;
-  setSidebarTab: (tab: SidebarTab) => void;
-  toggleSidebar: () => void; // 全局开关：基于上次的 tab 打开/关闭
-  handleSidebarTabClick: (tab: SidebarTab) => void; // VS Code 式逻辑
+  setShowSidebar: (show: boolean) => void
+  setSidebarTab: (tab: SidebarTab) => void
+  toggleSidebar: () => void // 全局开关：基于上次的 tab 打开/关闭
+  handleSidebarTabClick: (tab: SidebarTab) => void // VS Code 式逻辑
 
   // 快捷操作
-  togglePlay: () => void;
-  reset: (initialRotation) => void; // 切换视频时重置状态
+  togglePlay: () => void
+  reset: (initialRotation) => void // 切换视频时重置状态
 
   // 专门控制弹窗的方法
-  openAssignTagModal: () => void;
-  closeAssignTagModal: () => void;
-  
-  openCreateTagModal: (coverImage: string) => void;
-  closeCreateTagModal: () => void;
-  setTagCoverImage: (cover: string) => void; 
+  openAssignTagModal: () => void
+  closeAssignTagModal: () => void
 
-  showViewportTags: boolean;
-  toggleViewportTags: () => void;
+  openCreateTagModal: (coverImage: string) => void
+  closeCreateTagModal: () => void
+  setTagCoverImage: (cover: string) => void
 
-  isInteractedInSession: boolean;
-  setInteracted: (val: boolean) => void;
+  showViewportTags: boolean
+  toggleViewportTags: () => void
+
+  isInteractedInSession: boolean
+  setInteracted: (val: boolean) => void
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
-   modals: {
+  modals: {
     isAssignTagOpen: false,
     isCreateTagOpen: false,
     tagCoverImage: ''
@@ -93,9 +99,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playbackRate: 1.0,
   rotation: 0,
   framerate: 30,
-  skipFrameMode: false, 
-  showSidebar: false, 
-  sidebarTab: 'newest', 
+  skipFrameMode: false,
+  showSidebar: false,
+  sidebarTab: 'newest',
 
   stepMode: 'frame',
 
@@ -105,7 +111,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleClipTrack: () => set((state) => ({ showClipTrack: !state.showClipTrack })),
   setShowClipTrack: (val: boolean) => set({ showClipTrack: val }),
-  
+
   setStepMode: (stepMode) => set({ stepMode }),
 
   isHoverSeekMode: false,
@@ -113,37 +119,37 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setPlaying: (isPlaying) => set({ isPlaying }),
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(100, volume)) }),
-   volumeUp: () => {
-    const { volume } = get();
-    set({ volume: Math.min(volume + 5, 100) });
+  volumeUp: () => {
+    const { volume } = get()
+    set({ volume: Math.min(volume + 5, 100) })
   },
   volumeDown: () => {
-    const { volume } = get();
-    set({ volume: Math.max(volume - 5, 0) });
+    const { volume } = get()
+    set({ volume: Math.max(volume - 5, 0) })
   },
   setCurrentTime: (currentTime) => set({ currentTime }),
   setRotation: (rotation) => set({ rotation }),
-  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }), 
+  setSkipFrameMode: (enabled) => set({ skipFrameMode: enabled }),
   setFramerate: (framerate) => set({ framerate }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
 
   setDuration: (duration) => {
-        // 1. 设置时长
-        set({ duration });
+    // 1. 设置时长
+    set({ duration })
 
-        // 2. 自动根据时长选择合适的步进梯度
-        if (duration > 0) {
-            const matched = DEFAULT_STEP_GRADIENT.find(g => duration <= g.threshold);
-            if (matched) {
-                set({ stepMode: matched.step });
-            }
-        }
-    },
+    // 2. 自动根据时长选择合适的步进梯度
+    if (duration > 0) {
+      const matched = DEFAULT_STEP_GRADIENT.find((g) => duration <= g.threshold)
+      if (matched) {
+        set({ stepMode: matched.step })
+      }
+    }
+  },
 
   // 侧边栏控制 (新增)
-   setShowSidebar: (showSidebar) => set({ showSidebar }),
+  setShowSidebar: (showSidebar) => set({ showSidebar }),
   setSidebarTab: (sidebarTab) => set({ sidebarTab }),
-  
+
   // 全局开关：如果是关闭的，则打开上次记录的 tab
   toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
 
@@ -152,11 +158,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // 2. 如果侧边栏开启且 tab 不同 -> 切换 tab
   // 3. 如果侧边栏开启且 tab 相同 -> 关闭侧边栏
   handleSidebarTabClick: (tab) => {
-    const { showSidebar, sidebarTab } = get();
+    const { showSidebar, sidebarTab } = get()
     if (showSidebar && sidebarTab === tab) {
-      set({ showSidebar: false });
+      set({ showSidebar: false })
     } else {
-      set({ showSidebar: true, sidebarTab: tab });
+      set({ showSidebar: true, sidebarTab: tab })
     }
   },
 
@@ -164,39 +170,45 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setInteracted: (val) => set({ isInteractedInSession: val }),
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  
-  reset: (initialRotation = 0) => set({
-    currentTime: 0,
-    duration: 0,
-    isPlaying: false,
-    rotation: initialRotation,
-    isInteractedInSession: false,
-    isHoverSeekMode: false, 
-    isScrubbing: false,    
-  }),
 
-   openAssignTagModal: () => set((state) => ({ 
-    modals: { ...state.modals, isAssignTagOpen: true },
-    isPlaying: false // 打开弹窗自动暂停，逻辑内聚
-  })),
-  
-  closeAssignTagModal: () => set((state) => ({ 
-    modals: { ...state.modals, isAssignTagOpen: false } 
-  })),
+  reset: (initialRotation = 0) =>
+    set({
+      currentTime: 0,
+      duration: 0,
+      isPlaying: false,
+      rotation: initialRotation,
+      isInteractedInSession: false,
+      isHoverSeekMode: false,
+      isScrubbing: false
+    }),
 
-  openCreateTagModal: (coverImage) => set((state) => ({ 
-    modals: { ...state.modals, isCreateTagOpen: true, tagCoverImage: coverImage },
-    isPlaying: false // 打开弹窗自动暂停
-  })),
-  
-  closeCreateTagModal: () => set((state) => ({ 
-    modals: { ...state.modals, isCreateTagOpen: false, tagCoverImage: '' } 
-  })),
+  openAssignTagModal: () =>
+    set((state) => ({
+      modals: { ...state.modals, isAssignTagOpen: true },
+      isPlaying: false // 打开弹窗自动暂停，逻辑内聚
+    })),
 
-   setTagCoverImage: (cover) => set((state) => ({
-    modals: { ...state.modals, tagCoverImage: cover }
-  })),
+  closeAssignTagModal: () =>
+    set((state) => ({
+      modals: { ...state.modals, isAssignTagOpen: false }
+    })),
+
+  openCreateTagModal: (coverImage) =>
+    set((state) => ({
+      modals: { ...state.modals, isCreateTagOpen: true, tagCoverImage: coverImage },
+      isPlaying: false // 打开弹窗自动暂停
+    })),
+
+  closeCreateTagModal: () =>
+    set((state) => ({
+      modals: { ...state.modals, isCreateTagOpen: false, tagCoverImage: '' }
+    })),
+
+  setTagCoverImage: (cover) =>
+    set((state) => ({
+      modals: { ...state.modals, tagCoverImage: cover }
+    })),
 
   showViewportTags: true, // 默认关闭，或者根据喜好设为 true
-  toggleViewportTags: () => set((state) => ({ showViewportTags: !state.showViewportTags })),
-}));
+  toggleViewportTags: () => set((state) => ({ showViewportTags: !state.showViewportTags }))
+}))
