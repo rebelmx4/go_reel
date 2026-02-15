@@ -32,6 +32,7 @@ interface PlayerState {
   sidebarTab: SidebarTab // 记录当前/上次选中的标签
 
   // 帧控制技术参数
+
   skipFrameMode: boolean
   framerate: number
 
@@ -68,7 +69,7 @@ interface PlayerState {
 
   // 快捷操作
   togglePlay: () => void
-  reset: (initialRotation) => void // 切换视频时重置状态
+  reset: (initialRotation: number) => void // 切换视频时重置状态
 
   // 专门控制弹窗的方法
   openAssignTagModal: () => void
@@ -83,6 +84,8 @@ interface PlayerState {
 
   isInteractedInSession: boolean
   setInteracted: (val: boolean) => void
+
+  jumpToTab: (tab: SidebarTab) => void
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -208,7 +211,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set((state) => ({
       modals: { ...state.modals, tagCoverImage: cover }
     })),
-
+  jumpToTab: (tab) => set({ showSidebar: true, sidebarTab: tab }),
   showViewportTags: true, // 默认关闭，或者根据喜好设为 true
   toggleViewportTags: () => set((state) => ({ showViewportTags: !state.showViewportTags }))
 }))

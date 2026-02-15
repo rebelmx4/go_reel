@@ -2,24 +2,28 @@
 import { useEffect, useRef } from 'react';
 import { keyBindingManager } from '../../utils/KeyBindingManager';
 import { AppAction } from '../../../../shared/settings.schema';
+import { SidebarTab } from '../../stores'
+
+
 
 
 interface ShortcutHandlers {
-    togglePlayPause: () => void;
-    rotateVideo: () => void;
-    stepFrame: (dir: 1 | -1) => void;
-    takeScreenshot: () => void;
-    openCreateTag: () => void;
-    openAssignTag: () => void;   
-    playNext: () => void;
-    softDelete: () => void; 
-    toggleFavorite: () => void; 
-    toggleSidebar: () => void;
-     toggleClipTrack: () => void;
-    cutSegment: () => void;
-    mergeSegment: () => void;
-    toggleSkipFrameMode: () => void;
-    toggleHoverSeekMode: () => void;
+  togglePlayPause: () => void
+  rotateVideo: () => void
+  stepFrame: (dir: 1 | -1) => void
+  takeScreenshot: () => void
+  openCreateTag: () => void
+  openAssignTag: () => void
+  playNext: () => void
+  softDelete: () => void
+  toggleFavorite: () => void
+  toggleSidebar: () => void
+  toggleClipTrack: () => void
+  cutSegment: () => void
+  mergeSegment: () => void
+  toggleSkipFrameMode: () => void
+  toggleHoverSeekMode: () => void
+  switchToTab: (tab: SidebarTab) => void
 }
 
 export function useVideoShortcuts(handlers: ShortcutHandlers) {
@@ -34,32 +38,40 @@ export function useVideoShortcuts(handlers: ShortcutHandlers) {
     useEffect(() => {
         // 定义 动作名称 (settings.json 中的 key) -> 执行函数 的映射
         const actionMap: Record<string, () => void> = {
-            // --- 播放控制 (play_control) ---
-            toggle_play: () => handlersRef.current.togglePlayPause(),
-            step_backward: () => handlersRef.current.stepFrame(-1),
-            step_forward: () => handlersRef.current.stepFrame(1),
-            rotate_video: () => handlersRef.current.rotateVideo(),
-            
-            // --- 截图 (capture) ---
-            screenshot: () => handlersRef.current.takeScreenshot(),
+          // --- 播放控制 (play_control) ---
+          toggle_play: () => handlersRef.current.togglePlayPause(),
+          step_backward: () => handlersRef.current.stepFrame(-1),
+          step_forward: () => handlersRef.current.stepFrame(1),
+          rotate_video: () => handlersRef.current.rotateVideo(),
 
-            // --- 标签 (edit_tag) ---
-            open_assign_tag_dialog: () => handlersRef.current.openAssignTag(),
-            create_tag_from_selection: () => handlersRef.current.openCreateTag(),
+          // --- 截图 (capture) ---
+          screenshot: () => handlersRef.current.takeScreenshot(),
 
-            // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
-            // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
-            play_next: () => handlersRef.current.playNext(), 
-            soft_delete: () => handlersRef.current.softDelete(),
-            toggle_favorite: () => handlersRef.current.toggleFavorite(), 
-            toggle_sidebar: () => handlersRef.current.toggleSidebar(),
+          // --- 标签 (edit_tag) ---
+          open_assign_tag_dialog: () => handlersRef.current.openAssignTag(),
+          create_tag_from_selection: () => handlersRef.current.openCreateTag(),
 
-            toggle_track: () => handlersRef.current.toggleClipTrack(),
-            cut_segment: () => handlersRef.current.cutSegment(),
-            merge_segments: () => handlersRef.current.mergeSegment(),
-            toggle_skip_frame_mode: () => handlersRef.current.toggleSkipFrameMode(),
-            toggle_hover_seek_mode: () => handlersRef.current.toggleHoverSeekMode(), 
-        };
+          // --- 列表导航 (需要你在 JSON 中添加对应配置) ---
+          // 原代码使用的是 PageDown，建议在 settings.json 中添加 "play_next": "PageDown"
+          play_next: () => handlersRef.current.playNext(),
+          soft_delete: () => handlersRef.current.softDelete(),
+          toggle_favorite: () => handlersRef.current.toggleFavorite(),
+          toggle_sidebar: () => handlersRef.current.toggleSidebar(),
+
+          toggle_track: () => handlersRef.current.toggleClipTrack(),
+          cut_segment: () => handlersRef.current.cutSegment(),
+          merge_segments: () => handlersRef.current.mergeSegment(),
+          toggle_skip_frame_mode: () => handlersRef.current.toggleSkipFrameMode(),
+          toggle_hover_seek_mode: () => handlersRef.current.toggleHoverSeekMode(),
+
+          switch_sidebar_newest: () => handlersRef.current.switchToTab('newest'),
+          switch_sidebar_elite: () => handlersRef.current.switchToTab('elite'),
+          switch_sidebar_history: () => handlersRef.current.switchToTab('history'),
+          switch_sidebar_assign_tag: () => handlersRef.current.switchToTab('assign_tag'),
+          switch_sidebar_tag_search: () => handlersRef.current.switchToTab('tag_search'),
+          switch_sidebar_transcode: () => handlersRef.current.switchToTab('transcode'),
+          switch_sidebar_liked: () => handlersRef.current.switchToTab('liked')
+        }
 
         const actionKeys = Object.keys(actionMap);
         console.log("注册 rotate_video")

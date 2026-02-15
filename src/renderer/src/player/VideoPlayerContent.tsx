@@ -24,7 +24,9 @@ import { IconTags, IconFilter, IconArrowsLeftRight } from '@tabler/icons-react';
 import { TagFilterSidebar } from './sidebars/TagFilterSidebar';
 import { TranscodeSidebar } from './sidebars/TranscodeSidebar';
 import { IconHeart } from '@tabler/icons-react';
-import { LikedSidebar } from './sidebars/LikedSidebar';
+import { LikedSidebar } from './sidebars/LikedSidebar'
+
+import { IconLayoutSidebarRightCollapse, IconLayoutSidebarRightExpand } from '@tabler/icons-react'
 
 
 export const VideoPlayerContent = () => {
@@ -38,8 +40,10 @@ export const VideoPlayerContent = () => {
         setCurrentTime, handleSidebarTabClick, modals,
         closeAssignTagModal,
         closeCreateTagModal,
-        setTagCoverImage
+        setTagCoverImage,
+        toggleSidebar
     } = usePlayerStore();
+
 
     const initializeClips = useClipStore(state => state.initializeClips);
     const clearClips = useClipStore(state => state.clearClips);
@@ -115,159 +119,186 @@ export const VideoPlayerContent = () => {
     }
 
     return (
-        <Box style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%', backgroundColor: '#000', overflow: 'hidden' }}>
+      <Box
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#000',
+          overflow: 'hidden'
+        }}
+      >
+        {/* 左侧：播放器主体（Viewport + Controls） */}
+        <Box
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%' }}
+        >
+          {/* 1. 视频视口层 */}
+          <VideoViewport videoSrc={`${currentPath}`} onTimeUpdate={setCurrentTime} />
 
-            {/* 左侧：播放器主体（Viewport + Controls） */}
-            <Box style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%' }}>
-                {/* 1. 视频视口层 */}
-                <VideoViewport
-                    videoSrc={`${currentPath}`}
-                    onTimeUpdate={setCurrentTime}
-                />
-
-                {showClipTrack && (
-                    <Box style={{ padding: '0 20px', backgroundColor: '#000', borderTop: '1px solid #333' }}>
-                        <ClipTrack />
-                    </Box>
-                )}
-
-                {/* 2. 底部控制栏 */}
-                <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
-                    <PlayerControls
-                        onScreenshot={actions.takeScreenshot}
-                        onNext={playNext}
-                        onRotate={actions.rotateVideo}
-                        onDelete={actions.softDelete}
-                        onToggleFavorite={actions.toggleFavorite}
-                        onHandleTranscode={actions.handleTranscode}
-                        onToggleLike={actions.handleLikeToggle}
-                    />
-                </Box>
-            </Box>
-
-            {/* 3. 右侧：侧边栏内容区 */}
-            {showSidebar && (
-                <Box style={{ height: '100%' }}>
-                    {sidebarTab === 'newest' && <NewestSidebar />}
-                    {sidebarTab === 'elite' && <EliteSidebar />}
-                    {sidebarTab === 'history' && <HistorySidebar />}
-                    {sidebarTab === 'assign_tag' && <AssignTagSidebar />}
-                    {sidebarTab === 'tag_search' && <TagFilterSidebar />}
-                    {sidebarTab === 'transcode' && <TranscodeSidebar />}
-                    {sidebarTab === 'liked' && <LikedSidebar />}
-                </Box>
-            )}
-
-            {/* 2. 中间：侧边栏按钮控制条 (VS Code Style) */}
+          {showClipTrack && (
             <Box
-                style={{
-                    width: rem(48),
-                    height: '100%',
-                    backgroundColor: 'var(--mantine-color-dark-8)',
-                    borderLeft: '1px solid var(--mantine-color-dark-4)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    paddingTop: rem(16),
-                    zIndex: 40
-                }}
+              style={{ padding: '0 20px', backgroundColor: '#000', borderTop: '1px solid #333' }}
             >
-                <Stack gap="md">
-                    {/* 最新视频按钮 */}
-                    <Tooltip label="最新视频" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'newest' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('newest')}
-                            color={showSidebar && sidebarTab === 'newest' ? 'blue' : 'gray'}
-                        >
-                            <IconClock style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-
-                    {/* 精品视频按钮 */}
-                    <Tooltip label="精品收藏" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'elite' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('elite')}
-                            color={showSidebar && sidebarTab === 'elite' ? 'blue' : 'gray'}
-                        >
-                            <IconStar style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-
-                    <Tooltip label="播放历史" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'history' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('history')}
-                            color={showSidebar && sidebarTab === 'history' ? 'blue' : 'gray'}
-                        >
-                            <IconHistory style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-
-                    <Tooltip label="分配标签" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'assign_tag' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('assign_tag')}
-                            color={showSidebar && sidebarTab === 'assign_tag' ? 'blue' : 'gray'}
-                        >
-                            <IconTags style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="按标签过滤" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'tag_search' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('tag_search')}
-                            color={showSidebar && sidebarTab === 'tag_search' ? 'blue' : 'gray'}
-                        >
-                            <IconFilter style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="转码队列" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'transcode' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('transcode')}
-                            color={showSidebar && sidebarTab === 'transcode' ? 'blue' : 'gray'}
-                        >
-                            <IconArrowsLeftRight style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="点赞/热度" position="left" withArrow>
-                        <ActionIcon
-                            variant={showSidebar && sidebarTab === 'liked' ? 'filled' : 'light'}
-                            size="lg"
-                            onClick={() => handleSidebarTabClick('liked')}
-                            color={showSidebar && sidebarTab === 'liked' ? 'blue' : 'gray'}
-                        >
-                            <IconHeart style={{ width: rem(20), height: rem(20) }} />
-                        </ActionIcon>
-                    </Tooltip>
-                </Stack>
+              <ClipTrack />
             </Box>
+          )}
 
-            {/* 3. 弹窗组件组（Portal 渲染，不影响布局） */}
-            <PlayerModals
-                currentPath={currentPath}
-                rotation={rotation}
-                showExport={showExportDialog}
-                setShowExport={setShowExportDialog}
-                showTag={modals.isAssignTagOpen}
-                setShowTag={(v) => !v && closeAssignTagModal()}
-
-                // 2. 创建标签弹窗
-                showCreateTag={modals.isCreateTagOpen}
-                setShowCreateTag={(v) => !v && closeCreateTagModal()}
-
-                // 3. 封面图数据
-                tagCoverImage={modals.tagCoverImage}
-                setTagCoverImage={setTagCoverImage}
+          {/* 2. 底部控制栏 */}
+          <Box style={{ width: '100%', zIndex: 30, flexShrink: 0 }}>
+            <PlayerControls
+              onScreenshot={actions.takeScreenshot}
+              onNext={playNext}
+              onRotate={actions.rotateVideo}
+              onDelete={actions.softDelete}
+              onToggleFavorite={actions.toggleFavorite}
+              onHandleTranscode={actions.handleTranscode}
+              onToggleLike={actions.handleLikeToggle}
             />
+          </Box>
         </Box>
-    );
+
+        {/* 3. 右侧：侧边栏内容区 */}
+        {showSidebar && (
+          <Box style={{ height: '100%' }}>
+            {sidebarTab === 'newest' && <NewestSidebar />}
+            {sidebarTab === 'elite' && <EliteSidebar />}
+            {sidebarTab === 'history' && <HistorySidebar />}
+            {sidebarTab === 'assign_tag' && <AssignTagSidebar />}
+            {sidebarTab === 'tag_search' && <TagFilterSidebar />}
+            {sidebarTab === 'transcode' && <TranscodeSidebar />}
+            {sidebarTab === 'liked' && <LikedSidebar />}
+          </Box>
+        )}
+
+        {/* 2. 中间：侧边栏按钮控制条 (VS Code Style) */}
+        <Box
+          style={{
+            width: rem(48),
+            height: '100%',
+            backgroundColor: 'var(--mantine-color-dark-8)',
+            borderLeft: '1px solid var(--mantine-color-dark-4)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            paddingTop: rem(16),
+            zIndex: 40
+          }}
+        >
+          <Stack gap="md">
+            {/* 最新视频按钮 */}
+            <Tooltip label="最新视频" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'newest' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('newest')}
+                color={showSidebar && sidebarTab === 'newest' ? 'blue' : 'gray'}
+              >
+                <IconClock style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+
+            {/* 精品视频按钮 */}
+            <Tooltip label="精品收藏" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'elite' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('elite')}
+                color={showSidebar && sidebarTab === 'elite' ? 'blue' : 'gray'}
+              >
+                <IconStar style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip label="播放历史" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'history' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('history')}
+                color={showSidebar && sidebarTab === 'history' ? 'blue' : 'gray'}
+              >
+                <IconHistory style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip label="分配标签" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'assign_tag' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('assign_tag')}
+                color={showSidebar && sidebarTab === 'assign_tag' ? 'blue' : 'gray'}
+              >
+                <IconTags style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="按标签过滤" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'tag_search' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('tag_search')}
+                color={showSidebar && sidebarTab === 'tag_search' ? 'blue' : 'gray'}
+              >
+                <IconFilter style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="转码队列" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'transcode' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('transcode')}
+                color={showSidebar && sidebarTab === 'transcode' ? 'blue' : 'gray'}
+              >
+                <IconArrowsLeftRight style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="点赞/热度" position="left" withArrow>
+              <ActionIcon
+                variant={showSidebar && sidebarTab === 'liked' ? 'filled' : 'light'}
+                size="lg"
+                onClick={() => handleSidebarTabClick('liked')}
+                color={showSidebar && sidebarTab === 'liked' ? 'blue' : 'gray'}
+              >
+                <IconHeart style={{ width: rem(20), height: rem(20) }} />
+              </ActionIcon>
+            </Tooltip>
+
+            {/* --- 中间：弹性占位符 --- */}
+            <Box style={{ flex: 1 }} />
+
+            {/* --- 底部：总开关 --- */}
+            <Tooltip label={showSidebar ? '隐藏侧边栏' : '显示侧边栏'} position="left" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="lg"
+                onClick={toggleSidebar}
+                color="gray"
+                style={{ marginBottom: rem(8) }}
+              >
+                {showSidebar ? (
+                  <IconLayoutSidebarRightCollapse size={20} />
+                ) : (
+                  <IconLayoutSidebarRightExpand size={20} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+          </Stack>
+        </Box>
+
+        {/* 3. 弹窗组件组（Portal 渲染，不影响布局） */}
+        <PlayerModals
+          currentPath={currentPath}
+          rotation={rotation}
+          showExport={showExportDialog}
+          setShowExport={setShowExportDialog}
+          showTag={modals.isAssignTagOpen}
+          setShowTag={(v) => !v && closeAssignTagModal()}
+          // 2. 创建标签弹窗
+          showCreateTag={modals.isCreateTagOpen}
+          setShowCreateTag={(v) => !v && closeCreateTagModal()}
+          // 3. 封面图数据
+          tagCoverImage={modals.tagCoverImage}
+          setTagCoverImage={setTagCoverImage}
+        />
+      </Box>
+    )
 };
