@@ -9,33 +9,34 @@ import { VideoFile, Annotation, DEFAULT_ANNOTATION} from '../../../shared';
  */
 interface VideoFileRegistryState {
   // 数据仓库：Path -> VideoFile 的映射表
-  videos: Record<string, VideoFile>;
+  videos: Record<string, VideoFile>
   // 基础索引：所有视频路径的有序数组
-  videoPaths: string[];
+  videoPaths: string[]
   // 加载状态
-  isLoading: boolean;
+  isLoading: boolean
 
   // --- Actions ---
-  
+
   /**
    * 初始化数据：由 main.tsx 中的 bootstrap 调用
    * 直接接收后端扫描好的结果
    */
-  setInitialData: (videoList: VideoFile[]) => void;
-  
-  /** 
+  setInitialData: (videoList: VideoFile[]) => void
+
+  /**
    * 更新档案注解：处理点赞、收藏、标签、旋转等
    * 采用“乐观更新”策略：先改 UI，再发 IPC，失败则回滚
    */
-  updateAnnotation: (path: string, updates: Partial<Annotation>) => Promise<void>;
-  batchUpdateAnnotation: (paths: string[], addedTags: number[]) => void;
+  updateAnnotation: (path: string, updates: Partial<Annotation>) => Promise<void>
+  batchUpdateAnnotation: (paths: string[], addedTags: number[]) => void
 
   /** 辅助方法：非 Hook 环境下获取单个文件 */
-  getVideoByPath: (path: string) => VideoFile | undefined;
+  getVideoByPath: (path: string) => VideoFile | undefined
 
-  removeVideo: (path: string) => void;
+  removeVideo: (path: string) => void
 
-  refreshCover: (path: string) => void;
+  refreshCover: (path: string) => void
+  bumpVideoVersion: (path: string) => void
 }
 
 export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, get) => ({
@@ -99,18 +100,31 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
     }
   },
 
+  bumpVideoVersion: (path: string) => {
+    set((state) => {
+      const video = state.videos[path];
+      if (!video) return state;
+      if (video.version) return state
+      return {
+        videos: {
+          ...state.videos,
+          [path]: { ...video, version: (video.version || 0) + 1 }
+        }
+      };
+    });
+  },
 
   batchUpdateAnnotation: (paths, addedTags) => {
     set((state) => {
       const newVideos = { ...state.videos };
-      
+
       paths.forEach(path => {
         const originalFile = newVideos[path];
         if (originalFile) {
           const oldTags = originalFile.annotation?.tags || [];
           // 合并并去重
           const mergedTags = Array.from(new Set([...oldTags, ...addedTags]));
-          
+
           newVideos[path] = {
             ...originalFile,
             annotation: {
@@ -133,14 +147,14 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
       const newVideos = { ...state.videos };
       delete newVideos[path];
       const newPaths = state.videoPaths.filter(p => p !== path);
-      
+
       return {
         videos: newVideos,
         videoPaths: newPaths
       };
     });
   },
-  
+
   refreshCover: (path) => {
       set((state) => {
         const video = state.videos[path];
@@ -152,7 +166,7 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
             [path]: {
               ...video,
               // 改变这个值会触发 React 对该 VideoFile 的响应式重绘
-              coverVersion: Date.now() 
+              coverVersion: Date.now()
             }
           }
         };
@@ -169,15 +183,15 @@ export const useVideoFileRegistryStore = create<VideoFileRegistryState>((set, ge
 // --- A. 纯函数逻辑 (供 Store 内部或其他 Store 使用，例如 PlaylistStore) ---
 
 /** 获取点赞路径列表 */
-export const selectLikedPaths = (s: VideoFileRegistryState) => 
+export const selectLikedPaths = (s: VideoFileRegistryState) =>
   s.videoPaths.filter(p => (s.videos[p].annotation?.like_count ?? 0) > 0);
 
 /** 获取精品(收藏)路径列表 */
-export const selectElitePaths = (s: VideoFileRegistryState) => 
+export const selectElitePaths = (s: VideoFileRegistryState) =>
   s.videoPaths.filter(p => s.videos[p].annotation?.is_favorite);
 
 /** 获取最新视频路径列表 */
-export const selectNewestPaths = (s: VideoFileRegistryState) => 
+export const selectNewestPaths = (s: VideoFileRegistryState) =>
   s.videoPaths.slice(0, 100);
 
 /** 搜索路径列表 */
@@ -189,8 +203,8 @@ export const selectSearchPaths = (s: VideoFileRegistryState, query: string) => {
 
 // --- B. React Hooks (供 UI 组件使用) ---
 
-/** 
- * 获取精品文件对象列表 (用于 Grid 渲染) 
+/**
+ * 获取精品文件对象列表 (用于 Grid 渲染)
  */
 export const useEliteFiles = () => {
   return useVideoFileRegistryStore(
@@ -198,14 +212,14 @@ export const useEliteFiles = () => {
   );
 };
 
-/** 
+/**
  * 获取点赞路径列表 (用于简单的列表展示)
  */
 export const useLikedPaths = () => {
   return useVideoFileRegistryStore(useShallow(selectLikedPaths));
 };
 
-/** 
+/**
  * 获取最新文件对象列表
  */
 export const useNewestFiles = () => {

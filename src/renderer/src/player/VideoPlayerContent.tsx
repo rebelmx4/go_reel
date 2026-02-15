@@ -121,7 +121,7 @@ export const VideoPlayerContent = () => {
             <Box style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100%' }}>
                 {/* 1. 视频视口层 */}
                 <VideoViewport
-                    videoSrc={`file://${currentPath.replace(/\\/g, '/')}`}
+                    videoSrc={`${currentPath}`}
                     onTimeUpdate={setCurrentTime}
                 />
 

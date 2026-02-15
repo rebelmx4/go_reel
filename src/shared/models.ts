@@ -1,4 +1,4 @@
-import { PreferenceSettings } from './settings.schema'; 
+import { PreferenceSettings } from './settings.schema';
 
 
 export interface Annotation {
@@ -11,12 +11,13 @@ export interface Annotation {
 
 
 export interface VideoFile {
-  path: string;
-  createdAt: number; 
-  mtime: number;     
-  size: number;      
-  annotation?: Annotation;  
-  coverVersion?: number; 
+  path: string
+  createdAt: number
+  mtime: number
+  size: number
+  annotation?: Annotation
+  coverVersion?: number
+  version?: number
 }
 
 export interface Tag {
@@ -34,14 +35,14 @@ export interface PinnedTag {
 export interface CategoryConfig {
   categoryName: string;
   color: string;
-  groups: string[]; 
+  groups: string[];
 }
 
 
 export interface TagLibrary {
   tagsData: Record<string, Tag[]>;
   pinnedTags: PinnedTag[];
-  groupConfigs?: CategoryConfig[]; 
+  groupConfigs?: CategoryConfig[];
 }
 
 export type HistoryStore = string[];
@@ -50,18 +51,18 @@ export interface StartupResult {
   videoList: VideoFile[];
   history: HistoryStore;
   preferenceStettings: PreferenceSettings;
-  tagLibrary: TagLibrary; 
+  tagLibrary: TagLibrary;
 }
 
 export interface VideoMetadata {
-    duration: number; 
+    duration: number;
     width: number;
     height: number;
     framerate: number;
 }
 
 export interface VideoClip {
-  id: string;      
+  id: string;
   startTime: number;
   endTime: number;
   state: 'keep' | 'remove';
