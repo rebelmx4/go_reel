@@ -69,7 +69,7 @@ export function PlayerControls({
   onToggleFavorite,
   onHandleTranscode,
   onToggleLike
-}: PlayerControlsProps): React['JSX.Element'] {
+}: PlayerControlsProps) {
   const { videoRef } = useVideoContext()
 
   // --- 1. Store 数据订阅 ---

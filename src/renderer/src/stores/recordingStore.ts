@@ -1,21 +1,21 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
 export interface RecordingState {
-  isRecording: boolean;
-  startTime: number;
-  elapsedTime: number;
+  isRecording: boolean
+  startTime: number
+  elapsedTime: number
   savedPlayerState: {
-    skipFrameMode: boolean;
-    stepMode: 'frame' | 'second';
-  } | null;
+    skipFrameMode: boolean
+    stepMode: 'frame' | 'second'
+  } | null
 }
 
 interface RecordingStore extends RecordingState {
   // Actions
-  startRecording: (playerState: { skipFrameMode: boolean; stepMode: 'frame' | 'second' }) => void;
-  stopRecording: () => void;
-  cancelRecording: () => void;
-  updateElapsedTime: (time: number) => void;
+  startRecording: (playerState: { skipFrameMode: boolean; stepMode: 'frame' | 'second' }) => void
+  stopRecording: () => void
+  cancelRecording: () => void
+  updateElapsedTime: (time: number) => void
 }
 
 export const useRecordingStore = create<RecordingStore>((set) => ({
@@ -29,8 +29,8 @@ export const useRecordingStore = create<RecordingStore>((set) => ({
       isRecording: true,
       startTime: Date.now(),
       elapsedTime: 0,
-      savedPlayerState: playerState,
-    });
+      savedPlayerState: playerState
+    })
   },
 
   stopRecording: () => {
@@ -38,8 +38,8 @@ export const useRecordingStore = create<RecordingStore>((set) => ({
       isRecording: false,
       startTime: 0,
       elapsedTime: 0,
-      savedPlayerState: null,
-    });
+      savedPlayerState: null
+    })
   },
 
   cancelRecording: () => {
@@ -47,11 +47,11 @@ export const useRecordingStore = create<RecordingStore>((set) => ({
       isRecording: false,
       startTime: 0,
       elapsedTime: 0,
-      savedPlayerState: null,
-    });
+      savedPlayerState: null
+    })
   },
 
   updateElapsedTime: (time) => {
-    set({ elapsedTime: time });
-  },
-}));
+    set({ elapsedTime: time })
+  }
+}))

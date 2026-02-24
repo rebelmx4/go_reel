@@ -1,20 +1,20 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
 export interface RefreshProgress {
-  totalFiles: number;
-  processedFiles: number;
-  currentDirectory: string;
-  isRefreshing: boolean;
+  totalFiles: number
+  processedFiles: number
+  currentDirectory: string
+  isRefreshing: boolean
 }
 
 interface RefreshState {
-  progress: RefreshProgress;
-  
+  progress: RefreshProgress
+
   // Actions
-  startRefresh: () => void;
-  updateProgress: (processed: number, total: number, directory: string) => void;
-  finishRefresh: () => void;
-  cancelRefresh: () => void;
+  startRefresh: () => void
+  updateProgress: (processed: number, total: number, directory: string) => void
+  finishRefresh: () => void
+  cancelRefresh: () => void
 }
 
 export const useRefreshStore = create<RefreshState>((set) => ({
@@ -22,7 +22,7 @@ export const useRefreshStore = create<RefreshState>((set) => ({
     totalFiles: 0,
     processedFiles: 0,
     currentDirectory: '',
-    isRefreshing: false,
+    isRefreshing: false
   },
 
   startRefresh: () => {
@@ -31,20 +31,20 @@ export const useRefreshStore = create<RefreshState>((set) => ({
         totalFiles: 0,
         processedFiles: 0,
         currentDirectory: '正在扫描...',
-        isRefreshing: true,
+        isRefreshing: true
       }
-    });
+    })
   },
 
   updateProgress: (processed, total, directory) => {
-    set(state => ({
+    set((state) => ({
       progress: {
         ...state.progress,
         processedFiles: processed,
         totalFiles: total,
-        currentDirectory: directory,
+        currentDirectory: directory
       }
-    }));
+    }))
   },
 
   finishRefresh: () => {
@@ -53,9 +53,9 @@ export const useRefreshStore = create<RefreshState>((set) => ({
         totalFiles: 0,
         processedFiles: 0,
         currentDirectory: '',
-        isRefreshing: false,
+        isRefreshing: false
       }
-    });
+    })
   },
 
   cancelRefresh: () => {
@@ -64,8 +64,8 @@ export const useRefreshStore = create<RefreshState>((set) => ({
         totalFiles: 0,
         processedFiles: 0,
         currentDirectory: '',
-        isRefreshing: false,
+        isRefreshing: false
       }
-    });
-  },
-}));
+    })
+  }
+}))

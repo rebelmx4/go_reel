@@ -1,10 +1,10 @@
-import { VideoProvider } from './contexts';
-import { VideoPlayerContent } from './VideoPlayerContent';
+import { VideoProvider } from './contexts'
+import { VideoPlayerContent } from './VideoPlayerContent'
 
 export const VideoPlayer = () => {
-    return (
-        <VideoProvider>
-            <VideoPlayerContent />
-        </VideoProvider>
-    );
-};
+  return (
+    <VideoProvider>
+      <VideoPlayerContent />
+    </VideoProvider>
+  )
+}

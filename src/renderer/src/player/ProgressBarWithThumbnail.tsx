@@ -1,8 +1,8 @@
 // --- START OF FILE ProgressBarWithThumbnail.tsx ---
 
-import { useRef, useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Box } from '@mantine/core'
-import { usePlayerStore, useClipStore } from '../stores'
+import { useClipStore, usePlayerStore } from '../stores'
 import { useVideoContext } from './contexts' // 引入 Context 获取 videoRef
 import usePlayerActions from './hooks/usePlayerActions' // 引入 Actions
 
@@ -26,7 +26,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
 
   // --- Context & Actions ---
   const { videoRef } = useVideoContext() // 直接获取主视频 Ref 用于读取状态
-  const { playVideo, pauseVideo } = usePlayerActions() // 使用统一的控制函数
+  const { playVideo } = usePlayerActions() // 使用统一的控制函数
 
   // --- 内部状态 ---
   const wasPlayingRef = useRef(false)
@@ -40,8 +40,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
   useEffect(() => {
     const video = thumbnailVideoRef.current
     if (video && videoPath) {
-      const fileUrl = `file:///${videoPath.replace(/\\/g, '/')}`
-      video.src = fileUrl
+      video.src = `file:///${videoPath.replace(/\\/g, '/')}`
       video.load()
     }
   }, [videoPath])
@@ -58,7 +57,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
 
   // --- 核心交互逻辑 ---
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (): void => {
     if (!videoRef.current) return
 
     if (isHoverSeekMode) {
