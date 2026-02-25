@@ -1,14 +1,14 @@
-import { Box, Text } from '@mantine/core';
-import { VideoFile } from '../../../../shared/models';
-import { VideoCard } from '../../components/Video/VideoCard';
-import { VList } from 'virtua';
+import { Box, Text } from '@mantine/core'
+import { VideoFile } from '../../../../shared/models'
+import { VideoCard } from '../../components/Video/VideoCard'
+import { VList } from 'virtua'
 
 interface SidebarVideoListProps {
-    videos: VideoFile[];
-    onPlay: (video: VideoFile) => void;
-    onToggleLike?: (video: VideoFile) => void;
-    onToggleElite?: (video: VideoFile) => void;
-    emptyMessage?: string;
+  videos: VideoFile[]
+  onPlay: (video: VideoFile) => void
+  onToggleLike?: (video: VideoFile) => void
+  onToggleElite?: (video: VideoFile) => void
+  emptyMessage?: string
 }
 
 /**
@@ -16,54 +16,62 @@ interface SidebarVideoListProps {
  * 特点：单列布局、独立滚动、高度自适应
  */
 export function SidebarVideoList({
-    videos,
-    onPlay,
-    onToggleLike,
-    onToggleElite,
-    emptyMessage = '暂无视频'
+  videos,
+  onPlay,
+  onToggleLike,
+  onToggleElite,
+  emptyMessage = '暂无视频'
 }: SidebarVideoListProps) {
-    if (videos.length === 0) {
-        return (
-            <Box
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '200px'
-                }}
-            >
-                <Text c="dimmed" size="sm">{emptyMessage}</Text>
-            </Box>
-        );
-    }
-
+  if (videos.length === 0) {
     return (
-        <Box style={{ height: '100%', width: '100%' }}>
-            <VList
-                style={{ height: '100%' }}
-            >
-                {videos.map((video, index) => (
-                    <Box
-                        key={video.path}
-                        style={{
-                            // 1. 手动处理间距
-                            paddingBottom: 16,
-                            // 2. 左右边距
-                            paddingLeft: 12,
-                            paddingRight: 12,
-                            // 3. 第一个元素增加顶部间距
-                            paddingTop: index === 0 ? 12 : 0
-                        }}
-                    >
-                        <VideoCard
-                            video={video}
-                            onPlay={onPlay}
-                            onToggleLike={onToggleLike}
-                            onToggleElite={onToggleElite}
-                        />
-                    </Box>
-                ))}
-            </VList>
-        </Box>
-    );
+      <Box
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '200px'
+        }}
+      >
+        <Text c="dimmed" size="sm">
+          {emptyMessage}
+        </Text>
+      </Box>
+    )
+  }
+
+  return (
+    <Box style={{ height: '100%', width: '100%' }}>
+      <VList
+        style={{
+          height: '100%',
+          // 预留滚动条间隙，防止内容宽度随滚动条显示而改变
+          // 注意：在某些旧版内核中可能需要驼峰写法 scrollbarGutter
+          scrollbarGutter: 'stable'
+        }}
+      >
+        {videos.map((video, index) => (
+          <Box
+            key={video.path}
+            style={{
+              // 1. 手动处理间距
+              paddingBottom: 16,
+              // 2. 左右边距
+              paddingLeft: 12,
+              paddingRight: 12,
+              // 3. 第一个元素增加顶部间距
+              paddingTop: index === 0 ? 12 : 0
+            }}
+          >
+            <VideoCard
+              video={video}
+              isSelected={false}
+              onPlay={onPlay}
+              onToggleLike={onToggleLike}
+              onToggleElite={onToggleElite}
+            />
+          </Box>
+        ))}
+      </VList>
+    </Box>
+  )
 }

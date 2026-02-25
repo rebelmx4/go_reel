@@ -15,6 +15,7 @@ interface VideoGridProps {
 
 export function VideoGrid({
   videos,
+  showFilenameTip,
   selectedPaths,
   onSelect,
   onPlay,
@@ -53,6 +54,7 @@ export function VideoGrid({
         <VideoCard
           key={video.path}
           video={video}
+          showFilenameTip={showFilenameTip}
           isSelected={!!selectedPaths?.has(video.path)}
           onClick={(e) => onSelect?.(index, e)}
           onPlay={onPlay}
