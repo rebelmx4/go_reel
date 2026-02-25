@@ -17,14 +17,10 @@ import { useVideoAutoSkip } from './hooks/useVideoAutoSkip'
 
 import { useVideoContext } from './contexts'
 import { ClipTrack } from './ClipTrack'
-
-// Sub-Components
 import { PlayerControls } from './PlayerControls'
 import { VideoViewport } from './VideoViewport'
 import { PlayerModals } from './PlayerModals'
 import { NewestSidebar } from './sidebars/NewestSidebar'
-
-// Hooks
 import { usePlayerActions, useVideoData, useVideoShortcuts } from './hooks'
 import { useScreenshotExport } from '../hooks'
 import { HistorySidebar } from './sidebars/HistorySidebar'
@@ -90,7 +86,7 @@ export const VideoPlayerContent = () => {
   // 自动播放下一个
   useEffect(() => {
     const v = videoRef.current
-    if (!v) return
+    if (!v) return undefined
     const onEnded = () => playNext()
     v.addEventListener('ended', onEnded)
     return () => v.removeEventListener('ended', onEnded)

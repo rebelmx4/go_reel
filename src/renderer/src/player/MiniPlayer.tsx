@@ -25,7 +25,7 @@ export function MiniPlayer({ path, onClose }: MiniPlayerProps) {
 
   const togglePlay = () => {
     if (videoRef.current?.paused) {
-      videoRef.current.play()
+      videoRef.current.play().catch()
       setIsPlaying(true)
     } else {
       videoRef.current?.pause()

@@ -1,243 +1,309 @@
-// src/renderer/src/pages/FolderPage.tsx
-
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Box, Text, ScrollArea, Group, Button, Stack, Tree, useTree, Divider, LoadingOverlay } from '@mantine/core';
-import { IconFolder, IconTag, IconChevronRight, IconFolderFilled } from '@tabler/icons-react';
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-    useVideoFileRegistryStore,
-    useNavigationStore,
-    usePlaylistStore
-} from '../stores';
-import { VideoGrid } from '../components/Video/VideoGrid';
-import { buildFolderTree, getShallowestVideoFolder, dirname } from '../utils/pathUtils';
-import { VideoFile } from '../../../shared/models';
-import { BatchAssignTagDialog } from '../components/Dialog/BatchAssignTagDialog';
+  Box,
+  Text,
+  ScrollArea,
+  Group,
+  Button,
+  Tree,
+  useTree,
+  Divider,
+  LoadingOverlay,
+  TextInput,
+  ActionIcon
+} from '@mantine/core'
+import {
+  IconFolder,
+  IconTag,
+  IconChevronRight,
+  IconFolderFilled,
+  IconSearch,
+  IconX
+} from '@tabler/icons-react'
+import { useVideoFileRegistryStore, useNavigationStore, usePlaylistStore } from '../stores'
+
+import { VideoGrid } from '../components/Video/VideoGrid'
+import { buildFolderTree, getShallowestVideoFolder, dirname, getFilename } from '@renderer/utils'
+import { VideoFile } from '../../../shared'
+import { BatchAssignTagDialog } from '../components/Dialog/BatchAssignTagDialog'
 
 export function FolderPage() {
-    // --- 1. Store 数据 ---
-    const { videos, videoPaths } = useVideoFileRegistryStore();
-    const setView = useNavigationStore((s) => s.setView);
-    const jumpTo = usePlaylistStore((s) => s.jumpTo);
+  // --- 1. Store 数据 ---
+  const { videos, videoPaths } = useVideoFileRegistryStore()
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const setView = useNavigationStore((s) => s.setView)
+  const jumpTo = usePlaylistStore((s) => s.jumpTo)
 
-    // --- 2. 本地状态 ---
-    const [videoSource, setVideoSource] = useState<string>('');
-    const [activeFolder, setActiveFolder] = useState<string | null>(null);
-    const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-    const [anchorIndex, setAnchorIndex] = useState<number | null>(null); // 用于 Shift 连选
-    const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  // --- 2. 本地状态 ---
+  const [videoSource, setVideoSource] = useState<string>('')
+  const [activeFolder, setActiveFolder] = useState<string | null>(null)
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
+  const [anchorIndex, setAnchorIndex] = useState<number | null>(null) // 用于 Shift 连选
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false)
 
-    // --- 3. 初始化：获取路径配置 ---
-    useEffect(() => {
-        window.api.getPathOverview().then(res => {
-            setVideoSource(res.video_source);
-            // 初始定位到最浅的包含视频的目录
-            const shallowest = getShallowestVideoFolder(videoPaths, res.video_source);
-            setActiveFolder(shallowest);
-        });
-    }, [videoPaths]);
+  // --- 3. 初始化：获取路径配置 ---
+  useEffect(() => {
+    window.api.getPathOverview().then((res) => {
+      setVideoSource(res.video_source)
+      // 初始定位到最浅的包含视频的目录
+      const shallowest = getShallowestVideoFolder(videoPaths, res.video_source)
+      setActiveFolder(shallowest)
+    })
+  }, [videoPaths])
 
-    // --- 4. 树逻辑 (Mantine Tree) ---
-    const treeData = useMemo(() => {
-        if (!videoSource) return []; // 根路径没准备好，不构建
-        return buildFolderTree(videoPaths, videoSource);
-    }, [videoPaths, videoSource]);
+  useEffect(() => {
+    handleClearSelection()
+  }, [searchQuery])
 
-    const tree = useTree();
+  // --- 4. 树逻辑 (Mantine Tree) ---
+  const treeData = useMemo(() => {
+    if (!videoSource) return [] // 根路径没准备好，不构建
+    return buildFolderTree(videoPaths, videoSource)
+  }, [videoPaths, videoSource])
 
-    console.log(JSON.stringify(treeData));
+  const tree = useTree()
 
-    // --- 5. 视频过滤 logic ---
-    const currentVideos = useMemo(() => {
-        if (!activeFolder) return [];
-        // 过滤出当前层级的视频，并保持 videoPaths 的原始排序
-        return videoPaths
-            .filter(path => dirname(path) === activeFolder)
-            .map(path => videos[path]);
-    }, [activeFolder, videoPaths, videos]);
+  console.log(JSON.stringify(treeData))
 
-    // --- 6. 多选交互逻辑 ---
-    const handleSelect = useCallback((index: number, e: React.MouseEvent) => {
-        const targetPath = currentVideos[index].path;
-        const newSelected = new Set(selectedPaths);
+  // --- 5. 视频过滤 logic ---
+  const currentVideos = useMemo(() => {
+    // 优先逻辑：如果搜索框有内容，执行全局模糊搜索
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      return videoPaths
+        .filter((path) => getFilename(path).toLowerCase().includes(query))
+        .map((path) => videos[path])
+    }
 
-        if (e.ctrlKey || e.metaKey) {
-            // Ctrl + 点击：反转选中
-            if (newSelected.has(targetPath)) newSelected.delete(targetPath);
-            else newSelected.add(targetPath);
-            setAnchorIndex(index);
+    // 次要逻辑：常规文件夹浏览
+    if (!activeFolder) return []
+    return videoPaths.filter((path) => dirname(path) === activeFolder).map((path) => videos[path])
+  }, [activeFolder, videoPaths, videos, searchQuery])
+
+  // --- 6. 多选交互逻辑 ---
+  const handleSelect = useCallback(
+    (index: number, e: React.MouseEvent) => {
+      const targetPath = currentVideos[index].path
+      const newSelected = new Set(selectedPaths)
+
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl + 点击：反转选中
+        if (newSelected.has(targetPath)) newSelected.delete(targetPath)
+        else newSelected.add(targetPath)
+        setAnchorIndex(index)
+      } else if (e.shiftKey && anchorIndex !== null) {
+        // Shift + 点击：连选
+        const start = Math.min(anchorIndex, index)
+        const end = Math.max(anchorIndex, index)
+        for (let i = start; i <= end; i++) {
+          newSelected.add(currentVideos[i].path)
         }
-        else if (e.shiftKey && anchorIndex !== null) {
-            // Shift + 点击：连选
-            const start = Math.min(anchorIndex, index);
-            const end = Math.max(anchorIndex, index);
-            for (let i = start; i <= end; i++) {
-                newSelected.add(currentVideos[i].path);
-            }
-        }
-        else {
-            // 普通点击：单选
-            newSelected.clear();
-            newSelected.add(targetPath);
-            setAnchorIndex(index);
-        }
+      } else {
+        // 普通点击：单选
+        newSelected.clear()
+        newSelected.add(targetPath)
+        setAnchorIndex(index)
+      }
 
-        setSelectedPaths(newSelected);
-    }, [currentVideos, selectedPaths, anchorIndex]);
+      setSelectedPaths(newSelected)
+    },
+    [currentVideos, selectedPaths, anchorIndex]
+  )
 
-    const handleClearSelection = () => {
-        setSelectedPaths(new Set());
-        setAnchorIndex(null);
-    };
+  const handleClearSelection = () => {
+    setSelectedPaths(new Set())
+    setAnchorIndex(null)
+  }
 
-    const handleSelectAll = () => {
-        setSelectedPaths(new Set(currentVideos.map(v => v.path)));
-    };
+  const handleSelectAll = () => {
+    setSelectedPaths(new Set(currentVideos.map((v) => v.path)))
+  }
 
-    // --- 7. 播放控制 ---
-    const handlePlay = (video: VideoFile) => {
-        // 跳转播放，模式传空（保持原有模式）
-        jumpTo(video.path);
-        setView('player_page');
-    };
+  // --- 7. 播放控制 ---
+  const handlePlay = (video: VideoFile) => {
+    // 跳转播放，模式传空（保持原有模式）
+    jumpTo(video.path)
+    setView('player_page')
+  }
 
-    // 获取选中的文件对象数组
-    const selectedVideoFiles = useMemo(() =>
-        Array.from(selectedPaths).map(p => videos[p]).filter(v => !!v),
-        [selectedPaths, videos]
-    );
+  // 获取选中的文件对象数组
+  const selectedVideoFiles = useMemo(
+    () =>
+      Array.from(selectedPaths)
+        .map((p) => videos[p])
+        .filter((v) => !!v),
+    [selectedPaths, videos]
+  )
 
-    if (!videoSource) return <LoadingOverlay visible />;
+  if (!videoSource) return <LoadingOverlay visible />
 
-    return (
-        <Box style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-            {/* 左侧：文件夹树 */}
-            <Box style={{
-                width: 300,
-                borderRight: '1px solid #333',
-                display: 'flex',
-                flexDirection: 'column',
-                backgroundColor: '#111'
-            }}>
-                <Box p="md">
-                    <Text fw={700} size="sm">文件夹预览</Text>
-                    <Text size="xs" c="dimmed">仅显示包含视频的目录</Text>
-                </Box>
-                <Divider />
-                <ScrollArea style={{ flex: 1 }} p="xs">
-                    <Tree
-                        data={treeData}
-                        tree={tree}
-                        levelOffset={28} // 28-32 左右缩进比较明显
-                        renderNode={({ node, expanded, hasChildren, elementProps }) => (
-                            <Group
-                                gap={5}
-                                {...elementProps}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    setActiveFolder(node.value);
-                                    if (hasChildren) tree.toggleExpanded(node.value);
-                                }}
-                                style={{
-                                    ...elementProps.style, // 这里包含了关键的 paddingLeft
-                                    // 不要直接写 padding: '4px 8px', 否则会覆盖缩进
-                                    paddingTop: 4,
-                                    paddingBottom: 4,
-                                    paddingRight: 8,
+  return (
+    <Box style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      {/* 左侧：文件夹树 */}
+      <Box
+        style={{
+          width: 300,
+          borderRight: '1px solid #333',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#111'
+        }}
+      >
+        <ScrollArea style={{ flex: 1 }} p="xs">
+          <Tree
+            data={treeData}
+            tree={tree}
+            levelOffset={28} // 28-32 左右缩进比较明显
+            renderNode={({ node, expanded, hasChildren, elementProps }) => (
+              <Group
+                gap={5}
+                {...elementProps}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setActiveFolder(node.value)
+                  if (hasChildren) tree.toggleExpanded(node.value)
+                }}
+                style={{
+                  ...elementProps.style, // 这里包含了关键的 paddingLeft
+                  // 不要直接写 padding: '4px 8px', 否则会覆盖缩进
+                  paddingTop: 4,
+                  paddingBottom: 4,
+                  paddingRight: 8,
 
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                    backgroundColor: activeFolder === node.value ? 'rgba(34, 139, 230, 0.2)' : 'transparent',
-                                    color: activeFolder === node.value ? '#339af0' : '#eee',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {/* 这里的 Box 或 div 是为了让没有箭头的节点也能占位，保持图标对齐（可选） */}
-                                <Box style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {hasChildren && (
-                                        <IconChevronRight
-                                            size={14}
-                                            style={{
-                                                transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                transition: 'transform 200ms ease',
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-
-                                {activeFolder === node.value ? (
-                                    <IconFolderFilled size={18} color="#339af0" />
-                                ) : (
-                                    <IconFolder
-                                        size={18}
-                                        style={{ opacity: hasChildren ? 1 : 0.6 }}
-                                    />
-                                )}
-
-                                <Text size="sm" style={{ fontWeight: activeFolder === node.value ? 600 : 400 }}>
-                                    {node.label}
-                                </Text>
-                            </Group>
-                        )}
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  backgroundColor:
+                    activeFolder === node.value ? 'rgba(34, 139, 230, 0.2)' : 'transparent',
+                  color: activeFolder === node.value ? '#339af0' : '#eee',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {/* 这里的 Box 或 div 是为了让没有箭头的节点也能占位，保持图标对齐（可选） */}
+                <Box
+                  style={{
+                    width: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {hasChildren && (
+                    <IconChevronRight
+                      size={14}
+                      style={{
+                        transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 200ms ease'
+                      }}
                     />
-                </ScrollArea>
-            </Box>
-
-            {/* 右侧：视频展示区 */}
-            <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
-                {/* 顶部工具栏 */}
-                <Box p="md" style={{ borderBottom: '1px solid #333', backgroundColor: '#141517' }}>
-                    <Group justify="space-between">
-                        <Stack gap={0}>
-                            {/* 3. 将 maxW 修正为 maw */}
-                            <Text size="sm" fw={700} truncate maw={400}>
-                                {activeFolder ? activeFolder.split('/').pop() : '未选择文件夹'}
-                            </Text>
-                            <Text size="xs" c="dimmed">{currentVideos.length} 个视频</Text>
-                        </Stack>
-
-                        <Group gap="xs">
-                            {selectedPaths.size > 0 && (
-                                <>
-                                    <Text size="xs" c="blue.4" fw={700}>已选中 {selectedPaths.size} 项</Text>
-                                    <Button
-                                        size="xs"
-                                        variant="filled"
-                                        color="blue"
-                                        leftSection={<IconTag size={14} />}
-                                        onClick={() => setIsTagDialogOpen(true)}
-                                    >
-                                        批量打标签
-                                    </Button>
-                                    <Button size="xs" variant="subtle" color="gray" onClick={handleClearSelection}>
-                                        取消选择
-                                    </Button>
-                                </>
-                            )}
-                            <Button size="xs" variant="outline" color="gray" onClick={handleSelectAll}>
-                                全选
-                            </Button>
-                        </Group>
-                    </Group>
+                  )}
                 </Box>
 
-                {/* 视频列表 */}
-                <ScrollArea style={{ flex: 1 }}>
-                    <VideoGrid
-                        videos={currentVideos}
-                        selectedPaths={selectedPaths}
-                        onSelect={handleSelect}
-                        onPlay={handlePlay}
-                        emptyMessage={activeFolder ? "当前目录下无视频，请查看子目录" : "请在左侧选择文件夹"}
-                    />
-                </ScrollArea>
-            </Box>
+                {activeFolder === node.value ? (
+                  <IconFolderFilled size={18} color="#339af0" />
+                ) : (
+                  <IconFolder size={18} style={{ opacity: hasChildren ? 1 : 0.6 }} />
+                )}
 
-            {/* 批量打标签对话框 */}
-            <BatchAssignTagDialog
-                opened={isTagDialogOpen}
-                onClose={() => setIsTagDialogOpen(false)}
-                selectedVideos={selectedVideoFiles}
-            />
+                <Text size="sm" style={{ fontWeight: activeFolder === node.value ? 600 : 400 }}>
+                  {node.label}
+                </Text>
+              </Group>
+            )}
+          />
+        </ScrollArea>
+      </Box>
+
+      {/* 右侧：视频展示区 */}
+      <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#000' }}>
+        {/* 顶部工具栏 - 修改为更紧凑的布局 (py="xs") */}
+        <Box px="md" py="xs" style={{ borderBottom: '1px solid #333', backgroundColor: '#141517' }}>
+          <Group justify="space-between" wrap="nowrap">
+            {/* 左侧信息：目录名与数量并排 */}
+            <Group gap="sm" style={{ flexShrink: 1, minWidth: 0 }}>
+              <Text size="sm" fw={700} truncate maw={300}>
+                {searchQuery.trim()
+                  ? `搜索结果: "${searchQuery}"`
+                  : activeFolder
+                    ? activeFolder.split('/').pop()
+                    : '未选择文件夹'}
+              </Text>
+              <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                {currentVideos.length} 个视频
+              </Text>
+            </Group>
+
+            {/* 中间/右侧：搜索框与操作按钮 */}
+            <Group gap="xs" wrap="nowrap">
+              <TextInput
+                placeholder="搜索文件名..."
+                size="xs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                leftSection={<IconSearch size={14} />}
+                rightSection={
+                  searchQuery && (
+                    <ActionIcon size="xs" variant="subtle" onClick={() => setSearchQuery('')}>
+                      <IconX size={12} />
+                    </ActionIcon>
+                  )
+                }
+                style={{ width: 200 }}
+              />
+
+              <Divider orientation="vertical" />
+
+              {selectedPaths.size > 0 && (
+                <>
+                  <Text size="xs" c="blue.4" fw={700} style={{ whiteSpace: 'nowrap' }}>
+                    已选中 {selectedPaths.size}
+                  </Text>
+                  <Button
+                    size="xs"
+                    variant="filled"
+                    color="blue"
+                    leftSection={<IconTag size={14} />}
+                    onClick={() => setIsTagDialogOpen(true)}
+                  >
+                    批量标签
+                  </Button>
+                  <Button size="xs" variant="subtle" color="gray" onClick={handleClearSelection}>
+                    取消
+                  </Button>
+                </>
+              )}
+              <Button size="xs" variant="outline" color="gray" onClick={handleSelectAll}>
+                全选
+              </Button>
+            </Group>
+          </Group>
         </Box>
-    );
+
+        {/* 视频列表 */}
+        <ScrollArea style={{ flex: 1 }}>
+          <VideoGrid
+            videos={currentVideos}
+            selectedPaths={selectedPaths}
+            onSelect={handleSelect}
+            onPlay={handlePlay}
+            showFilenameTip={true}
+            // 动态显示空状态信息
+            emptyMessage={
+              searchQuery.trim()
+                ? '未找到匹配的视频'
+                : activeFolder
+                  ? '当前目录下无视频'
+                  : '请选择文件夹'
+            }
+          />
+        </ScrollArea>
+      </Box>
+
+      {/* 批量打标签对话框 */}
+      <BatchAssignTagDialog
+        opened={isTagDialogOpen}
+        onClose={() => setIsTagDialogOpen(false)}
+        selectedVideos={selectedVideoFiles}
+      />
+    </Box>
+  )
 }

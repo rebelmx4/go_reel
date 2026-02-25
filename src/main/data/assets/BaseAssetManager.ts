@@ -1,17 +1,15 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { app } from 'electron';
-import log from 'electron-log';
-import { fileProfileManager } from '../json/FileProfileManager'; 
-
+import fs from 'fs-extra'
+import path from 'path'
+import { app } from 'electron'
+import log from 'electron-log'
+import { fileProfileManager } from '../json'
 
 export abstract class BaseAssetManager {
-  protected baseDir: string;
+  protected baseDir: string
 
-  constructor(subDir: string) {
-    // 严格遵循要求使用 app.getAppPath()
-    this.baseDir = path.join(app.getAppPath(), 'data', subDir);
-    this.ensureDirSync(this.baseDir);
+  protected constructor(subDir: string) {
+    this.baseDir = path.join(app.getAppPath(), 'data/data', subDir)
+    this.ensureDirSync(this.baseDir)
   }
 
   /**
@@ -19,9 +17,9 @@ export abstract class BaseAssetManager {
    */
   protected ensureDirSync(dir: string) {
     try {
-      fs.ensureDirSync(dir);
+      fs.ensureDirSync(dir)
     } catch (error) {
-      log.error(`[BaseAssetManager] Failed to ensure directory: ${dir}`, error);
+      log.error(`[BaseAssetManager] Failed to ensure directory: ${dir}`, error)
     }
   }
 
@@ -30,11 +28,11 @@ export abstract class BaseAssetManager {
    * 这样如果以后逻辑变了，只需要改这一处
    */
   protected async getHash(filePath: string): Promise<string> {
-    const profile = await fileProfileManager.getProfile(filePath);
+    const profile = await fileProfileManager.getProfile(filePath)
     if (!profile || !profile.hash) {
-      throw new Error(`[ScreenshotManager] 无法获取文件档案或 Hash: ${filePath}`);
+      throw new Error(`[ScreenshotManager] 无法获取文件档案或 Hash: ${filePath}`)
     }
-    return profile.hash;
+    return profile.hash
   }
 
   /**
@@ -43,10 +41,10 @@ export abstract class BaseAssetManager {
    * @param hash 完整哈希值
    */
   protected getPrefixDir(hash: string): string {
-    const prefix = (hash || '00').substring(0, 2);
-    const dir = path.join(this.baseDir, prefix);
-    this.ensureDirSync(dir);
-    return dir;
+    const prefix = (hash || '00').substring(0, 2)
+    const dir = path.join(this.baseDir, prefix)
+    this.ensureDirSync(dir)
+    return dir
   }
 
   /**
@@ -55,10 +53,10 @@ export abstract class BaseAssetManager {
    * @param hash 完整哈希值
    */
   protected getHashDir(hash: string): string {
-    const prefixDir = this.getPrefixDir(hash);
-    const dir = path.join(prefixDir, hash);
-    this.ensureDirSync(dir);
-    return dir;
+    const prefixDir = this.getPrefixDir(hash)
+    const dir = path.join(prefixDir, hash)
+    this.ensureDirSync(dir)
+    return dir
   }
 
   /**
@@ -66,7 +64,7 @@ export abstract class BaseAssetManager {
    * 常用语 Cover: baseDir/ab/abcdefg.webp
    */
   protected getFilePathInPrefix(hash: string, filename: string): string {
-    return path.join(this.getPrefixDir(hash), filename);
+    return path.join(this.getPrefixDir(hash), filename)
   }
 
   /**
@@ -74,14 +72,14 @@ export abstract class BaseAssetManager {
    * 常用于 Screenshot: baseDir/ab/abcdefg/00001000.webp
    */
   protected getFilePathInHash(hash: string, filename: string): string {
-    return path.join(this.getHashDir(hash), filename);
+    return path.join(this.getHashDir(hash), filename)
   }
 
   /**
    * 检查路径是否存在
    */
   public async exists(targetPath: string): Promise<boolean> {
-    return await fs.pathExists(targetPath);
+    return await fs.pathExists(targetPath)
   }
 
   /**
@@ -90,10 +88,10 @@ export abstract class BaseAssetManager {
   public async delete(targetPath: string): Promise<void> {
     try {
       if (await fs.pathExists(targetPath)) {
-        await fs.remove(targetPath);
+        await fs.remove(targetPath)
       }
     } catch (error) {
-      log.error(`[BaseAssetManager] Failed to delete: ${targetPath}`, error);
+      log.error(`[BaseAssetManager] Failed to delete: ${targetPath}`, error)
     }
   }
 
@@ -102,15 +100,15 @@ export abstract class BaseAssetManager {
    * @param hash 完整哈希值
    */
   protected async listFilesInHashDir(hash: string): Promise<string[]> {
-    const dir = this.getHashDir(hash);
+    const dir = this.getHashDir(hash)
     try {
       if (await fs.pathExists(dir)) {
-        return await fs.readdir(dir);
+        return await fs.readdir(dir)
       }
     } catch (error) {
-      log.error(`[BaseAssetManager] Failed to list files in: ${dir}`, error);
+      log.error(`[BaseAssetManager] Failed to list files in: ${dir}`, error)
     }
-    return [];
+    return []
   }
 
   /**
@@ -118,10 +116,10 @@ export abstract class BaseAssetManager {
    */
   protected async writeFile(filePath: string, data: Buffer): Promise<void> {
     try {
-      await fs.writeFile(filePath, data);
+      await fs.writeFile(filePath, data)
     } catch (error) {
-      log.error(`[BaseAssetManager] Failed to write file: ${filePath}`, error);
-      throw error;
+      log.error(`[BaseAssetManager] Failed to write file: ${filePath}`, error)
+      throw error
     }
   }
 }

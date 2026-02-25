@@ -1,5 +1,3 @@
-// src/stores/playlistStore.ts
-
 import { create } from 'zustand'
 import {
   useVideoFileRegistryStore,

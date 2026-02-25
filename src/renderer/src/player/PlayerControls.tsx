@@ -51,6 +51,15 @@ function useDebouncedEffect(callback: () => void, delay: number, deps: React.Dep
   }, [...deps, callback, delay])
 }
 
+const MODE_MAP: Record<string, { char: string; label: string }> = {
+  all: { char: '随', label: '全部随机' },
+  liked: { char: '赞', label: '点赞列表' },
+  elite: { char: '精', label: '精品列表' },
+  newest: { char: '新', label: '最新列表' },
+  search: { char: '搜', label: '搜索结果' },
+  tag_filter: { char: '签', label: '标签过滤' }
+}
+
 interface PlayerControlsProps {
   onScreenshot: () => void
   onNext: () => void
@@ -108,6 +117,10 @@ export function PlayerControls({
   const [keyMap, setKeyMap] = useState<Record<string, string>>({})
 
   const setView = useNavigationStore((state) => state.setView)
+
+  const mode = usePlaylistStore((state) => state.mode)
+  const setMode = usePlaylistStore((state) => state.setMode)
+  const addMultiPlayerPath = useMultiPlayerStore((state) => state.addPath)
 
   // 加载快捷键配置 (逻辑不变)
   useEffect(() => {
@@ -234,6 +247,45 @@ export function PlayerControls({
             </ActionIcon>
           </Tooltip>
 
+          <Tooltip
+            label={
+              mode === 'all'
+                ? '当前模式：全部随机'
+                : `当前：${MODE_MAP[mode]?.label} | 点击返回随机`
+            }
+          >
+            <Button
+              variant={mode === 'all' ? 'subtle' : 'filled'}
+              color={mode === 'all' ? 'gray' : 'orange'}
+              size="compact-xs"
+              onClick={() => setMode('all')}
+              disabled={mode === 'all'}
+              styles={{
+                root: {
+                  width: 26,
+                  height: 26,
+                  padding: 0,
+                  minWidth: 26,
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  border: mode === 'all' ? '1px solid #444' : undefined
+                }
+              }}
+            >
+              {MODE_MAP[mode]?.char || '?'}
+            </Button>
+          </Tooltip>
+
+          <Tooltip label="添加到多窗口">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              onClick={() => currentPath && addMultiPlayerPath(currentPath)}
+            >
+              <IconLayoutGridAdd size={20} />
+            </ActionIcon>
+          </Tooltip>
+
           {/* 视口标签 */}
           <Tooltip label={showViewportTags ? '隐藏视口标签' : '显示视口标签'}>
             <ActionIcon
@@ -321,12 +373,6 @@ export function PlayerControls({
 
               <Menu.Divider />
               <Menu.Label>管理</Menu.Label>
-              <Menu.Item
-                leftSection={<IconLayoutGridAdd size={16} />}
-                onClick={() => currentPath && useMultiPlayerStore.getState().addPath(currentPath)}
-              >
-                添加到多窗口
-              </Menu.Item>
               <Menu.Item
                 leftSection={<IconSettingsAutomation size={16} />}
                 onClick={() => setView('screenshot_manage_page')}

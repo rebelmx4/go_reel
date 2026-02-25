@@ -4,7 +4,6 @@ out
 .DS_Store
 .eslintcache
 *.log*
-/data
 /ffmpeg
 /go_reel_c/Debug
 /go_reel_c/ffmpeg_extensions/Debug
@@ -31,3 +30,4 @@ out
 /bin
 /.vs/slnx.sqlite
 /.vs/VSWorkspaceState.json
+/data

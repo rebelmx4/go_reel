@@ -1,10 +1,8 @@
-// --- START OF FILE ProgressBarWithThumbnail.tsx ---
-
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Box } from '@mantine/core'
 import { useClipStore, usePlayerStore } from '../stores'
-import { useVideoContext } from './contexts' // 引入 Context 获取 videoRef
-import usePlayerActions from './hooks/usePlayerActions' // 引入 Actions
+import { useVideoContext } from './contexts'
+import usePlayerActions from './hooks/usePlayerActions'
 
 interface ProgressBarWithThumbnailProps {
   videoPath: string | null
@@ -35,6 +33,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [thumbnailPosition, setThumbnailPosition] = useState(0)
   const [thumbnailTime, setThumbnailTime] = useState(0)
+  const [isTracking, setIsTracking] = useState(false)
 
   // 1. 初始化加载缩略图视频
   useEffect(() => {
@@ -55,6 +54,62 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
     }
   }, [currentTime, duration, showThumbnail])
 
+  const updateSeek = useCallback(
+    (clientX: number) => {
+      const progress = progressRef.current
+      if (!progress || !duration) return
+
+      const rect = progress.getBoundingClientRect()
+      // 即使鼠标超出了 rect 的左右边界，也通过 clamp 限制在 0-1 之间
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
+      const percentage = x / rect.width
+      const time = percentage * duration
+
+      onSeek(time)
+      if (fillingBarRef.current) {
+        fillingBarRef.current.style.width = `${percentage * 100}%`
+      }
+    },
+    [duration, onSeek]
+  )
+
+  useEffect(() => {
+    if (isHoverSeekMode && isTracking) {
+      const handleWindowMouseMove = (e: MouseEvent) => {
+        const rect = progressRef.current?.getBoundingClientRect()
+        if (!rect) return
+
+        const barCenterY = rect.top + rect.height / 2
+        const verticalDistance = Math.abs(e.clientY - barCenterY)
+
+        if (verticalDistance > 150) {
+          handleExit()
+          return
+        }
+        updateSeek(e.clientX)
+      }
+
+      const handleExit = () => {
+        setIsTracking(false)
+        setIsScrubbing(false)
+        // 修复 Promise ignored: 使用 .catch()
+        if (wasPlayingRef.current) {
+          videoRef.current?.play().catch(() => {
+            /* 忽略静默失败 */
+          })
+        }
+      }
+
+      window.addEventListener('mousemove', handleWindowMouseMove)
+      return () => {
+        window.removeEventListener('mousemove', handleWindowMouseMove)
+      }
+    }
+
+    // 显式返回 undefined 确保所有路径一致，或者不返回
+    return undefined
+  }, [isHoverSeekMode, isTracking, setIsScrubbing, updateSeek, videoRef])
+
   // --- 核心交互逻辑 ---
 
   const handleMouseEnter = (): void => {
@@ -72,6 +127,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
 
       // 3. 磁吸模式下不显示缩略图
       setShowThumbnail(false)
+      setIsTracking(true)
     } else {
       // === 体验 A：预览模式 ===
       // 只显示缩略图，不影响主视频播放
@@ -82,7 +138,6 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const progress = progressRef.current
     const thumbVideo = thumbnailVideoRef.current
-    const fillingBar = fillingBarRef.current
 
     if (!progress || !duration) return
 
@@ -91,18 +146,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
     const percentage = x / rect.width
     const time = percentage * duration
 
-    if (isHoverSeekMode) {
-      // === 体验 B：磁吸模式 ===
-      // 1. 直接修改主视频时间 (scrubbing)
-      onSeek(time)
-
-      // 2. 实时更新进度条 UI (0延迟)
-      if (fillingBar) {
-        fillingBar.style.width = `${percentage * 100}%`
-      }
-      // 不需要更新缩略图
-    } else {
-      // === 体验 A：预览模式 ===
+    if (!isHoverSeekMode) {
       // 1. 更新缩略图位置和时间
       setThumbnailPosition(x)
       setThumbnailTime(time)
@@ -111,7 +155,6 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
       if (thumbVideo && thumbVideo.readyState >= 1) {
         thumbVideo.currentTime = time
       }
-      // 不影响主视频
     }
   }
 
@@ -122,7 +165,7 @@ export function ProgressBarWithThumbnail({ videoPath, onSeek }: ProgressBarWithT
       // 根据进入前的状态决定是否恢复
       if (wasPlayingRef.current) {
         const v = videoRef.current
-        if (v) v.play() // 直接操作 DOM 恢复
+        if (v) v.play().catch(() => {})
       }
     } else {
       setShowThumbnail(false)
