@@ -1,4 +1,3 @@
-// main/data/json/TagManager.ts
 import { BaseJsonManager } from './BaseJsonManager'
 import { TagLibrary, Tag, PinnedTag } from '../../../shared/models'
 import path from 'path'

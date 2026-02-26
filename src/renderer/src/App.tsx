@@ -1,21 +1,21 @@
-import { useEffect, useState, useMemo } from 'react';
-import { MantineProvider, Box } from '@mantine/core';
-import '@mantine/core/styles.css';
+import { useEffect, useState, useMemo } from 'react'
+import { MantineProvider, Box } from '@mantine/core'
+import '@mantine/core/styles.css'
 
 // 1. Stores
-import { useNavigationStore, useTranscodeStore } from './stores';
+import { useNavigationStore, useTranscodeStore } from './stores'
 
 // 2. Components & Layout
-import { MainLayout, ToastContainer } from './components';
-import { RefreshLoadingScreen } from './components/RefreshLoadingScreen';
-import { RecordingIndicator } from './player/RecordingIndicator';
-import { ModalsProvider } from '@mantine/modals';
-import { Notifications } from '@mantine/notifications';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css'; // 确保通知样式也引入了
+import { MainLayout, ToastContainer } from './components'
+import { RefreshLoadingScreen } from './components/RefreshLoadingScreen'
+import { RecordingIndicator } from './player/RecordingIndicator'
+import { ModalsProvider } from '@mantine/modals'
+import { Notifications } from '@mantine/notifications'
+import '@mantine/core/styles.css'
+import '@mantine/notifications/styles.css' // 确保通知样式也引入了
 
 // 3. Pages & Player
-import { VideoPlayer } from './player/VideoPlayer';
+import { VideoPlayer } from './player/VideoPlayer'
 import {
   TagSearchPage,
   HistoryPage,
@@ -25,38 +25,37 @@ import {
   FolderPage,
   TagManagePage,
   MultiPlayerPage
-} from './pages';
+} from './pages'
 
 // 4. Utils
-import { keyBindingManager } from './utils/KeyBindingManager';
-import { AppAction } from '../../shared/settings.schema';
-import { ScreenshotManagePage } from './pages/ScreenshotManagePage';
-
+import { keyBindingManager } from './utils/KeyBindingManager'
+import { AppAction } from '../../shared/settings.schema'
+import { ScreenshotManagePage } from './pages/ScreenshotManagePage'
 
 function App() {
   // --- Navigation & View State ---
-  const currentView = useNavigationStore((state) => state.currentView);
-  const setView = useNavigationStore((state) => state.setView);
+  const currentView = useNavigationStore((state) => state.currentView)
+  const setView = useNavigationStore((state) => state.setView)
 
   // 记录哪些页面已经被访问过（按需挂载）
-  const [visitedViews, setVisitedViews] = useState<Set<string>>(new Set([currentView]));
+  const [visitedViews, setVisitedViews] = useState<Set<string>>(new Set([currentView]))
 
   // 当视图切换时，将其标记为已访问
   useEffect(() => {
     setVisitedViews((prev) => {
-      if (prev.has(currentView)) return prev;
-      const next = new Set(prev);
-      next.add(currentView);
-      return next;
-    });
-  }, [currentView]);
+      if (prev.has(currentView)) return prev
+      const next = new Set(prev)
+      next.add(currentView)
+      return next
+    })
+  }, [currentView])
 
   useEffect(() => {
     const unsub = window.api.onTranscodeUpdate((tasks) => {
-      useTranscodeStore.getState().setTasks(tasks);
-    });
-    return unsub;
-  }, []);
+      useTranscodeStore.getState().setTasks(tasks)
+    })
+    return unsub
+  }, [])
 
   // --- 全局事件监听 ---
   useEffect(() => {
@@ -72,33 +71,43 @@ function App() {
       folder_page: () => setView('folder_page'),
       tag_manage_page: () => setView('tag_manage_page'),
       open_video_dir: () => {
-        window.api.openVideoSourceDir().then(res => {
-          if (!res.success) console.error('无法打开目录:', res.error);
-        });
+        window.api.openVideoSourceDir().then((res) => {
+          if (!res.success) console.error('无法打开目录:', res.error)
+        })
       },
-    };
+      print_memory: () => {
+        // 调用我们在 preload 中暴露的接口
+        if (window.api.printMemory) {
+          window.api.printMemory()
+        } else {
+          console.warn('printMemory API not found in window.api')
+        }
+      }
+    }
 
-    keyBindingManager.registerHandlers(navHandlers);
+    keyBindingManager.registerHandlers(navHandlers)
     return () => {
-      keyBindingManager.unregisterHandlers(Object.keys(navHandlers) as AppAction[]);
-    };
-  }, [setView]);
+      keyBindingManager.unregisterHandlers(Object.keys(navHandlers) as AppAction[])
+    }
+  }, [setView])
 
   // --- 页面配置表 ---
   // 使用 useMemo 避免每次 App 重绘都生成新的对象引用
-  const viewConfigs = useMemo(() => [
-    { id: 'player_page', component: <VideoPlayer /> },
-    { id: 'screenshot_manage_page', component: <ScreenshotManagePage /> },
-    { id: 'history_page', component: <HistoryPage /> },
-    { id: 'newest_page', component: <NewestPage /> },
-    { id: 'elite_page', component: <ElitePage /> },
-    { id: 'tag_search_page', component: <TagSearchPage /> },
-    { id: 'settings_page', component: <SettingsPage /> },
-    { id: 'folder_page', component: <FolderPage /> },
-    { id: 'tag_manage_page', component: <TagManagePage /> },
-    { id: 'multi_player_page', component: <MultiPlayerPage /> },
-
-  ], []);
+  const viewConfigs = useMemo(
+    () => [
+      { id: 'player_page', component: <VideoPlayer /> },
+      { id: 'screenshot_manage_page', component: <ScreenshotManagePage /> },
+      { id: 'history_page', component: <HistoryPage /> },
+      { id: 'newest_page', component: <NewestPage /> },
+      { id: 'elite_page', component: <ElitePage /> },
+      { id: 'tag_search_page', component: <TagSearchPage /> },
+      { id: 'settings_page', component: <SettingsPage /> },
+      { id: 'folder_page', component: <FolderPage /> },
+      { id: 'tag_manage_page', component: <TagManagePage /> },
+      { id: 'multi_player_page', component: <MultiPlayerPage /> }
+    ],
+    []
+  )
 
   return (
     <MantineProvider defaultColorScheme="dark">
@@ -109,10 +118,10 @@ function App() {
       <ModalsProvider>
         <MainLayout>
           {viewConfigs.map((view) => {
-            const isVisited = visitedViews.has(view.id);
-            const isActive = currentView === view.id;
+            const isVisited = visitedViews.has(view.id)
+            const isActive = currentView === view.id
 
-            if (!isVisited) return null;
+            if (!isVisited) return null
 
             return (
               <Box
@@ -126,7 +135,7 @@ function App() {
               >
                 {view.component}
               </Box>
-            );
+            )
           })}
         </MainLayout>
       </ModalsProvider>
@@ -136,7 +145,7 @@ function App() {
       <RefreshLoadingScreen />
       <RecordingIndicator />
     </MantineProvider>
-  );
+  )
 }
 
-export default App;
+export default App

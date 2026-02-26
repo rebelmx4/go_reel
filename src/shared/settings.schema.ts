@@ -75,6 +75,7 @@ export interface SystemActions {
   refresh: MultiKey
   soft_delete: MultiKey
   open_video_dir: MultiKey
+  print_memory: MultiKey
 }
 
 /**

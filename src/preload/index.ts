@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Annotation } from '../shared/models'; 
+import type { Annotation } from '../shared'
 
 // Custom APIs for renderer
 const api = {
@@ -19,80 +19,67 @@ const api = {
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
   windowClose: () => ipcRenderer.invoke('window-close'),
-  windowResize: (width: number, height: number) => 
+  windowResize: (width: number, height: number) =>
     ipcRenderer.invoke('window-resize', width, height),
   getScreenSize: () => ipcRenderer.invoke('get-screen-size'),
 
   // File staging
-  moveToTrash: (filePath: string) =>
-    ipcRenderer.invoke('move-file-to-trash', filePath),
-  showInExplorer: (filePath: string) => 
-    ipcRenderer.invoke('show-in-explorer', filePath),
-  openVideoSourceDir: () => 
-    ipcRenderer.invoke('open-video-source-dir'), 
+  moveToTrash: (filePath: string) => ipcRenderer.invoke('move-file-to-trash', filePath),
+  showInExplorer: (filePath: string) => ipcRenderer.invoke('show-in-explorer', filePath),
+  openVideoSourceDir: () => ipcRenderer.invoke('open-video-source-dir'),
   clearDirectory: (dirPath: string) => ipcRenderer.invoke('clear-directory', dirPath),
-  copyDirectoryToClipboard: (dirPath: string) => ipcRenderer.invoke('copy-directory-to-clipboard', dirPath),
-  openPathInExplorer : (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
-  
+  copyDirectoryToClipboard: (dirPath: string) =>
+    ipcRenderer.invoke('copy-directory-to-clipboard', dirPath),
+  openPathInExplorer: (path: string) => ipcRenderer.invoke('open-path-in-explorer', path),
+
   // Screenshot Management
   saveManualScreenshot: (filePath: string, timestamp: number) =>
     ipcRenderer.invoke('save-manual-screenshot', filePath, timestamp),
   generateAutoScreenshots: (filePath: string) =>
     ipcRenderer.invoke('generate-auto-screenshots', filePath),
-  loadScreenshots: (filePath: string) =>
-    ipcRenderer.invoke('load-screenshots', filePath),
+  loadScreenshots: (filePath: string) => ipcRenderer.invoke('load-screenshots', filePath),
   deleteScreenshot: (filePath: string, filename: string) =>
     ipcRenderer.invoke('delete-screenshot', filePath, filename),
   exportScreenshots: (filePath: string, rotation: number) =>
     ipcRenderer.invoke('export-screenshots', filePath, rotation),
-  getScreenshotMetadata: (filePath: string) => ipcRenderer.invoke('get-screenshot-metadata', filePath),
-  saveScreenshotMetadata: (filePath: string, metadata: any) => ipcRenderer.invoke('save-screenshot-metadata', filePath, metadata),
-  
+  getScreenshotMetadata: (filePath: string) =>
+    ipcRenderer.invoke('get-screenshot-metadata', filePath),
+  saveScreenshotMetadata: (filePath: string, metadata: any) =>
+    ipcRenderer.invoke('save-screenshot-metadata', filePath, metadata),
+
   // Cover Management
-  getCover: (filePath: string) =>
-    ipcRenderer.invoke('get-cover', filePath),
+  getCover: (filePath: string) => ipcRenderer.invoke('get-cover', filePath),
   setManualCover: (filePath: string, screenshotPath: string) =>
     ipcRenderer.invoke('set-manual-cover', filePath, screenshotPath),
-  
-  
-  // Video Metadata
-  getVideoMetadata: (videoPath: string) =>
-    ipcRenderer.invoke('get-video-metadata', videoPath),
-  
 
-   // History Management
-  addHistory: (filePath: string) => 
-    ipcRenderer.invoke('add-history', filePath),
-  getHistory: () => 
-    ipcRenderer.invoke('get-history'),
-  clearHistory: () => 
-    ipcRenderer.invoke('clear-history'),
-  removeFromHistory: (filePath: string) => 
-    ipcRenderer.invoke('remove-from-history', filePath),
-  
+  // Video Metadata
+  getVideoMetadata: (videoPath: string) => ipcRenderer.invoke('get-video-metadata', videoPath),
+
+  // History Management
+  addHistory: (filePath: string) => ipcRenderer.invoke('add-history', filePath),
+  getHistory: () => ipcRenderer.invoke('get-history'),
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+  removeFromHistory: (filePath: string) => ipcRenderer.invoke('remove-from-history', filePath),
 
   // Annotation 语义化操作
-  updateAnnotation: (filePath: string, updates: Partial<Annotation>) => 
+  updateAnnotation: (filePath: string, updates: Partial<Annotation>) =>
     ipcRenderer.invoke('update-annotation', filePath, updates),
-  getAnnotation: (filePath: string) => 
-    ipcRenderer.invoke('get-annotation', filePath),
-  updateAnnotationsBatch: (filePaths, updates) => 
+  getAnnotation: (filePath: string) => ipcRenderer.invoke('get-annotation', filePath),
+  updateAnnotationsBatch: (filePaths, updates) =>
     ipcRenderer.invoke('update-annotations-batch', filePaths, updates),
-    
+
   // File Profile
-  getFileProfile: (filePath: string) => 
-    ipcRenderer.invoke('get-file-profile', filePath),
-  
-  
+  getFileProfile: (filePath: string) => ipcRenderer.invoke('get-file-profile', filePath),
+
   // Settings
   getAssetStatistics: () => ipcRenderer.invoke('get-asset-statistics'),
   getPathOverview: () => ipcRenderer.invoke('get-path-overview'),
   getKeyBindings: () => ipcRenderer.invoke('get-key-bindings'),
   saveKeyBindings: (keyBindings: any) => ipcRenderer.invoke('save-key-bindings', keyBindings),
-  loadSettings: () =>
-    ipcRenderer.invoke('load-settings'),
-  updatePreferenceSettings: (settings: any) => ipcRenderer.invoke('update-preference-settings', settings), 
-  
+  loadSettings: () => ipcRenderer.invoke('load-settings'),
+  updatePreferenceSettings: (settings: any) =>
+    ipcRenderer.invoke('update-preference-settings', settings),
+
   // Tags (New & Refactored)
   addTag: (params) => ipcRenderer.invoke('add-tag', params),
   replaceTagCover: (params) => ipcRenderer.invoke('replace-tag-cover', params),
@@ -102,30 +89,32 @@ const api = {
   savePinnedTags: (pinnedTags) => ipcRenderer.invoke('save-pinned-tags', pinnedTags),
   loadVideoTags: (filePath) => ipcRenderer.invoke('load-video-tags', filePath),
   updateTag: (tagId, updates) => ipcRenderer.invoke('update-tag', tagId, updates),
-  
+
   // Video Export
   exportVideo: (videoPath: string, clips: any[]) =>
     ipcRenderer.invoke('export-video', videoPath, clips),
 
-   transcodeVideo: (filePath: string) => ipcRenderer.invoke('video:transcode', filePath),
+  transcodeVideo: (filePath: string) => ipcRenderer.invoke('video:transcode', filePath),
 
   addTranscodeTask: (filePath: string) => ipcRenderer.send('transcode:add', filePath),
   clearTranscodeQueue: () => ipcRenderer.send('transcode:clear'),
   onTranscodeUpdate: (callback) => {
-  const listener = (_event, tasks) => callback(tasks);
-  ipcRenderer.on('transcode:state-update', listener);
-  return () => ipcRenderer.off('transcode:state-update', listener);
+    const listener = (_event, tasks) => callback(tasks)
+    ipcRenderer.on('transcode:state-update', listener)
+    return () => ipcRenderer.off('transcode:state-update', listener)
   },
   getTranscodeQueue: () => ipcRenderer.invoke('transcode:get-queue'),
 
-
-  generateStoryboardPreview: (filePath: string) => 
+  generateStoryboardPreview: (filePath: string) =>
     ipcRenderer.invoke('storyboard:preview', filePath),
 
-  saveStoryboard: (filePath: string, base64Data: string) => 
+  saveStoryboard: (filePath: string, base64Data: string) =>
     ipcRenderer.invoke('storyboard:save', filePath, base64Data),
 
-  getStoryboardCollage: (filePath: string) => ipcRenderer.invoke('get-storyboard-collage', filePath),
+  getStoryboardCollage: (filePath: string) =>
+    ipcRenderer.invoke('get-storyboard-collage', filePath),
+
+  printMemory: () => ipcRenderer.send('print-memory-usage')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -144,3 +133,6 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.api = api
 }
+
+export type Api = typeof api
+export type ElectronAPI = typeof electronAPI

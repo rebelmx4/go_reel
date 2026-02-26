@@ -109,7 +109,8 @@ export const DEFAULT_SETTINGS: PreferenceSettings = {
       system: {
         refresh: ['F5'],
         soft_delete: ['Ctrl+Delete'],
-        open_video_dir: ['Ctrl+Shift+O']
+        open_video_dir: ['Ctrl+Shift+O'],
+        print_memory: ['F10']
       }
     },
     dialog_assign_tag: {
